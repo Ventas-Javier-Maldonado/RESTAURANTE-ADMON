@@ -67,17 +67,13 @@ function obtenerFechaLarga() {
 
 
 /* ==========================================
-   CLAVE DE LA JORNADA
+   JORNADA
    ========================================== */
 
 function obtenerClaveJornada() {
     return `jornada_${USUARIO_ACTUAL.nombre}_${obtenerFechaActual()}`;
 }
 
-
-/* ==========================================
-   OBTENER JORNADA ACTUAL
-   ========================================== */
 
 function obtenerJornadaActual() {
     const clave = obtenerClaveJornada();
@@ -96,11 +92,121 @@ function obtenerJornadaActual() {
 }
 
 
+function iniciarJornada() {
+
+    const jornadaExistente = obtenerJornadaActual();
+
+    if (jornadaExistente) {
+
+        if (jornadaExistente.estado === "finalizada") {
+            mostrarJornadaFinalizada(jornadaExistente);
+            return;
+        }
+
+        mostrarDashboard(jornadaExistente);
+        return;
+    }
+
+    const ahora = new Date();
+
+    const jornada = {
+        usuario: USUARIO_ACTUAL.nombre,
+        rol: USUARIO_ACTUAL.rol,
+        fecha: obtenerFechaActual(),
+        entrada: obtenerHoraActual(),
+        salida: null,
+        timestampEntrada: ahora.toISOString(),
+        timestampSalida: null,
+        horasTrabajadas: null,
+        estado: "activa"
+    };
+
+    localStorage.setItem(
+        obtenerClaveJornada(),
+        JSON.stringify(jornada)
+    );
+
+    mostrarDashboard(jornada);
+}
+
+
+function terminarJornada() {
+
+    const jornada = obtenerJornadaActual();
+
+    if (!jornada) {
+        return;
+    }
+
+    if (jornada.estado === "finalizada") {
+        mostrarJornadaFinalizada(jornada);
+        return;
+    }
+
+    const confirmar = confirm(
+        "¿Seguro que deseas terminar tu jornada?\n\n" +
+        "Esta acción registrará tu hora de salida."
+    );
+
+    if (!confirmar) {
+        return;
+    }
+
+    const ahora = new Date();
+
+    jornada.salida = obtenerHoraActual();
+    jornada.timestampSalida = ahora.toISOString();
+
+    jornada.horasTrabajadas = calcularHorasTrabajadas(
+        jornada.timestampEntrada,
+        jornada.timestampSalida
+    );
+
+    jornada.estado = "finalizada";
+
+    localStorage.setItem(
+        obtenerClaveJornada(),
+        JSON.stringify(jornada)
+    );
+
+    mostrarJornadaFinalizada(jornada);
+}
+
+
+function calcularHorasTrabajadas(
+    timestampEntrada,
+    timestampSalida
+) {
+
+    const entrada = new Date(timestampEntrada);
+    const salida = new Date(timestampSalida);
+
+    const diferencia =
+        salida.getTime() - entrada.getTime();
+
+    if (diferencia <= 0) {
+        return "0 h 0 min";
+    }
+
+    const minutosTotales =
+        Math.floor(diferencia / 1000 / 60);
+
+    const horas =
+        Math.floor(minutosTotales / 60);
+
+    const minutos =
+        minutosTotales % 60;
+
+    return `${horas} h ${minutos} min`;
+}
+
+
 /* ==========================================
-   PANTALLA DE INICIO DE JORNADA
+   PANTALLA DE JORNADA
    ========================================== */
 
 function mostrarPantallaJornada() {
+
     const app = document.getElementById("app");
 
     app.innerHTML = `
@@ -153,139 +259,6 @@ function mostrarPantallaJornada() {
     `;
 }
 
-
-/* ==========================================
-   INICIAR JORNADA
-   ========================================== */
-
-function iniciarJornada() {
-
-    const jornadaExistente = obtenerJornadaActual();
-
-    if (jornadaExistente) {
-
-        if (jornadaExistente.estado === "finalizada") {
-            mostrarJornadaFinalizada(jornadaExistente);
-            return;
-        }
-
-        mostrarDashboard(jornadaExistente);
-        return;
-    }
-
-    const ahora = new Date();
-
-    const jornada = {
-        usuario: USUARIO_ACTUAL.nombre,
-        rol: USUARIO_ACTUAL.rol,
-        fecha: obtenerFechaActual(),
-
-        entrada: obtenerHoraActual(),
-        salida: null,
-
-        timestampEntrada: ahora.toISOString(),
-        timestampSalida: null,
-
-        horasTrabajadas: null,
-
-        estado: "activa"
-    };
-
-    const clave = obtenerClaveJornada();
-
-    localStorage.setItem(
-        clave,
-        JSON.stringify(jornada)
-    );
-
-    mostrarDashboard(jornada);
-}
-
-
-/* ==========================================
-   TERMINAR JORNADA
-   ========================================== */
-
-function terminarJornada() {
-
-    const jornada = obtenerJornadaActual();
-
-    if (!jornada) {
-        return;
-    }
-
-    if (jornada.estado === "finalizada") {
-        mostrarJornadaFinalizada(jornada);
-        return;
-    }
-
-    const confirmar = confirm(
-        "¿Seguro que deseas terminar tu jornada?\n\n" +
-        "Esta acción registrará tu hora de salida."
-    );
-
-    if (!confirmar) {
-        return;
-    }
-
-    const ahora = new Date();
-
-    jornada.salida = obtenerHoraActual();
-    jornada.timestampSalida = ahora.toISOString();
-
-    jornada.horasTrabajadas = calcularHorasTrabajadas(
-        jornada.timestampEntrada,
-        jornada.timestampSalida
-    );
-
-    jornada.estado = "finalizada";
-
-    const clave = obtenerClaveJornada();
-
-    localStorage.setItem(
-        clave,
-        JSON.stringify(jornada)
-    );
-
-    mostrarJornadaFinalizada(jornada);
-}
-
-
-/* ==========================================
-   CALCULAR HORAS TRABAJADAS
-   ========================================== */
-
-function calcularHorasTrabajadas(
-    timestampEntrada,
-    timestampSalida
-) {
-
-    const entrada = new Date(timestampEntrada);
-    const salida = new Date(timestampSalida);
-
-    const diferencia =
-        salida.getTime() - entrada.getTime();
-
-    if (diferencia <= 0) {
-        return "0 h 0 min";
-    }
-
-    const minutosTotales =
-        Math.floor(diferencia / 1000 / 60);
-
-    const horas =
-        Math.floor(minutosTotales / 60);
-
-    const minutos =
-        minutosTotales % 60;
-
-    return `${horas} h ${minutos} min`;
-}
-
-
-/* ==========================================
-   PANTALLA DE JORNADA FINALIZADA
-   ========================================== */
 
 function mostrarJornadaFinalizada(jornada) {
 
@@ -391,7 +364,6 @@ function mostrarDashboard(jornada) {
 
                 </div>
 
-
                 <button
                     class="usuario-boton"
                     onclick="terminarJornada()"
@@ -421,7 +393,6 @@ function mostrarDashboard(jornada) {
 
             <main class="contenido">
 
-
                 <section class="bienvenida">
 
                     <div>
@@ -439,7 +410,6 @@ function mostrarDashboard(jornada) {
                         </p>
 
                     </div>
-
 
                     <div class="estado-jornada">
 
@@ -483,7 +453,6 @@ function mostrarDashboard(jornada) {
 
                 <section class="indicadores">
 
-
                     <article class="indicador">
 
                         <div class="indicador-icono verde">
@@ -491,19 +460,9 @@ function mostrarDashboard(jornada) {
                         </div>
 
                         <div>
-
-                            <span>
-                                Ventas de hoy
-                            </span>
-
-                            <strong>
-                                $12,850
-                            </strong>
-
-                            <small class="positivo">
-                                ↑ 8.4% vs. ayer
-                            </small>
-
+                            <span>Ventas de hoy</span>
+                            <strong>$12,850</strong>
+                            <small class="positivo">↑ 8.4% vs. ayer</small>
                         </div>
 
                     </article>
@@ -516,19 +475,9 @@ function mostrarDashboard(jornada) {
                         </div>
 
                         <div>
-
-                            <span>
-                                Compras pendientes
-                            </span>
-
-                            <strong>
-                                4
-                            </strong>
-
-                            <small>
-                                Por validar
-                            </small>
-
+                            <span>Compras pendientes</span>
+                            <strong>4</strong>
+                            <small>Por validar</small>
                         </div>
 
                     </article>
@@ -541,19 +490,9 @@ function mostrarDashboard(jornada) {
                         </div>
 
                         <div>
-
-                            <span>
-                                Alertas de inventario
-                            </span>
-
-                            <strong>
-                                3
-                            </strong>
-
-                            <small class="negativo">
-                                Requieren atención
-                            </small>
-
+                            <span>Alertas de inventario</span>
+                            <strong>3</strong>
+                            <small class="negativo">Requieren atención</small>
                         </div>
 
                     </article>
@@ -566,36 +505,23 @@ function mostrarDashboard(jornada) {
                         </div>
 
                         <div>
-
-                            <span>
-                                Caja actual
-                            </span>
-
-                            <strong>
-                                $8,420
-                            </strong>
-
-                            <small>
-                                Corte anterior
-                            </small>
-
+                            <span>Caja actual</span>
+                            <strong>$8,420</strong>
+                            <small>Corte anterior</small>
                         </div>
 
                     </article>
-
 
                 </section>
 
 
                 <section class="dashboard-grid">
 
-
                     <article class="panel">
 
                         <div class="panel-cabecera">
 
                             <div>
-
                                 <span class="etiqueta">
                                     MOVIMIENTOS
                                 </span>
@@ -603,7 +529,6 @@ function mostrarDashboard(jornada) {
                                 <h2>
                                     Actividad reciente
                                 </h2>
-
                             </div>
 
                             <button class="texto-boton">
@@ -614,7 +539,6 @@ function mostrarDashboard(jornada) {
 
 
                         <div class="actividad">
-
 
                             <div class="actividad-item">
 
@@ -715,7 +639,6 @@ function mostrarDashboard(jornada) {
 
                             </div>
 
-
                         </div>
 
                     </article>
@@ -745,7 +668,6 @@ function mostrarDashboard(jornada) {
 
 
                         <div class="alertas">
-
 
                             <div class="alerta alerta-roja">
 
@@ -809,14 +731,16 @@ function mostrarDashboard(jornada) {
 
                             </div>
 
-
                         </div>
 
                     </article>
 
-
                 </section>
 
+
+                <!-- ==========================================
+                     ACCESOS RÁPIDOS
+                     ========================================== -->
 
                 <section class="accesos">
 
@@ -825,6 +749,10 @@ function mostrarDashboard(jornada) {
                     </span>
 
                     <div>
+
+                        <button onclick="mostrarPersonal()">
+                            👥 Personal
+                        </button>
 
                         <button>
                             📦 Inventario
@@ -846,14 +774,9 @@ function mostrarDashboard(jornada) {
                             📊 Reportes
                         </button>
 
-                        <button>
-                            👥 Usuarios
-                        </button>
-
                     </div>
 
                 </section>
-
 
             </main>
 
@@ -880,13 +803,12 @@ function mostrarDashboard(jornada) {
                     Caja
                 </button>
 
-                <button>
-                    <span>☰</span>
-                    Más
+                <button onclick="mostrarPersonal()">
+                    <span>👥</span>
+                    Personal
                 </button>
 
             </nav>
-
 
         </div>
     `;
@@ -894,8 +816,696 @@ function mostrarDashboard(jornada) {
 
 
 /* ==========================================
-   CAPTURAR TICKET
+   PERSONAL
    ========================================== */
+
+function obtenerEmpleados() {
+
+    const empleadosGuardados =
+        localStorage.getItem("empleados_restaurante");
+
+    if (!empleadosGuardados) {
+        return [];
+    }
+
+    try {
+        return JSON.parse(empleadosGuardados);
+    } catch (error) {
+        console.error(
+            "No se pudieron leer los empleados:",
+            error
+        );
+
+        return [];
+    }
+}
+
+
+function guardarEmpleados(empleados) {
+
+    localStorage.setItem(
+        "empleados_restaurante",
+        JSON.stringify(empleados)
+    );
+}
+
+
+function mostrarPersonal() {
+
+    const app = document.getElementById("app");
+
+    const empleados = obtenerEmpleados();
+
+    app.innerHTML = `
+
+        <div class="sistema">
+
+            <header class="topbar">
+
+                <div class="marca">
+
+                    <div class="marca-icono">
+                        CR
+                    </div>
+
+                    <div>
+
+                        <div class="marca-titulo">
+                            Control Restaurante
+                        </div>
+
+                        <div class="marca-subtitulo">
+                            Personal
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <button
+                    class="usuario-boton"
+                    onclick="regresarDashboard()"
+                >
+
+                    <div class="usuario-avatar">
+                        ${USUARIO_ACTUAL.nombre.charAt(0)}
+                    </div>
+
+                    <div class="usuario-info">
+
+                        <strong>
+                            ${USUARIO_ACTUAL.nombre}
+                        </strong>
+
+                        <span>
+                            ${USUARIO_ACTUAL.rol}
+                        </span>
+
+                    </div>
+
+                </button>
+
+            </header>
+
+
+            <main class="contenido">
+
+                <section class="bienvenida">
+
+                    <div>
+
+                        <span class="etiqueta">
+                            ADMINISTRACIÓN
+                        </span>
+
+                        <h1>
+                            Personal
+                        </h1>
+
+                        <p>
+                            Administra los empleados y su información básica.
+                        </p>
+
+                    </div>
+
+
+                    <button
+                        class="btn-agregar-personal"
+                        onclick="mostrarFormularioEmpleado()"
+                    >
+                        + AGREGAR EMPLEADO
+                    </button>
+
+                </section>
+
+
+                <section class="panel panel-personal">
+
+                    <div class="panel-cabecera">
+
+                        <div>
+
+                            <span class="etiqueta">
+                                PERSONAL REGISTRADO
+                            </span>
+
+                            <h2>
+                                Empleados
+                            </h2>
+
+                        </div>
+
+                        <span class="contador-alertas">
+                            ${empleados.length}
+                        </span>
+
+                    </div>
+
+
+                    <div id="listaEmpleados">
+
+                        ${renderizarEmpleados(empleados)}
+
+                    </div>
+
+                </section>
+
+            </main>
+
+
+            <nav class="navegacion-movil">
+
+                <button onclick="regresarDashboard()">
+                    <span>⌂</span>
+                    Inicio
+                </button>
+
+                <button>
+                    <span>📦</span>
+                    Inventario
+                </button>
+
+                <button>
+                    <span>🧾</span>
+                    Compras
+                </button>
+
+                <button>
+                    <span>💵</span>
+                    Caja
+                </button>
+
+                <button class="activo">
+                    <span>👥</span>
+                    Personal
+                </button>
+
+            </nav>
+
+        </div>
+    `;
+}
+
+
+/* ==========================================
+   LISTA DE EMPLEADOS
+   ========================================== */
+
+function renderizarEmpleados(empleados) {
+
+    if (empleados.length === 0) {
+
+        return `
+            <div class="personal-vacio">
+
+                <div class="personal-vacio-icono">
+                    👥
+                </div>
+
+                <h3>
+                    Todavía no hay empleados registrados
+                </h3>
+
+                <p>
+                    Agrega el primer empleado para comenzar
+                    a construir el control de personal.
+                </p>
+
+                <button
+                    class="btn-agregar-personal"
+                    onclick="mostrarFormularioEmpleado()"
+                >
+                    + AGREGAR EMPLEADO
+                </button>
+
+            </div>
+        `;
+    }
+
+
+    return empleados.map((empleado, indice) => {
+
+        return `
+            <div class="empleado-item">
+
+                <div class="empleado-avatar">
+                    ${obtenerIniciales(empleado.nombre)}
+                </div>
+
+                <div class="empleado-info">
+
+                    <strong>
+                        ${empleado.nombre}
+                    </strong>
+
+                    <span>
+                        ${empleado.tipoContrato}
+                    </span>
+
+                    <small>
+                        ${empleado.telefono || "Sin teléfono"}
+                    </small>
+
+                </div>
+
+                <div class="empleado-estado">
+                    <span class="estado-activo">
+                        ${empleado.estado}
+                    </span>
+                </div>
+
+                <button
+                    class="empleado-eliminar"
+                    onclick="eliminarEmpleado(${indice})"
+                    title="Eliminar empleado"
+                >
+                    ×
+                </button>
+
+            </div>
+        `;
+
+    }).join("");
+}
+
+
+/* ==========================================
+   FORMULARIO DE EMPLEADO
+   ========================================== */
+
+function mostrarFormularioEmpleado() {
+
+    const app = document.getElementById("app");
+
+    app.innerHTML = `
+
+        <div class="sistema">
+
+            <header class="topbar">
+
+                <div class="marca">
+
+                    <div class="marca-icono">
+                        CR
+                    </div>
+
+                    <div>
+
+                        <div class="marca-titulo">
+                            Control Restaurante
+                        </div>
+
+                        <div class="marca-subtitulo">
+                            Nuevo empleado
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </header>
+
+
+            <main class="contenido">
+
+                <section class="bienvenida">
+
+                    <div>
+
+                        <span class="etiqueta">
+                            PERSONAL
+                        </span>
+
+                        <h1>
+                            Nuevo empleado
+                        </h1>
+
+                        <p>
+                            Registra la información básica del empleado.
+                        </p>
+
+                    </div>
+
+                </section>
+
+
+                <section class="panel formulario-personal">
+
+                    <form
+                        onsubmit="guardarEmpleado(event)"
+                    >
+
+                        <div class="formulario-grid">
+
+
+                            <div class="campo">
+
+                                <label for="nombreEmpleado">
+                                    Nombre completo
+                                </label>
+
+                                <input
+                                    id="nombreEmpleado"
+                                    type="text"
+                                    placeholder="Ej. Juan Pérez"
+                                    required
+                                >
+
+                            </div>
+
+
+                            <div class="campo">
+
+                                <label for="telefonoEmpleado">
+                                    Teléfono
+                                </label>
+
+                                <input
+                                    id="telefonoEmpleado"
+                                    type="tel"
+                                    placeholder="Ej. 322 123 4567"
+                                >
+
+                            </div>
+
+
+                            <div class="campo campo-completo">
+
+                                <label for="direccionEmpleado">
+                                    Dirección
+                                </label>
+
+                                <input
+                                    id="direccionEmpleado"
+                                    type="text"
+                                    placeholder="Calle, número, colonia, ciudad"
+                                >
+
+                            </div>
+
+
+                            <div class="campo">
+
+                                <label for="fechaIngreso">
+                                    Fecha de ingreso
+                                </label>
+
+                                <input
+                                    id="fechaIngreso"
+                                    type="date"
+                                    required
+                                >
+
+                            </div>
+
+
+                            <div class="campo">
+
+                                <label for="tipoContrato">
+                                    Tipo de contratación
+                                </label>
+
+                                <select id="tipoContrato" required>
+
+                                    <option value="">
+                                        Seleccionar
+                                    </option>
+
+                                    <option value="Tiempo completo">
+                                        Tiempo completo
+                                    </option>
+
+                                    <option value="Medio tiempo">
+                                        Medio tiempo
+                                    </option>
+
+                                    <option value="Fines de semana">
+                                        Fines de semana
+                                    </option>
+
+                                    <option value="Temporal">
+                                        Temporal
+                                    </option>
+
+                                    <option value="Estacional">
+                                        Estacional
+                                    </option>
+
+                                </select>
+
+                            </div>
+
+
+                            <div class="campo">
+
+                                <label for="jornadaEmpleado">
+                                    Jornada
+                                </label>
+
+                                <select id="jornadaEmpleado" required>
+
+                                    <option value="">
+                                        Seleccionar
+                                    </option>
+
+                                    <option value="Completa">
+                                        Completa
+                                    </option>
+
+                                    <option value="Parcial">
+                                        Parcial
+                                    </option>
+
+                                    <option value="Variable">
+                                        Variable
+                                    </option>
+
+                                </select>
+
+                            </div>
+
+
+                            <div class="campo">
+
+                                <label for="estadoEmpleado">
+                                    Estado
+                                </label>
+
+                                <select id="estadoEmpleado" required>
+
+                                    <option value="Activo">
+                                        Activo
+                                    </option>
+
+                                    <option value="Inactivo">
+                                        Inactivo
+                                    </option>
+
+                                </select>
+
+                            </div>
+
+
+                            <div class="campo campo-completo">
+
+                                <label for="observacionesEmpleado">
+                                    Observaciones
+                                </label>
+
+                                <textarea
+                                    id="observacionesEmpleado"
+                                    rows="4"
+                                    placeholder="Información adicional..."
+                                ></textarea>
+
+                            </div>
+
+
+                        </div>
+
+
+                        <div class="acciones-formulario">
+
+                            <button
+                                type="button"
+                                class="btn-secundario"
+                                onclick="mostrarPersonal()"
+                            >
+                                CANCELAR
+                            </button>
+
+                            <button
+                                type="submit"
+                                class="btn-principal"
+                            >
+                                GUARDAR EMPLEADO
+                            </button>
+
+                        </div>
+
+                    </form>
+
+                </section>
+
+            </main>
+
+        </div>
+    `;
+}
+
+
+/* ==========================================
+   GUARDAR EMPLEADO
+   ========================================== */
+
+function guardarEmpleado(event) {
+
+    event.preventDefault();
+
+    const empleado = {
+
+        id:
+            "EMP-" +
+            Date.now(),
+
+        nombre:
+            document.getElementById(
+                "nombreEmpleado"
+            ).value.trim(),
+
+        telefono:
+            document.getElementById(
+                "telefonoEmpleado"
+            ).value.trim(),
+
+        direccion:
+            document.getElementById(
+                "direccionEmpleado"
+            ).value.trim(),
+
+        fechaIngreso:
+            document.getElementById(
+                "fechaIngreso"
+            ).value,
+
+        tipoContrato:
+            document.getElementById(
+                "tipoContrato"
+            ).value,
+
+        jornada:
+            document.getElementById(
+                "jornadaEmpleado"
+            ).value,
+
+        estado:
+            document.getElementById(
+                "estadoEmpleado"
+            ).value,
+
+        observaciones:
+            document.getElementById(
+                "observacionesEmpleado"
+            ).value.trim(),
+
+        fechaRegistro:
+            new Date().toISOString()
+
+    };
+
+
+    const empleados = obtenerEmpleados();
+
+    empleados.push(empleado);
+
+    guardarEmpleados(empleados);
+
+    alert(
+        "Empleado registrado correctamente."
+    );
+
+    mostrarPersonal();
+}
+
+
+/* ==========================================
+   ELIMINAR EMPLEADO
+   ========================================== */
+
+function eliminarEmpleado(indice) {
+
+    const empleados = obtenerEmpleados();
+
+    const empleado = empleados[indice];
+
+    if (!empleado) {
+        return;
+    }
+
+    const confirmar = confirm(
+        `¿Seguro que deseas eliminar a ${empleado.nombre}?`
+    );
+
+    if (!confirmar) {
+        return;
+    }
+
+    empleados.splice(indice, 1);
+
+    guardarEmpleados(empleados);
+
+    mostrarPersonal();
+}
+
+
+/* ==========================================
+   NAVEGACIÓN
+   ========================================== */
+
+function regresarDashboard() {
+
+    const jornada = obtenerJornadaActual();
+
+    if (!jornada) {
+        mostrarPantallaJornada();
+        return;
+    }
+
+    if (jornada.estado === "finalizada") {
+        mostrarJornadaFinalizada(jornada);
+        return;
+    }
+
+    mostrarDashboard(jornada);
+}
+
+
+/* ==========================================
+   UTILIDADES
+   ========================================== */
+
+function obtenerIniciales(nombre) {
+
+    if (!nombre) {
+        return "?";
+    }
+
+    const palabras =
+        nombre.trim().split(" ");
+
+    if (palabras.length === 1) {
+        return palabras[0]
+            .substring(0, 2)
+            .toUpperCase();
+    }
+
+    return (
+        palabras[0].charAt(0) +
+        palabras[1].charAt(0)
+    ).toUpperCase();
+}
+
 
 function capturarTicket() {
 
@@ -907,10 +1517,6 @@ function capturarTicket() {
 }
 
 
-/* ==========================================
-   CERRAR SESIÓN
-   ========================================== */
-
 function cerrarSesion() {
 
     alert(
@@ -919,10 +1525,6 @@ function cerrarSesion() {
     );
 }
 
-
-/* ==========================================
-   UTILIDADES
-   ========================================== */
 
 function capitalizarPrimeraLetra(texto) {
 
