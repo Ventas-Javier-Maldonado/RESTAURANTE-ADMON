@@ -1021,19 +1021,18 @@ img {
 
 /* =========================================================
    ACCESOS RÁPIDOS
+   ESCRITORIO — MENÚ VERTICAL EJECUTIVO
    ========================================================= */
 
 .accesos {
-    display: grid;
+    display: flex;
+    flex-direction: column;
 
-    grid-template-columns:
-        repeat(6, minmax(0, 1fr));
-
-    gap: 0;
+    gap: 10px;
 
     margin-bottom: 18px;
 
-    padding: 8px;
+    padding: 10px;
 
     background:
         linear-gradient(
@@ -1076,62 +1075,27 @@ img {
         0 0 12px rgba(200,164,93,.18);
 }
 
+
+/* =========================================================
+   CADA ACCESO
+   ========================================================= */
+
 .accesos button {
-    min-height: 112px;
+    width: 100%;
+
+    min-height: 78px;
 
     display: flex;
 
-    flex-direction: column;
+    flex-direction: row;
 
     align-items: center;
 
-    justify-content: center;
+    justify-content: flex-start;
 
-    gap: 9px;
+    gap: 16px;
 
-    padding: 12px 7px;
-
-    background: transparent;
-
-    color: white;
-
-    border: 0;
-
-    border-right:
-        1px solid rgba(200,164,93,.16);
-
-    transition: .2s ease;
-
-    position: relative;
-}
-
-.accesos button:last-child {
-    border-right: 0;
-}
-
-.accesos button:hover {
-    background:
-        linear-gradient(
-            145deg,
-            rgba(23,105,211,.24),
-            rgba(23,105,211,.08)
-        );
-
-    border-radius: 11px;
-
-    transform: translateY(-1px);
-}
-
-.accesos button span:first-child {
-    width: 52px;
-    height: 52px;
-
-    display: flex;
-
-    align-items: center;
-    justify-content: center;
-
-    border-radius: 14px;
+    padding: 12px 16px;
 
     background:
         linear-gradient(
@@ -1140,11 +1104,72 @@ img {
             #102f4e
         );
 
-    border: 1px solid rgba(82,151,222,.28);
+    color: white;
+
+    border: 1px solid rgba(200,164,93,.32);
+
+    border-radius: 12px;
+
+    transition: .2s ease;
+
+    position: relative;
+
+    box-sizing: border-box;
+}
+
+
+/* =========================================================
+   HOVER
+   ========================================================= */
+
+.accesos button:hover {
+    background:
+        linear-gradient(
+            145deg,
+            #2180e7,
+            #1456a1
+        );
+
+    border-color:
+        rgba(200,164,93,.65);
+
+    transform: translateX(3px);
+
+    box-shadow:
+        0 7px 20px rgba(0,0,0,.28),
+        0 0 12px rgba(200,164,93,.10);
+}
+
+
+/* =========================================================
+   ICONO
+   ========================================================= */
+
+.accesos button span:first-child {
+    width: 48px;
+    height: 48px;
+
+    min-width: 48px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 12px;
+
+    background:
+        linear-gradient(
+            145deg,
+            #0d3154,
+            #09243d
+        );
+
+    border: 1px solid rgba(200,164,93,.38);
 
     color: #82bcff;
 
-    font-size: 27px;
+    font-size: 25px;
 
     line-height: 1;
 
@@ -1153,6 +1178,11 @@ img {
 
     transition: .2s ease;
 }
+
+
+/* =========================================================
+   ICONO HOVER
+   ========================================================= */
 
 .accesos button:hover span:first-child {
     background:
@@ -1165,26 +1195,81 @@ img {
     color: white;
 
     border-color:
-        rgba(200,164,93,.45);
+        rgba(200,164,93,.65);
 
     box-shadow:
         0 7px 20px rgba(23,105,211,.28);
 }
 
-.accesos button span:last-child {
-    color: #e9eef4;
 
-    font-size: 10px;
+/* =========================================================
+   TEXTO
+   ========================================================= */
+
+.accesos button span:last-child {
+    color: #ffffff;
+
+    font-size: 13px;
 
     font-weight: 800;
 
-    letter-spacing: .45px;
+    letter-spacing: .65px;
 
     text-transform: uppercase;
 
-    text-align: center;
+    text-align: left;
 }
 
+
+/* =========================================================
+   IMPORTANTE:
+   CELULAR CONSERVA SU DISEÑO ACTUAL
+   ========================================================= */
+
+@media (max-width: 700px) {
+
+    .accesos {
+        display: grid;
+
+        grid-template-columns:
+            repeat(3, 1fr);
+
+        gap: 8px;
+
+        padding: 8px;
+    }
+
+    .accesos button {
+        min-height: 90px;
+
+        flex-direction: column;
+
+        justify-content: center;
+
+        align-items: center;
+
+        gap: 7px;
+
+        padding: 10px 5px;
+
+        border-radius: 11px;
+    }
+
+    .accesos button span:last-child {
+        text-align: center;
+
+        font-size: 10px;
+    }
+
+    .accesos button span:first-child {
+        width: 44px;
+        height: 44px;
+
+        min-width: 44px;
+
+        font-size: 22px;
+    }
+}
 /* =========================================================
    PERSONAL
    ========================================================= */
