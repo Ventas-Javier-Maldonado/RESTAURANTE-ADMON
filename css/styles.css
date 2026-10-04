@@ -1386,3 +1386,241 @@ a {
     }
 
 }
+
+/* ==========================================
+   PANTALLA DE INICIO DE JORNADA
+   ========================================== */
+
+.pantalla-jornada {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background:
+        radial-gradient(circle at top right, rgba(37, 99, 235, 0.10), transparent 35%),
+        radial-gradient(circle at bottom left, rgba(22, 163, 74, 0.07), transparent 35%),
+        var(--fondo);
+}
+
+
+.jornada-card {
+    width: min(460px, 100%);
+    background: var(--blanco);
+    border-radius: 28px;
+    padding: 42px 36px 34px;
+    text-align: center;
+    box-shadow:
+        0 20px 60px rgba(15, 23, 42, 0.12),
+        0 4px 14px rgba(15, 23, 42, 0.06);
+    border: 1px solid rgba(15, 23, 42, 0.05);
+}
+
+
+.jornada-icono {
+    width: 76px;
+    height: 76px;
+    margin: 0 auto 24px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 22px;
+
+    background: var(--oscuro);
+    color: #ffffff;
+
+    font-size: 30px;
+    font-weight: 700;
+
+    box-shadow:
+        0 12px 25px rgba(17, 24, 39, 0.20);
+}
+
+
+.jornada-etiqueta {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: var(--azul);
+    margin-bottom: 16px;
+}
+
+
+.jornada-card h1 {
+    margin: 0;
+
+    font-size: clamp(30px, 7vw, 42px);
+    line-height: 1.08;
+    letter-spacing: -1.5px;
+
+    color: var(--oscuro);
+}
+
+
+.jornada-fecha {
+    margin: 16px 0 0;
+
+    color: #64748b;
+
+    font-size: 15px;
+    font-weight: 500;
+}
+
+
+.jornada-separador {
+    width: 48px;
+    height: 4px;
+
+    margin: 28px auto;
+
+    border-radius: 10px;
+
+    background: var(--azul);
+}
+
+
+.jornada-pregunta {
+    margin: 0;
+
+    color: var(--oscuro);
+
+    font-size: 20px;
+    font-weight: 700;
+}
+
+
+.jornada-info {
+    max-width: 320px;
+
+    margin: 10px auto 28px;
+
+    color: #64748b;
+
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+
+.btn-jornada {
+    width: 100%;
+    min-height: 58px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+
+    border: 0;
+    border-radius: 16px;
+
+    background: var(--oscuro);
+    color: #ffffff;
+
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 10px 22px rgba(17, 24, 39, 0.18);
+
+    transition:
+        transform 0.18s ease,
+        box-shadow 0.18s ease,
+        background 0.18s ease;
+}
+
+
+.btn-jornada:hover {
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 14px 28px rgba(17, 24, 39, 0.22);
+}
+
+
+.btn-jornada:active {
+    transform: translateY(0);
+}
+
+
+.btn-jornada span {
+    font-size: 13px;
+}
+
+
+.jornada-rol {
+    margin: 22px 0 0;
+
+    color: #94a3b8;
+
+    font-size: 12px;
+    font-weight: 600;
+}
+
+
+/* ==========================================
+   JORNADA EN CELULAR
+   ========================================== */
+
+@media (max-width: 600px) {
+
+    .pantalla-jornada {
+        padding: 18px;
+    }
+
+
+    .jornada-card {
+        padding: 34px 24px 28px;
+        border-radius: 24px;
+    }
+
+
+    .jornada-icono {
+        width: 68px;
+        height: 68px;
+
+        margin-bottom: 20px;
+
+        border-radius: 19px;
+    }
+
+
+    .jornada-card h1 {
+        font-size: 32px;
+    }
+
+
+    .jornada-pregunta {
+        font-size: 18px;
+    }
+
+
+    .btn-jornada {
+        min-height: 60px;
+    }
+
+}
+
+
+@media (max-width: 380px) {
+
+    .jornada-card {
+        padding: 28px 20px 24px;
+    }
+
+
+    .jornada-card h1 {
+        font-size: 29px;
+    }
+
+
+    .jornada-fecha {
+        font-size: 14px;
+    }
+
+}
