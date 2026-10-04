@@ -2229,13 +2229,43 @@ function renderizarInventario(productos) {
                     </div>
 
 
-                    <button
-                        class="empleado-eliminar"
-                        type="button"
-                        title="Eliminar producto"
-                        onclick="eliminarProducto(${producto.id})">
+                   <div style="
+    display:flex;
+    gap:8px;
+    align-items:center;
+">
 
-                        ×
+    <button
+        type="button"
+        title="Editar producto"
+        onclick="editarProducto(${producto.id})"
+        style="
+            width:38px;
+            height:38px;
+            border-radius:10px;
+            border:1px solid rgba(200,164,93,.45);
+            background:#123d67;
+            color:#ffffff;
+            font-size:17px;
+            cursor:pointer;
+        ">
+
+        ✏️
+
+    </button>
+
+
+    <button
+        class="empleado-eliminar"
+        type="button"
+        title="Eliminar producto"
+        onclick="eliminarProducto(${producto.id})">
+
+        ×
+
+    </button>
+
+</div>
 
                     </button>
 
@@ -2720,6 +2750,481 @@ function guardarProducto(event) {
     productos.push(
         producto
     );
+
+
+    guardarInventario(
+        productos
+    );
+
+
+    mostrarInventario();
+}
+
+/* =========================================================
+   EDITAR PRODUCTO
+   ========================================================= */
+
+function editarProducto(id) {
+
+    const productos =
+        obtenerInventario();
+
+
+    const producto =
+        productos.find(
+            item =>
+                item.id === id
+        );
+
+
+    if (!producto) {
+        return;
+    }
+
+
+    const app =
+        document.getElementById("app");
+
+
+    app.innerHTML = `
+
+        <div class="sistema">
+
+            <header class="topbar">
+
+                <div class="marca">
+
+                    <button
+                        class="texto-boton"
+                        type="button"
+                        onclick="mostrarInventario()">
+
+                        ← Regresar
+
+                    </button>
+
+                    <div class="marca-icono">
+                        CR
+                    </div>
+
+                    <div>
+
+                        <strong>
+                            Editar producto
+                        </strong>
+
+                        <small>
+                            Inventario
+                        </small>
+
+                    </div>
+
+                </div>
+
+            </header>
+
+
+            <main class="contenido">
+
+
+                <section class="bienvenida">
+
+                    <div>
+
+                        <div class="etiqueta">
+                            INVENTARIO
+                        </div>
+
+                        <h1>
+                            Editar producto
+                        </h1>
+
+                        <p>
+                            Modifica la información de:
+                            <strong>
+                                ${producto.nombre}
+                            </strong>
+                        </p>
+
+                    </div>
+
+                </section>
+
+
+                <section class="panel">
+
+                    <form
+                        class="formulario-personal"
+                        onsubmit="guardarEdicionProducto(event, ${producto.id})">
+
+
+                        <div class="formulario-grid">
+
+
+                            <div class="campo">
+
+                                <label>
+                                    Código / SKU
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="editarCodigoProducto"
+                                    value="${producto.codigo}"
+                                    required>
+
+                            </div>
+
+
+                            <div class="campo">
+
+                                <label>
+                                    Nombre del producto
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="editarNombreProducto"
+                                    value="${producto.nombre}"
+                                    required>
+
+                            </div>
+
+
+                            <div class="campo">
+
+                                <label>
+                                    Categoría
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="editarCategoriaProducto"
+                                    value="${producto.categoria}"
+                                    required>
+
+                            </div>
+
+
+                            <div class="campo">
+
+                                <label>
+                                    Unidad de medida
+                                </label>
+
+                                <select
+                                    id="editarUnidadProducto"
+                                    required>
+
+                                    <option value="pieza">
+                                        Pieza
+                                    </option>
+
+                                    <option value="kg">
+                                        Kilogramo
+                                    </option>
+
+                                    <option value="g">
+                                        Gramo
+                                    </option>
+
+                                    <option value="litro">
+                                        Litro
+                                    </option>
+
+                                    <option value="ml">
+                                        Mililitro
+                                    </option>
+
+                                    <option value="caja">
+                                        Caja
+                                    </option>
+
+                                    <option value="paquete">
+                                        Paquete
+                                    </option>
+
+                                    <option value="botella">
+                                        Botella
+                                    </option>
+
+                                </select>
+
+                            </div>
+
+
+                            <div class="campo">
+
+                                <label>
+                                    Existencia actual
+                                </label>
+
+                                <input
+                                    type="number"
+                                    id="editarExistenciaProducto"
+                                    min="0"
+                                    step="0.01"
+                                    value="${producto.existencia}"
+                                    required>
+
+                            </div>
+
+
+                            <div class="campo">
+
+                                <label>
+                                    Stock mínimo
+                                </label>
+
+                                <input
+                                    type="number"
+                                    id="editarStockMinimoProducto"
+                                    min="0"
+                                    step="0.01"
+                                    value="${producto.stockMinimo}"
+                                    required>
+
+                            </div>
+
+
+                            <div class="campo">
+
+                                <label>
+                                    Costo unitario
+                                </label>
+
+                                <input
+                                    type="number"
+                                    id="editarCostoProducto"
+                                    min="0"
+                                    step="0.01"
+                                    value="${producto.costo}"
+                                    required>
+
+                            </div>
+
+
+                            <div class="campo">
+
+                                <label>
+                                    Precio de venta
+                                </label>
+
+                                <input
+                                    type="number"
+                                    id="editarPrecioProducto"
+                                    min="0"
+                                    step="0.01"
+                                    value="${producto.precio}"
+                                    required>
+
+                            </div>
+
+
+                            <div class="campo">
+
+                                <label>
+                                    Estado
+                                </label>
+
+                                <select
+                                    id="editarEstadoProducto">
+
+                                    <option value="Activo">
+                                        Activo
+                                    </option>
+
+                                    <option value="Inactivo">
+                                        Inactivo
+                                    </option>
+
+                                </select>
+
+                            </div>
+
+
+                        </div>
+
+
+                        <div class="acciones-formulario">
+
+                            <button
+                                type="button"
+                                class="btn-secundario"
+                                onclick="mostrarInventario()">
+
+                                Cancelar
+
+                            </button>
+
+
+                            <button
+                                type="submit"
+                                class="btn-principal">
+
+                                Guardar cambios
+
+                            </button>
+
+                        </div>
+
+
+                    </form>
+
+                </section>
+
+
+            </main>
+
+        </div>
+
+    `;
+
+
+    document.getElementById(
+        "editarUnidadProducto"
+    ).value = producto.unidad;
+
+
+    document.getElementById(
+        "editarEstadoProducto"
+    ).value = producto.estado || "Activo";
+}
+
+
+/* =========================================================
+   GUARDAR EDICIÓN DEL PRODUCTO
+   ========================================================= */
+
+function guardarEdicionProducto(event, id) {
+
+    event.preventDefault();
+
+
+    const productos =
+        obtenerInventario();
+
+
+    const indice =
+        productos.findIndex(
+            producto =>
+                producto.id === id
+        );
+
+
+    if (indice === -1) {
+        return;
+    }
+
+
+    const codigo =
+        document
+            .getElementById(
+                "editarCodigoProducto"
+            )
+            .value
+            .trim()
+            .toUpperCase();
+
+
+    const codigoDuplicado =
+        productos.some(
+            (producto, posicion) =>
+                producto.codigo === codigo &&
+                posicion !== indice
+        );
+
+
+    if (codigoDuplicado) {
+
+        alert(
+            "Ya existe otro producto con ese código / SKU."
+        );
+
+        return;
+    }
+
+
+    productos[indice].codigo =
+        codigo;
+
+
+    productos[indice].nombre =
+        document
+            .getElementById(
+                "editarNombreProducto"
+            )
+            .value
+            .trim();
+
+
+    productos[indice].categoria =
+        document
+            .getElementById(
+                "editarCategoriaProducto"
+            )
+            .value
+            .trim();
+
+
+    productos[indice].unidad =
+        document
+            .getElementById(
+                "editarUnidadProducto"
+            )
+            .value;
+
+
+    productos[indice].existencia =
+        Number(
+            document
+                .getElementById(
+                    "editarExistenciaProducto"
+                )
+                .value
+        );
+
+
+    productos[indice].stockMinimo =
+        Number(
+            document
+                .getElementById(
+                    "editarStockMinimoProducto"
+                )
+                .value
+        );
+
+
+    productos[indice].costo =
+        Number(
+            document
+                .getElementById(
+                    "editarCostoProducto"
+                )
+                .value
+        );
+
+
+    productos[indice].precio =
+        Number(
+            document
+                .getElementById(
+                    "editarPrecioProducto"
+                )
+                .value
+        );
+
+
+    productos[indice].estado =
+        document
+            .getElementById(
+                "editarEstadoProducto"
+            )
+            .value;
+
+
+    productos[indice].fechaModificacion =
+        new Date().toISOString();
 
 
     guardarInventario(
