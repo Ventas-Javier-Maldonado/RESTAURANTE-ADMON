@@ -2,36 +2,36 @@ document.addEventListener("DOMContentLoaded", () => {
     iniciarAplicacion();
 });
 
-
-// ==========================================
-// CONFIGURACIÓN TEMPORAL DEL USUARIO
-// ==========================================
-
 const USUARIO_ACTUAL = {
     nombre: "Rodrigo",
     rol: "Administrador"
 };
 
 
-// ==========================================
-// INICIO DE LA APLICACIÓN
-// ==========================================
+/* ==========================================
+   INICIO DE LA APLICACIÓN
+   ========================================== */
 
 function iniciarAplicacion() {
-
     const jornada = obtenerJornadaActual();
 
-    if (jornada) {
-        mostrarDashboard(jornada);
-    } else {
+    if (!jornada) {
         mostrarPantallaJornada();
+        return;
     }
+
+    if (jornada.estado === "finalizada") {
+        mostrarJornadaFinalizada(jornada);
+        return;
+    }
+
+    mostrarDashboard(jornada);
 }
 
 
-// ==========================================
-// FECHA Y HORA
-// ==========================================
+/* ==========================================
+   FECHA Y HORA
+   ========================================== */
 
 function obtenerFechaActual() {
     const ahora = new Date();
@@ -66,18 +66,20 @@ function obtenerFechaLarga() {
 }
 
 
-// ==========================================
-// JORNADA
-// ==========================================
+/* ==========================================
+   CLAVE DE LA JORNADA
+   ========================================== */
 
 function obtenerClaveJornada() {
-
     return `jornada_${USUARIO_ACTUAL.nombre}_${obtenerFechaActual()}`;
 }
 
 
-function obtenerJornadaActual() {
+/* ==========================================
+   OBTENER JORNADA ACTUAL
+   ========================================== */
 
+function obtenerJornadaActual() {
     const clave = obtenerClaveJornada();
     const jornadaGuardada = localStorage.getItem(clave);
 
@@ -94,12 +96,11 @@ function obtenerJornadaActual() {
 }
 
 
-// ==========================================
-// PANTALLA DE INICIO DE JORNADA
-// ==========================================
+/* ==========================================
+   PANTALLA DE INICIO DE JORNADA
+   ========================================== */
 
 function mostrarPantallaJornada() {
-
     const app = document.getElementById("app");
 
     app.innerHTML = `
@@ -153,11 +154,24 @@ function mostrarPantallaJornada() {
 }
 
 
-// ==========================================
-// INICIAR JORNADA
-// ==========================================
+/* ==========================================
+   INICIAR JORNADA
+   ========================================== */
 
 function iniciarJornada() {
+
+    const jornadaExistente = obtenerJornadaActual();
+
+    if (jornadaExistente) {
+
+        if (jornadaExistente.estado === "finalizada") {
+            mostrarJornadaFinalizada(jornadaExistente);
+            return;
+        }
+
+        mostrarDashboard(jornadaExistente);
+        return;
+    }
 
     const ahora = new Date();
 
@@ -165,8 +179,15 @@ function iniciarJornada() {
         usuario: USUARIO_ACTUAL.nombre,
         rol: USUARIO_ACTUAL.rol,
         fecha: obtenerFechaActual(),
+
         entrada: obtenerHoraActual(),
+        salida: null,
+
         timestampEntrada: ahora.toISOString(),
+        timestampSalida: null,
+
+        horasTrabajadas: null,
+
         estado: "activa"
     };
 
@@ -181,9 +202,164 @@ function iniciarJornada() {
 }
 
 
-// ==========================================
-// DASHBOARD
-// ==========================================
+/* ==========================================
+   TERMINAR JORNADA
+   ========================================== */
+
+function terminarJornada() {
+
+    const jornada = obtenerJornadaActual();
+
+    if (!jornada) {
+        return;
+    }
+
+    if (jornada.estado === "finalizada") {
+        mostrarJornadaFinalizada(jornada);
+        return;
+    }
+
+    const confirmar = confirm(
+        "¿Seguro que deseas terminar tu jornada?\n\n" +
+        "Esta acción registrará tu hora de salida."
+    );
+
+    if (!confirmar) {
+        return;
+    }
+
+    const ahora = new Date();
+
+    jornada.salida = obtenerHoraActual();
+    jornada.timestampSalida = ahora.toISOString();
+
+    jornada.horasTrabajadas = calcularHorasTrabajadas(
+        jornada.timestampEntrada,
+        jornada.timestampSalida
+    );
+
+    jornada.estado = "finalizada";
+
+    const clave = obtenerClaveJornada();
+
+    localStorage.setItem(
+        clave,
+        JSON.stringify(jornada)
+    );
+
+    mostrarJornadaFinalizada(jornada);
+}
+
+
+/* ==========================================
+   CALCULAR HORAS TRABAJADAS
+   ========================================== */
+
+function calcularHorasTrabajadas(
+    timestampEntrada,
+    timestampSalida
+) {
+
+    const entrada = new Date(timestampEntrada);
+    const salida = new Date(timestampSalida);
+
+    const diferencia =
+        salida.getTime() - entrada.getTime();
+
+    if (diferencia <= 0) {
+        return "0 h 0 min";
+    }
+
+    const minutosTotales =
+        Math.floor(diferencia / 1000 / 60);
+
+    const horas =
+        Math.floor(minutosTotales / 60);
+
+    const minutos =
+        minutosTotales % 60;
+
+    return `${horas} h ${minutos} min`;
+}
+
+
+/* ==========================================
+   PANTALLA DE JORNADA FINALIZADA
+   ========================================== */
+
+function mostrarJornadaFinalizada(jornada) {
+
+    const app = document.getElementById("app");
+
+    app.innerHTML = `
+        <main class="pantalla-jornada">
+
+            <section class="jornada-card">
+
+                <div class="jornada-icono">
+                    ✓
+                </div>
+
+                <div class="jornada-etiqueta">
+                    JORNADA FINALIZADA
+                </div>
+
+                <h1>
+                    Buen trabajo,<br>
+                    ${USUARIO_ACTUAL.nombre}
+                </h1>
+
+                <p class="jornada-fecha">
+                    ${capitalizarPrimeraLetra(obtenerFechaLarga())}
+                </p>
+
+                <div class="jornada-separador"></div>
+
+                <div class="resumen-jornada">
+
+                    <div>
+                        <span>Entrada</span>
+                        <strong>${jornada.entrada}</strong>
+                    </div>
+
+                    <div>
+                        <span>Salida</span>
+                        <strong>${jornada.salida}</strong>
+                    </div>
+
+                    <div>
+                        <span>Tiempo registrado</span>
+                        <strong>${jornada.horasTrabajadas}</strong>
+                    </div>
+
+                </div>
+
+                <p class="jornada-info">
+                    Tu jornada de hoy ha quedado registrada.
+                </p>
+
+                <button
+                    class="btn-jornada"
+                    onclick="cerrarSesion()"
+                >
+                    <span>🚪</span>
+                    CERRAR SESIÓN
+                </button>
+
+                <p class="jornada-rol">
+                    ${USUARIO_ACTUAL.rol}
+                </p>
+
+            </section>
+
+        </main>
+    `;
+}
+
+
+/* ==========================================
+   DASHBOARD
+   ========================================== */
 
 function mostrarDashboard(jornada) {
 
@@ -192,8 +368,6 @@ function mostrarDashboard(jornada) {
     app.innerHTML = `
 
         <div class="sistema">
-
-            <!-- TOPBAR -->
 
             <header class="topbar">
 
@@ -204,6 +378,7 @@ function mostrarDashboard(jornada) {
                     </div>
 
                     <div>
+
                         <div class="marca-titulo">
                             Control Restaurante
                         </div>
@@ -211,12 +386,17 @@ function mostrarDashboard(jornada) {
                         <div class="marca-subtitulo">
                             Administración inteligente
                         </div>
+
                     </div>
 
                 </div>
 
 
-                <button class="usuario-boton">
+                <button
+                    class="usuario-boton"
+                    onclick="terminarJornada()"
+                    title="Terminar jornada"
+                >
 
                     <div class="usuario-avatar">
                         ${USUARIO_ACTUAL.nombre.charAt(0)}
@@ -239,12 +419,8 @@ function mostrarDashboard(jornada) {
             </header>
 
 
-            <!-- CONTENIDO -->
-
             <main class="contenido">
 
-
-                <!-- BIENVENIDA -->
 
                 <section class="bienvenida">
 
@@ -270,15 +446,15 @@ function mostrarDashboard(jornada) {
                         <span class="punto-verde"></span>
 
                         Jornada iniciada a las
-                        <strong>${jornada.entrada}</strong>
+
+                        <strong>
+                            ${jornada.entrada}
+                        </strong>
 
                     </div>
 
                 </section>
 
-
-
-                <!-- ACCIÓN PRINCIPAL -->
 
                 <section class="accion-principal">
 
@@ -304,9 +480,6 @@ function mostrarDashboard(jornada) {
 
                 </section>
 
-
-
-                <!-- INDICADORES -->
 
                 <section class="indicadores">
 
@@ -336,7 +509,6 @@ function mostrarDashboard(jornada) {
                     </article>
 
 
-
                     <article class="indicador">
 
                         <div class="indicador-icono amarillo">
@@ -360,7 +532,6 @@ function mostrarDashboard(jornada) {
                         </div>
 
                     </article>
-
 
 
                     <article class="indicador">
@@ -388,7 +559,6 @@ function mostrarDashboard(jornada) {
                     </article>
 
 
-
                     <article class="indicador">
 
                         <div class="indicador-icono azul">
@@ -413,16 +583,12 @@ function mostrarDashboard(jornada) {
 
                     </article>
 
+
                 </section>
 
 
-
-                <!-- GRID PRINCIPAL -->
-
                 <section class="dashboard-grid">
 
-
-                    <!-- ACTIVIDAD -->
 
                     <article class="panel">
 
@@ -475,7 +641,6 @@ function mostrarDashboard(jornada) {
                             </div>
 
 
-
                             <div class="actividad-item">
 
                                 <div class="actividad-icono azul">
@@ -501,7 +666,6 @@ function mostrarDashboard(jornada) {
                             </div>
 
 
-
                             <div class="actividad-item">
 
                                 <div class="actividad-icono naranja">
@@ -525,7 +689,6 @@ function mostrarDashboard(jornada) {
                                 </b>
 
                             </div>
-
 
 
                             <div class="actividad-item">
@@ -557,9 +720,6 @@ function mostrarDashboard(jornada) {
 
                     </article>
 
-
-
-                    <!-- ALERTAS -->
 
                     <article class="panel">
 
@@ -608,7 +768,6 @@ function mostrarDashboard(jornada) {
                             </div>
 
 
-
                             <div class="alerta alerta-amarilla">
 
                                 <div class="alerta-icono">
@@ -628,7 +787,6 @@ function mostrarDashboard(jornada) {
                                 </div>
 
                             </div>
-
 
 
                             <div class="alerta alerta-naranja">
@@ -656,11 +814,9 @@ function mostrarDashboard(jornada) {
 
                     </article>
 
+
                 </section>
 
-
-
-                <!-- ACCESOS -->
 
                 <section class="accesos">
 
@@ -698,11 +854,9 @@ function mostrarDashboard(jornada) {
 
                 </section>
 
+
             </main>
 
-
-
-            <!-- NAVEGACIÓN MÓVIL -->
 
             <nav class="navegacion-movil">
 
@@ -733,14 +887,15 @@ function mostrarDashboard(jornada) {
 
             </nav>
 
+
         </div>
     `;
 }
 
 
-// ==========================================
-// CAPTURAR TICKET
-// ==========================================
+/* ==========================================
+   CAPTURAR TICKET
+   ========================================== */
 
 function capturarTicket() {
 
@@ -752,9 +907,22 @@ function capturarTicket() {
 }
 
 
-// ==========================================
-// UTILIDADES
-// ==========================================
+/* ==========================================
+   CERRAR SESIÓN
+   ========================================== */
+
+function cerrarSesion() {
+
+    alert(
+        "Sesión cerrada.\n\n" +
+        "La jornada de hoy permanece registrada."
+    );
+}
+
+
+/* ==========================================
+   UTILIDADES
+   ========================================== */
 
 function capitalizarPrimeraLetra(texto) {
 
