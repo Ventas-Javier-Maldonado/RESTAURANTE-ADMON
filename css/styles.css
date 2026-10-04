@@ -1,7 +1,7 @@
-```css
 /* =========================================================
    CONTROL RESTAURANTE
    SISTEMA VISUAL PREMIUM
+   VERSION VISUAL 2
    ========================================================= */
 
 
@@ -10,23 +10,45 @@
    ========================================================= */
 
 :root {
-    --fondo: #f3f5f8;
+    --fondo: #f3f6fa;
     --blanco: #ffffff;
+
     --oscuro: #111827;
     --oscuro-2: #1f2937;
+
     --texto: #111827;
-    --texto-suave: #6b7280;
-    --texto-claro: #9ca3af;
-    --borde: #e5e7eb;
+    --texto-suave: #64748b;
+    --texto-claro: #94a3b8;
+
+    --borde: #e2e8f0;
 
     --azul: #2563eb;
-    --verde: #16a34a;
-    --rojo: #dc2626;
-    --amarillo: #d97706;
-    --naranja: #ea580c;
+    --azul-oscuro: #1d4ed8;
+    --azul-claro: #eff6ff;
 
-    --sombra: 0 8px 30px rgba(15, 23, 42, .07);
-    --sombra-fuerte: 0 18px 45px rgba(15, 23, 42, .12);
+    --verde: #16a34a;
+    --verde-claro: #dcfce7;
+
+    --rojo: #dc2626;
+    --rojo-claro: #fee2e2;
+
+    --amarillo: #d97706;
+    --amarillo-claro: #fef3c7;
+
+    --naranja: #ea580c;
+    --naranja-claro: #ffedd5;
+
+    --morado: #7e22ce;
+    --morado-claro: #f3e8ff;
+
+    --sombra:
+        0 6px 22px rgba(15, 23, 42, .06);
+
+    --sombra-media:
+        0 10px 30px rgba(15, 23, 42, .08);
+
+    --sombra-fuerte:
+        0 18px 45px rgba(15, 23, 42, .12);
 
     --radio: 18px;
 }
@@ -48,8 +70,16 @@ html {
 
 body {
     min-height: 100vh;
-    background: var(--fondo);
+
+    background:
+        linear-gradient(
+            180deg,
+            #f8fafc 0%,
+            #f3f6fa 100%
+        );
+
     color: var(--texto);
+
     font-family:
         -apple-system,
         BlinkMacSystemFont,
@@ -58,7 +88,9 @@ body {
         Helvetica,
         Arial,
         sans-serif;
+
     line-height: 1.5;
+
     -webkit-font-smoothing: antialiased;
 }
 
@@ -83,6 +115,10 @@ a {
     color: inherit;
 }
 
+img {
+    max-width: 100%;
+}
+
 
 /* =========================================================
    3. SISTEMA
@@ -98,809 +134,126 @@ a {
    ========================================================= */
 
 .topbar {
-    height: 76px;
-    background: var(--blanco);
-    border-bottom: 1px solid var(--borde);
+    height: 74px;
+
+    background:
+        rgba(255,255,255,.97);
+
+    border-bottom:
+        1px solid var(--borde);
 
     display: flex;
     align-items: center;
     justify-content: space-between;
 
-    padding: 0 32px;
+    padding:
+        0 clamp(18px, 4vw, 48px);
 
     position: sticky;
     top: 0;
+
     z-index: 100;
+
+    box-shadow:
+        0 2px 12px rgba(15,23,42,.03);
+
+    gap: 20px;
 }
 
 
-/* ---------------------------------------------------------
-   MARCA
-   --------------------------------------------------------- */
+/* =========================================================
+   5. MARCA
+   ========================================================= */
 
 .marca {
     display: flex;
     align-items: center;
-    gap: 12px;
+
+    gap: 11px;
+
+    min-width: 0;
 }
 
 .marca-icono {
     width: 42px;
     height: 42px;
 
+    flex-shrink: 0;
+
     border-radius: 12px;
 
     background:
         linear-gradient(
             135deg,
-            #111827,
-            #374151
+            #2563eb,
+            #1d4ed8
         );
 
-    color: white;
+    color: #ffffff;
 
     display: flex;
     align-items: center;
     justify-content: center;
 
-    font-size: 13px;
-    font-weight: 800;
-    letter-spacing: .5px;
+    font-size: 12px;
+    font-weight: 900;
+
+    letter-spacing: .4px;
 
     box-shadow:
-        0 6px 14px rgba(17,24,39,.18);
+        0 7px 17px rgba(37,99,235,.24);
 }
 
 .marca strong {
     display: block;
+
     font-size: 15px;
+    line-height: 1.15;
+
     font-weight: 800;
+
+    color: var(--oscuro);
+
+    white-space: nowrap;
 }
 
 .marca span {
     display: block;
-    font-size: 11px;
+
+    margin-top: 2px;
+
+    font-size: 10px;
+
     color: var(--texto-suave);
+
+    white-space: nowrap;
 }
 
 
-/* ---------------------------------------------------------
-   USUARIO
-   --------------------------------------------------------- */
+/* =========================================================
+   6. USUARIO
+   ========================================================= */
 
 .usuario-boton {
     display: flex;
     align-items: center;
-    gap: 10px;
+
+    gap: 9px;
+
     background: transparent;
+
+    flex-shrink: 0;
+
+    padding: 4px 0;
 }
 
 .usuario-avatar {
     width: 40px;
     height: 40px;
 
-    border-radius: 50%;
-
-    background: #e5e7eb;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    font-weight: 800;
-    color: var(--oscuro);
-}
-
-.usuario-info {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-}
-
-.usuario-info strong {
-    font-size: 13px;
-}
-
-.usuario-info small {
-    color: var(--texto-suave);
-    font-size: 11px;
-}
-
-
-/* =========================================================
-   5. CONTENIDO
-   ========================================================= */
-
-.contenido {
-    width: min(1400px, 100%);
-    margin: auto;
-    padding: 34px;
-}
-
-
-/* =========================================================
-   6. BIENVENIDA
-   ========================================================= */
-
-.bienvenida {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 28px;
-}
-
-.etiqueta {
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 1px;
-    color: var(--texto-suave);
-    margin-bottom: 7px;
-}
-
-.bienvenida h1 {
-    font-size: 30px;
-    line-height: 1.2;
-    letter-spacing: -.8px;
-    margin-bottom: 7px;
-}
-
-.bienvenida p:not(.etiqueta) {
-    color: var(--texto-suave);
-    font-size: 14px;
-}
-
-.estado-jornada {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-
-    background: #ffffff;
-    border: 1px solid var(--borde);
-
-    padding: 9px 14px;
-    border-radius: 999px;
-
-    font-size: 12px;
-    font-weight: 700;
-
-    box-shadow: var(--sombra);
-}
-
-.punto-verde {
-    width: 8px;
-    height: 8px;
-
-    border-radius: 50%;
-
-    background: var(--verde);
-
-    box-shadow:
-        0 0 0 4px rgba(22,163,74,.10);
-}
-
-.punto-gris {
-    width: 8px;
-    height: 8px;
-
-    border-radius: 50%;
-
-    background: #9ca3af;
-
-    box-shadow:
-        0 0 0 4px rgba(156,163,175,.12);
-}
-
-
-/* =========================================================
-   7. ACCIÓN PRINCIPAL
-   ========================================================= */
-
-.accion-principal {
-    background:
-        linear-gradient(
-            135deg,
-            #111827,
-            #1f2937
-        );
-
-    color: white;
-
-    border-radius: 22px;
-
-    padding: 25px 28px;
-
-    display: flex;
-    align-items: center;
-    gap: 20px;
-
-    margin-bottom: 25px;
-
-    box-shadow: var(--sombra-fuerte);
-}
-
-.accion-icono {
-    width: 58px;
-    height: 58px;
-
-    border-radius: 16px;
-
-    background: rgba(255,255,255,.10);
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    font-size: 26px;
-}
-
-.accion-texto {
-    flex: 1;
-}
-
-.accion-texto span {
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 1px;
-    color: #9ca3af;
-}
-
-.accion-texto h2 {
-    font-size: 20px;
-    margin: 2px 0;
-}
-
-.accion-texto p {
-    color: #d1d5db;
-    font-size: 13px;
-}
-
-.accion-principal .btn {
-    background: white;
-    color: var(--oscuro);
-
-    min-height: 46px;
-    padding: 0 20px;
-
-    border-radius: 12px;
-
-    font-weight: 800;
-}
-
-
-/* =========================================================
-   8. BOTÓN TERMINAR JORNADA
-   ========================================================= */
-
-.btn-terminar-jornada {
-    background: #ffffff;
-    color: var(--oscuro);
-
-    min-height: 46px;
-    padding: 0 20px;
-
-    border-radius: 12px;
-
-    font-size: 12px;
-    font-weight: 800;
-
-    white-space: nowrap;
-
-    transition:
-        transform .2s ease,
-        box-shadow .2s ease,
-        background .2s ease;
-}
-
-.btn-terminar-jornada:hover {
-    transform: translateY(-2px);
-
-    box-shadow:
-        0 8px 20px rgba(0,0,0,.16);
-}
-
-.btn-terminar-jornada:active {
-    transform: translateY(0);
-}
-
-
-/* =========================================================
-   9. INDICADORES
-   ========================================================= */
-
-.indicadores {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 18px;
-    margin-bottom: 25px;
-}
-
-.indicador {
-    background: var(--blanco);
-
-    border: 1px solid var(--borde);
-    border-radius: var(--radio);
-
-    padding: 20px;
-
-    display: flex;
-    gap: 14px;
-    align-items: center;
-
-    box-shadow: var(--sombra);
-}
-
-.indicador-icono {
-    width: 46px;
-    height: 46px;
-
-    border-radius: 13px;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    font-size: 19px;
-    font-weight: 800;
-}
-
-.indicador-icono.ventas {
-    background: #dcfce7;
-    color: #15803d;
-}
-
-.indicador-icono.compras {
-    background: #dbeafe;
-    color: #1d4ed8;
-}
-
-.indicador-icono.inventario {
-    background: #fef3c7;
-    color: #b45309;
-}
-
-.indicador-icono.caja {
-    background: #f3e8ff;
-    color: #7e22ce;
-}
-
-.indicador span {
-    display: block;
-    font-size: 11px;
-    color: var(--texto-suave);
-    margin-bottom: 2px;
-}
-
-.indicador strong {
-    display: block;
-    font-size: 21px;
-    line-height: 1.2;
-}
-
-.indicador small {
-    display: block;
-    margin-top: 4px;
-    font-size: 10px;
-    color: var(--texto-suave);
-}
-
-.positivo {
-    color: var(--verde) !important;
-}
-
-.negativo {
-    color: var(--rojo) !important;
-}
-
-
-/* =========================================================
-   10. GRID PRINCIPAL
-   ========================================================= */
-
-.dashboard-grid {
-    display: grid;
-
-    grid-template-columns:
-        minmax(0, 1.35fr)
-        minmax(300px, .8fr);
-
-    gap: 20px;
-
-    margin-bottom: 25px;
-}
-
-
-/* =========================================================
-   11. PANELES
-   ========================================================= */
-
-.panel {
-    background: var(--blanco);
-
-    border: 1px solid var(--borde);
-    border-radius: var(--radio);
-
-    box-shadow: var(--sombra);
-
-    overflow: hidden;
-}
-
-.panel-cabecera {
-    display: flex;
-
-    justify-content: space-between;
-    align-items: center;
-
-    padding: 21px 22px;
-
-    border-bottom: 1px solid var(--borde);
-}
-
-.panel-cabecera h2 {
-    font-size: 15px;
-    font-weight: 800;
-}
-
-.panel-cabecera p {
-    font-size: 11px;
-    color: var(--texto-suave);
-    margin-top: 2px;
-}
-
-.texto-boton {
-    background: transparent;
-    color: var(--azul);
-
-    font-size: 11px;
-    font-weight: 700;
-}
-
-.contador-alertas {
-    min-width: 26px;
-    height: 26px;
-
-    border-radius: 50%;
-
-    background: #fee2e2;
-    color: var(--rojo);
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    font-size: 11px;
-    font-weight: 800;
-}
-
-
-/* =========================================================
-   12. ACTIVIDAD
-   ========================================================= */
-
-.actividad-item {
-    display: flex;
-    align-items: center;
-
-    gap: 13px;
-
-    padding: 16px 22px;
-
-    border-bottom: 1px solid #f1f3f5;
-}
-
-.actividad-item:last-child {
-    border-bottom: none;
-}
-
-.actividad-icono {
-    width: 38px;
-    height: 38px;
-
     flex-shrink: 0;
 
-    border-radius: 11px;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.actividad-icono.compra {
-    background: #dbeafe;
-}
-
-.actividad-icono.venta {
-    background: #dcfce7;
-}
-
-.actividad-icono.inventario {
-    background: #fef3c7;
-}
-
-.actividad-icono.caja {
-    background: #f3e8ff;
-}
-
-.actividad-info {
-    flex: 1;
-}
-
-.actividad-info strong {
-    display: block;
-    font-size: 12px;
-}
-
-.actividad-info span {
-    display: block;
-    color: var(--texto-suave);
-    font-size: 11px;
-    margin-top: 2px;
-}
-
-.actividad-item time {
-    font-size: 10px;
-    color: var(--texto-claro);
-}
-
-
-/* =========================================================
-   13. ALERTAS
-   ========================================================= */
-
-.alertas {
-    padding: 7px 0;
-}
-
-.alerta {
-    display: flex;
-
-    gap: 12px;
-
-    padding: 15px 20px;
-
-    border-bottom: 1px solid #f1f3f5;
-}
-
-.alerta:last-child {
-    border-bottom: none;
-}
-
-.alerta-icono {
-    width: 32px;
-    height: 32px;
-
-    border-radius: 9px;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    font-size: 13px;
-    font-weight: 900;
-
-    flex-shrink: 0;
-}
-
-.alerta strong {
-    display: block;
-    font-size: 12px;
-}
-
-.alerta p {
-    color: var(--texto-suave);
-    font-size: 10px;
-    margin-top: 2px;
-}
-
-.alerta-roja .alerta-icono {
-    background: #fee2e2;
-    color: var(--rojo);
-}
-
-.alerta-amarilla .alerta-icono {
-    background: #fef3c7;
-    color: var(--amarillo);
-}
-
-.alerta-naranja .alerta-icono {
-    background: #ffedd5;
-    color: var(--naranja);
-}
-
-
-/* =========================================================
-   14. ACCESOS RÁPIDOS
-   ========================================================= */
-
-.accesos {
-    display: grid;
-
-    grid-template-columns: repeat(6, 1fr);
-
-    gap: 12px;
-}
-
-.accesos button {
-    background: var(--blanco);
-
-    border: 1px solid var(--borde);
-
-    border-radius: 15px;
-
-    padding: 17px 10px;
-
-    display: flex;
-    flex-direction: column;
-
-    align-items: center;
-    justify-content: center;
-
-    gap: 7px;
-
-    color: var(--texto);
-
-    box-shadow: var(--sombra);
-
-    transition: .2s ease;
-}
-
-.accesos button:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--sombra-fuerte);
-}
-
-.accesos button:first-child {
-    color: #2563eb;
-}
-
-.accesos button span {
-    font-size: 11px;
-    font-weight: 700;
-}
-
-
-/* =========================================================
-   15. NAVEGACIÓN MÓVIL
-   ========================================================= */
-
-.navegacion-movil {
-    display: none;
-}
-
-
-/* =========================================================
-   16. RESUMEN JORNADA
-   ========================================================= */
-
-.resumen-jornada {
-    display: grid;
-
-    grid-template-columns:
-        repeat(3, minmax(0, 1fr));
-
-    gap: 12px;
-
-    margin-top: 16px;
-}
-
-.resumen-jornada > div {
-    background: rgba(255,255,255,.07);
-
-    border: 1px solid rgba(255,255,255,.08);
-
-    border-radius: 13px;
-
-    padding: 12px 14px;
-}
-
-.resumen-jornada span {
-    display: block;
-
-    color: #9ca3af;
-
-    font-size: 10px;
-    font-weight: 700;
-
-    text-transform: uppercase;
-    letter-spacing: .5px;
-}
-
-.resumen-jornada strong {
-    display: block;
-
-    color: #ffffff;
-
-    font-size: 15px;
-
-    margin-top: 3px;
-}
-
-
-/* =========================================================
-   17. PANEL PERSONAL
-   ========================================================= */
-
-.panel-personal {
-    margin-top: 0;
-}
-
-.personal-vacio {
-    padding: 45px 25px;
-
-    text-align: center;
-
-    color: var(--texto-suave);
-}
-
-.personal-vacio > div:first-child {
-    width: 58px;
-    height: 58px;
-
-    margin: 0 auto 14px;
-
-    border-radius: 16px;
-
-    background: #eff6ff;
-    color: var(--azul);
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    font-size: 25px;
-}
-
-.personal-vacio strong {
-    display: block;
-
-    color: var(--oscuro);
-
-    font-size: 15px;
-
-    margin-bottom: 5px;
-}
-
-.personal-vacio p {
-    max-width: 360px;
-
-    margin: auto;
-
-    font-size: 12px;
-}
-
-
-/* =========================================================
-   18. LISTA DE EMPLEADOS
-   ========================================================= */
-
-.empleado-item {
-    display: flex;
-
-    align-items: center;
-
-    gap: 14px;
-
-    padding: 16px 22px;
-
-    border-bottom: 1px solid #f1f3f5;
-
-    transition: background .2s ease;
-}
-
-.empleado-item:hover {
-    background: #fafbfc;
-}
-
-.empleado-item:last-child {
-    border-bottom: none;
-}
-
-.empleado-avatar {
-    width: 44px;
-    height: 44px;
-
-    flex-shrink: 0;
-
-    border-radius: 14px;
+    border-radius: 50%;
 
     background:
         linear-gradient(
@@ -915,8 +268,990 @@ a {
     align-items: center;
     justify-content: center;
 
+    font-weight: 900;
+
+    border:
+        1px solid #dbeafe;
+}
+
+.usuario-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+
+    min-width: 0;
+}
+
+.usuario-info strong {
+    font-size: 12px;
+
+    color: var(--oscuro);
+
+    white-space: nowrap;
+}
+
+.usuario-info small {
+    color: var(--texto-suave);
+
+    font-size: 10px;
+
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   7. CONTENIDO
+   ========================================================= */
+
+.contenido {
+    width: min(1360px, calc(100% - 40px));
+
+    margin: auto;
+
+    padding:
+        30px 0 42px;
+}
+
+
+/* =========================================================
+   8. BIENVENIDA
+   ========================================================= */
+
+.bienvenida {
+    display: flex;
+
+    justify-content: space-between;
+    align-items: center;
+
+    gap: 24px;
+
+    margin-bottom: 24px;
+}
+
+.bienvenida > div:first-child {
+    min-width: 0;
+}
+
+.etiqueta {
+    font-size: 10px;
+
+    font-weight: 900;
+
+    letter-spacing: 1.2px;
+
+    color: var(--azul);
+
+    margin-bottom: 6px;
+
+    text-transform: uppercase;
+}
+
+.bienvenida h1 {
+    font-size: clamp(26px, 3vw, 32px);
+
+    line-height: 1.12;
+
+    letter-spacing: -.8px;
+
+    margin-bottom: 6px;
+
+    color: var(--oscuro);
+}
+
+.bienvenida p:not(.etiqueta) {
+    color: var(--texto-suave);
+
     font-size: 13px;
+}
+
+.estado-jornada {
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+    background: var(--blanco);
+
+    border:
+        1px solid var(--borde);
+
+    padding:
+        9px 14px;
+
+    border-radius: 999px;
+
+    font-size: 11px;
+
     font-weight: 800;
+
+    box-shadow: var(--sombra);
+
+    white-space: nowrap;
+
+    flex-shrink: 0;
+}
+
+.punto-verde,
+.punto-gris {
+    width: 8px;
+    height: 8px;
+
+    flex-shrink: 0;
+
+    border-radius: 50%;
+}
+
+.punto-verde {
+    background: var(--verde);
+
+    box-shadow:
+        0 0 0 4px rgba(22,163,74,.10);
+}
+
+.punto-gris {
+    background: #94a3b8;
+
+    box-shadow:
+        0 0 0 4px rgba(148,163,184,.12);
+}
+
+
+/* =========================================================
+   9. ACCIÓN PRINCIPAL
+   ========================================================= */
+
+.accion-principal {
+    background:
+        linear-gradient(
+            135deg,
+            #2563eb 0%,
+            #1d4ed8 100%
+        );
+
+    color: #ffffff;
+
+    border-radius: 22px;
+
+    padding:
+        23px 26px;
+
+    display: flex;
+    align-items: center;
+
+    gap: 18px;
+
+    margin-bottom: 22px;
+
+    box-shadow:
+        0 16px 35px rgba(37,99,235,.20);
+
+    position: relative;
+
+    overflow: hidden;
+}
+
+.accion-principal::after {
+    content: "";
+
+    position: absolute;
+
+    width: 190px;
+    height: 190px;
+
+    border-radius: 50%;
+
+    background:
+        rgba(255,255,255,.07);
+
+    right: -65px;
+    top: -85px;
+
+    pointer-events: none;
+}
+
+.accion-icono {
+    width: 58px;
+    height: 58px;
+
+    flex-shrink: 0;
+
+    border-radius: 17px;
+
+    background:
+        rgba(255,255,255,.14);
+
+    border:
+        1px solid rgba(255,255,255,.16);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 25px;
+
+    position: relative;
+    z-index: 1;
+}
+
+.accion-texto {
+    flex: 1;
+
+    min-width: 0;
+
+    position: relative;
+    z-index: 1;
+}
+
+.accion-texto span {
+    font-size: 9px;
+
+    font-weight: 900;
+
+    letter-spacing: 1.2px;
+
+    color:
+        rgba(255,255,255,.72);
+}
+
+.accion-texto h2 {
+    font-size: 20px;
+
+    line-height: 1.2;
+
+    margin:
+        2px 0 3px;
+}
+
+.accion-texto p {
+    color:
+        rgba(255,255,255,.82);
+
+    font-size: 12px;
+}
+
+.accion-principal .btn {
+    background: #ffffff;
+
+    color: var(--azul);
+
+    min-height: 44px;
+
+    padding:
+        0 19px;
+
+    border-radius: 12px;
+
+    font-size: 11px;
+
+    font-weight: 900;
+
+    position: relative;
+    z-index: 2;
+
+    box-shadow:
+        0 7px 17px rgba(0,0,0,.12);
+
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   10. TERMINAR JORNADA
+   ========================================================= */
+
+.btn-terminar-jornada {
+    background: #ffffff;
+
+    color: var(--azul);
+
+    min-height: 44px;
+
+    padding:
+        0 19px;
+
+    border-radius: 12px;
+
+    font-size: 11px;
+
+    font-weight: 900;
+
+    white-space: nowrap;
+
+    flex-shrink: 0;
+
+    transition:
+        transform .2s ease,
+        box-shadow .2s ease;
+}
+
+.btn-terminar-jornada:hover {
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 8px 20px rgba(0,0,0,.15);
+}
+
+
+/* =========================================================
+   11. INDICADORES
+   ========================================================= */
+
+.indicadores {
+    display: grid;
+
+    grid-template-columns:
+        repeat(4, minmax(0, 1fr));
+
+    gap: 15px;
+
+    margin-bottom: 22px;
+}
+
+.indicador {
+    background: var(--blanco);
+
+    border:
+        1px solid var(--borde);
+
+    border-radius: var(--radio);
+
+    padding:
+        17px;
+
+    display: flex;
+
+    gap: 12px;
+
+    align-items: center;
+
+    min-width: 0;
+
+    box-shadow: var(--sombra);
+
+    transition:
+        transform .2s ease,
+        box-shadow .2s ease;
+}
+
+.indicador:hover {
+    transform: translateY(-2px);
+
+    box-shadow: var(--sombra-media);
+}
+
+.indicador-icono {
+    width: 44px;
+    height: 44px;
+
+    flex-shrink: 0;
+
+    border-radius: 13px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 18px;
+
+    font-weight: 900;
+}
+
+.indicador-icono.ventas {
+    background: var(--verde-claro);
+    color: #15803d;
+}
+
+.indicador-icono.compras {
+    background: #dbeafe;
+    color: var(--azul-oscuro);
+}
+
+.indicador-icono.inventario {
+    background: var(--amarillo-claro);
+    color: #b45309;
+}
+
+.indicador-icono.caja {
+    background: var(--morado-claro);
+    color: var(--morado);
+}
+
+.indicador > div:last-child {
+    min-width: 0;
+}
+
+.indicador span {
+    display: block;
+
+    font-size: 10px;
+
+    color: var(--texto-suave);
+
+    margin-bottom: 2px;
+}
+
+.indicador strong {
+    display: block;
+
+    font-size: 20px;
+
+    line-height: 1.2;
+
+    color: var(--oscuro);
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+}
+
+.indicador small {
+    display: block;
+
+    margin-top: 3px;
+
+    font-size: 9px;
+
+    color: var(--texto-claro);
+}
+
+.positivo {
+    color: var(--verde) !important;
+}
+
+.negativo {
+    color: var(--rojo) !important;
+}
+
+
+/* =========================================================
+   12. GRID PRINCIPAL
+   ========================================================= */
+
+.dashboard-grid {
+    display: grid;
+
+    grid-template-columns:
+        minmax(0, 1.45fr)
+        minmax(300px, .85fr);
+
+    gap: 18px;
+
+    margin-bottom: 22px;
+}
+
+
+/* =========================================================
+   13. PANELES
+   ========================================================= */
+
+.panel {
+    background: var(--blanco);
+
+    border:
+        1px solid var(--borde);
+
+    border-radius: var(--radio);
+
+    box-shadow: var(--sombra);
+
+    overflow: hidden;
+
+    min-width: 0;
+}
+
+.panel-cabecera {
+    display: flex;
+
+    justify-content: space-between;
+    align-items: center;
+
+    gap: 12px;
+
+    padding:
+        18px 20px;
+
+    border-bottom:
+        1px solid #eef2f6;
+
+    min-height: 68px;
+}
+
+.panel-cabecera h2 {
+    font-size: 14px;
+
+    font-weight: 850;
+
+    color: var(--oscuro);
+}
+
+.panel-cabecera p {
+    font-size: 10px;
+
+    color: var(--texto-suave);
+
+    margin-top: 2px;
+}
+
+.texto-boton {
+    background: var(--azul-claro);
+
+    color: var(--azul);
+
+    font-size: 10px;
+
+    font-weight: 800;
+
+    padding:
+        7px 10px;
+
+    border-radius: 9px;
+
+    white-space: nowrap;
+}
+
+.contador-alertas {
+    min-width: 26px;
+    height: 26px;
+
+    border-radius: 9px;
+
+    background: var(--rojo-claro);
+
+    color: var(--rojo);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 10px;
+
+    font-weight: 900;
+}
+
+
+/* =========================================================
+   14. ACTIVIDAD
+   ========================================================= */
+
+.actividad-item {
+    display: flex;
+
+    align-items: center;
+
+    gap: 12px;
+
+    padding:
+        14px 20px;
+
+    border-bottom:
+        1px solid #f1f5f9;
+
+    min-width: 0;
+}
+
+.actividad-item:last-child {
+    border-bottom: none;
+}
+
+.actividad-icono {
+    width: 37px;
+    height: 37px;
+
+    flex-shrink: 0;
+
+    border-radius: 11px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 15px;
+}
+
+.actividad-icono.compra {
+    background: #dbeafe;
+}
+
+.actividad-icono.venta {
+    background: var(--verde-claro);
+}
+
+.actividad-icono.inventario {
+    background: var(--amarillo-claro);
+}
+
+.actividad-icono.caja {
+    background: var(--morado-claro);
+}
+
+.actividad-info {
+    flex: 1;
+
+    min-width: 0;
+}
+
+.actividad-info strong {
+    display: block;
+
+    font-size: 11px;
+
+    color: var(--oscuro);
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+}
+
+.actividad-info span {
+    display: block;
+
+    color: var(--texto-suave);
+
+    font-size: 10px;
+
+    margin-top: 2px;
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+}
+
+.actividad-item time {
+    font-size: 9px;
+
+    color: var(--texto-claro);
+
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   15. ALERTAS
+   ========================================================= */
+
+.alertas {
+    padding: 5px 0;
+}
+
+.alerta {
+    display: flex;
+
+    gap: 11px;
+
+    padding:
+        13px 18px;
+
+    border-bottom:
+        1px solid #f1f5f9;
+}
+
+.alerta:last-child {
+    border-bottom: none;
+}
+
+.alerta-icono {
+    width: 31px;
+    height: 31px;
+
+    border-radius: 9px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 12px;
+
+    font-weight: 900;
+
+    flex-shrink: 0;
+}
+
+.alerta strong {
+    display: block;
+
+    font-size: 11px;
+
+    color: var(--oscuro);
+}
+
+.alerta p {
+    color: var(--texto-suave);
+
+    font-size: 9px;
+
+    margin-top: 2px;
+}
+
+.alerta-roja .alerta-icono {
+    background: var(--rojo-claro);
+    color: var(--rojo);
+}
+
+.alerta-amarilla .alerta-icono {
+    background: var(--amarillo-claro);
+    color: var(--amarillo);
+}
+
+.alerta-naranja .alerta-icono {
+    background: var(--naranja-claro);
+    color: var(--naranja);
+}
+
+
+/* =========================================================
+   16. ACCESOS RÁPIDOS
+   ========================================================= */
+
+.accesos {
+    display: grid;
+
+    grid-template-columns:
+        repeat(6, minmax(0, 1fr));
+
+    gap: 12px;
+}
+
+.accesos button {
+    background: var(--blanco);
+
+    border:
+        1px solid var(--borde);
+
+    border-radius: 15px;
+
+    min-height: 88px;
+
+    padding:
+        13px 8px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 7px;
+
+    color: var(--texto);
+
+    box-shadow: var(--sombra);
+
+    transition:
+        transform .2s ease,
+        box-shadow .2s ease,
+        border-color .2s ease;
+}
+
+.accesos button:hover {
+    transform: translateY(-3px);
+
+    border-color:
+        #bfdbfe;
+
+    box-shadow:
+        0 12px 25px rgba(37,99,235,.10);
+}
+
+.accesos button:first-child {
+    color: var(--azul);
+
+    border-color:
+        #dbeafe;
+}
+
+.accesos button span {
+    font-size: 10px;
+
+    font-weight: 800;
+
+    text-align: center;
+}
+
+
+/* =========================================================
+   17. NAVEGACIÓN MÓVIL
+   ========================================================= */
+
+.navegacion-movil {
+    display: none;
+}
+
+
+/* =========================================================
+   18. RESUMEN JORNADA
+   ========================================================= */
+
+.resumen-jornada {
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+
+    gap: 10px;
+
+    margin-top: 15px;
+}
+
+.resumen-jornada > div {
+    background:
+        rgba(255,255,255,.10);
+
+    border:
+        1px solid rgba(255,255,255,.12);
+
+    border-radius: 12px;
+
+    padding:
+        11px 13px;
+}
+
+.resumen-jornada span {
+    display: block;
+
+    color:
+        rgba(255,255,255,.65);
+
+    font-size: 9px;
+
+    font-weight: 800;
+
+    text-transform: uppercase;
+
+    letter-spacing: .5px;
+}
+
+.resumen-jornada strong {
+    display: block;
+
+    color: #ffffff;
+
+    font-size: 14px;
+
+    margin-top: 3px;
+}
+
+
+/* =========================================================
+   19. PANEL PERSONAL
+   ========================================================= */
+
+.panel-personal {
+    margin-top: 0;
+}
+
+.personal-vacio {
+    padding:
+        42px 24px;
+
+    text-align: center;
+
+    color: var(--texto-suave);
+}
+
+.personal-vacio > div:first-child {
+    width: 58px;
+    height: 58px;
+
+    margin:
+        0 auto 13px;
+
+    border-radius: 17px;
+
+    background:
+        var(--azul-claro);
+
+    color: var(--azul);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 24px;
+}
+
+.personal-vacio strong {
+    display: block;
+
+    color: var(--oscuro);
+
+    font-size: 14px;
+
+    margin-bottom: 5px;
+}
+
+.personal-vacio p {
+    max-width: 360px;
+
+    margin: auto;
+
+    font-size: 11px;
+}
+
+
+/* =========================================================
+   20. EMPLEADOS
+   ========================================================= */
+
+.empleado-item {
+    display: flex;
+
+    align-items: center;
+
+    gap: 12px;
+
+    padding:
+        14px 20px;
+
+    border-bottom:
+        1px solid #f1f5f9;
+
+    transition:
+        background .2s ease;
+}
+
+.empleado-item:hover {
+    background: #f8fafc;
+}
+
+.empleado-item:last-child {
+    border-bottom: none;
+}
+
+.empleado-avatar {
+    width: 43px;
+    height: 43px;
+
+    flex-shrink: 0;
+
+    border-radius: 13px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #dbeafe,
+            #eff6ff
+        );
+
+    color: var(--azul);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 12px;
+
+    font-weight: 900;
+
+    border:
+        1px solid #dbeafe;
 }
 
 .empleado-info {
@@ -928,10 +1263,12 @@ a {
 .empleado-info strong {
     display: block;
 
-    font-size: 13px;
+    font-size: 12px;
 
     white-space: nowrap;
+
     overflow: hidden;
+
     text-overflow: ellipsis;
 }
 
@@ -942,7 +1279,7 @@ a {
 
     color: var(--texto-suave);
 
-    font-size: 11px;
+    font-size: 10px;
 }
 
 .empleado-estado {
@@ -952,21 +1289,23 @@ a {
 
     gap: 5px;
 
-    margin-top: 5px;
+    margin-top: 4px;
 
-    padding: 3px 8px;
+    padding:
+        3px 7px;
 
     border-radius: 999px;
 
-    font-size: 9px;
-    font-weight: 800;
+    font-size: 8px;
+
+    font-weight: 900;
 }
 
 .empleado-estado::before {
     content: "";
 
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
 
     border-radius: 50%;
 
@@ -974,24 +1313,28 @@ a {
 }
 
 .estado-activo {
-    background: #dcfce7;
+    background: var(--verde-claro);
+
     color: #15803d;
 }
 
 .empleado-eliminar {
-    width: 34px;
-    height: 34px;
+    width: 33px;
+    height: 33px;
+
+    flex-shrink: 0;
 
     border-radius: 10px;
 
-    background: #fef2f2;
+    background: var(--rojo-claro);
+
     color: var(--rojo);
 
     display: flex;
     align-items: center;
     justify-content: center;
 
-    font-size: 15px;
+    font-size: 14px;
 
     transition:
         background .2s ease,
@@ -999,26 +1342,30 @@ a {
 }
 
 .empleado-eliminar:hover {
-    background: #fee2e2;
+    background:
+        #fecaca;
 
     transform: translateY(-1px);
 }
 
 
 /* =========================================================
-   19. FORMULARIO PERSONAL
+   21. FORMULARIO PERSONAL
    ========================================================= */
 
 .formulario-personal {
     background: var(--blanco);
 
-    border: 1px solid var(--borde);
+    border:
+        1px solid var(--borde);
 
     border-radius: var(--radio);
 
     box-shadow: var(--sombra);
 
-    padding: 26px;
+    padding: 24px;
+
+    width: 100%;
 }
 
 .formulario-grid {
@@ -1027,7 +1374,7 @@ a {
     grid-template-columns:
         repeat(2, minmax(0, 1fr));
 
-    gap: 18px;
+    gap: 17px;
 }
 
 .campo {
@@ -1035,7 +1382,7 @@ a {
 
     flex-direction: column;
 
-    gap: 7px;
+    gap: 6px;
 }
 
 .campo-completo {
@@ -1045,8 +1392,9 @@ a {
 .campo label {
     color: var(--oscuro);
 
-    font-size: 11px;
-    font-weight: 800;
+    font-size: 10px;
+
+    font-weight: 900;
 }
 
 .campo input,
@@ -1054,7 +1402,8 @@ a {
 .campo textarea {
     width: 100%;
 
-    border: 1px solid var(--borde);
+    border:
+        1px solid var(--borde);
 
     background: #ffffff;
 
@@ -1062,11 +1411,12 @@ a {
 
     border-radius: 11px;
 
-    padding: 12px 13px;
+    padding:
+        11px 12px;
 
     outline: none;
 
-    font-size: 13px;
+    font-size: 12px;
 
     transition:
         border-color .2s ease,
@@ -1075,7 +1425,7 @@ a {
 
 .campo input,
 .campo select {
-    height: 46px;
+    height: 44px;
 }
 
 .campo textarea {
@@ -1092,7 +1442,8 @@ a {
 .campo input:focus,
 .campo select:focus,
 .campo textarea:focus {
-    border-color: rgba(37,99,235,.55);
+    border-color:
+        rgba(37,99,235,.55);
 
     box-shadow:
         0 0 0 4px rgba(37,99,235,.08);
@@ -1103,21 +1454,23 @@ a {
 
     justify-content: flex-end;
 
-    gap: 10px;
+    gap: 9px;
 
-    margin-top: 22px;
+    margin-top: 20px;
 }
 
 .btn-secundario,
 .btn-principal {
-    min-height: 44px;
+    min-height: 43px;
 
-    padding: 0 18px;
+    padding:
+        0 17px;
 
     border-radius: 11px;
 
-    font-size: 12px;
-    font-weight: 800;
+    font-size: 11px;
+
+    font-weight: 900;
 
     transition:
         transform .2s ease,
@@ -1125,20 +1478,27 @@ a {
 }
 
 .btn-secundario {
-    background: #f3f4f6;
+    background:
+        #f1f5f9;
 
     color: var(--oscuro);
 
-    border: 1px solid var(--borde);
+    border:
+        1px solid var(--borde);
 }
 
 .btn-principal {
-    background: var(--oscuro);
+    background:
+        linear-gradient(
+            135deg,
+            var(--azul),
+            var(--azul-oscuro)
+        );
 
     color: #ffffff;
 
     box-shadow:
-        0 7px 16px rgba(17,24,39,.14);
+        0 7px 16px rgba(37,99,235,.18);
 }
 
 .btn-principal:hover,
@@ -1146,14 +1506,9 @@ a {
     transform: translateY(-1px);
 }
 
-.btn-principal:hover {
-    box-shadow:
-        0 10px 22px rgba(17,24,39,.20);
-}
-
 
 /* =========================================================
-   20. JORNADA FINALIZADA / ESTADO
+   22. JORNADA FINALIZADA
    ========================================================= */
 
 .jornada-finalizada-info {
@@ -1161,21 +1516,25 @@ a {
 
     align-items: center;
 
-    gap: 10px;
+    gap: 9px;
 
-    padding: 12px 15px;
+    padding:
+        11px 14px;
 
     border-radius: 12px;
 
-    background: rgba(255,255,255,.07);
+    background:
+        rgba(255,255,255,.09);
 
-    border: 1px solid rgba(255,255,255,.08);
+    border:
+        1px solid rgba(255,255,255,.10);
 
-    color: #d1d5db;
+    color:
+        rgba(255,255,255,.78);
 
-    font-size: 12px;
+    font-size: 11px;
 
-    margin-top: 14px;
+    margin-top: 13px;
 }
 
 .jornada-finalizada-info strong {
@@ -1187,12 +1546,12 @@ a {
 }
 
 .estado-jornada.finalizada .punto-gris {
-    background: #9ca3af;
+    background: #94a3b8;
 }
 
 
 /* =========================================================
-   21. PANTALLA DE INICIO DE JORNADA
+   23. PANTALLA INICIO JORNADA
    ========================================================= */
 
 .pantalla-jornada {
@@ -1209,15 +1568,15 @@ a {
     background:
         radial-gradient(
             circle at top right,
-            rgba(37, 99, 235, 0.10),
+            rgba(37,99,235,.13),
             transparent 35%
         ),
         radial-gradient(
             circle at bottom left,
-            rgba(22, 163, 74, 0.07),
+            rgba(22,163,74,.07),
             transparent 35%
         ),
-        var(--fondo);
+        #f3f6fa;
 }
 
 .jornada-card {
@@ -1227,22 +1586,25 @@ a {
 
     border-radius: 28px;
 
-    padding: 42px 36px 34px;
+    padding:
+        42px 36px 34px;
 
     text-align: center;
 
     box-shadow:
-        0 20px 60px rgba(15, 23, 42, 0.12),
-        0 4px 14px rgba(15, 23, 42, 0.06);
+        0 20px 60px rgba(15,23,42,.12),
+        0 4px 14px rgba(15,23,42,.06);
 
-    border: 1px solid rgba(15, 23, 42, 0.05);
+    border:
+        1px solid rgba(15,23,42,.05);
 }
 
 .jornada-icono {
     width: 76px;
     height: 76px;
 
-    margin: 0 auto 24px;
+    margin:
+        0 auto 23px;
 
     display: flex;
     align-items: center;
@@ -1250,32 +1612,40 @@ a {
 
     border-radius: 22px;
 
-    background: var(--oscuro);
+    background:
+        linear-gradient(
+            135deg,
+            var(--azul),
+            var(--azul-oscuro)
+        );
 
     color: #ffffff;
 
     font-size: 30px;
-    font-weight: 700;
+
+    font-weight: 800;
 
     box-shadow:
-        0 12px 25px rgba(17, 24, 39, 0.20);
+        0 12px 25px rgba(37,99,235,.23);
 }
 
 .jornada-etiqueta {
-    font-size: 11px;
-    font-weight: 800;
+    font-size: 10px;
+
+    font-weight: 900;
 
     letter-spacing: 2px;
 
     color: var(--azul);
 
-    margin-bottom: 16px;
+    margin-bottom: 15px;
 }
 
 .jornada-card h1 {
     margin: 0;
 
-    font-size: clamp(30px, 7vw, 42px);
+    font-size:
+        clamp(30px, 7vw, 42px);
 
     line-height: 1.08;
 
@@ -1285,11 +1655,13 @@ a {
 }
 
 .jornada-fecha {
-    margin: 16px 0 0;
+    margin:
+        15px 0 0;
 
-    color: #64748b;
+    color: var(--texto-suave);
 
-    font-size: 15px;
+    font-size: 14px;
+
     font-weight: 500;
 }
 
@@ -1297,7 +1669,8 @@ a {
     width: 48px;
     height: 4px;
 
-    margin: 28px auto;
+    margin:
+        27px auto;
 
     border-radius: 10px;
 
@@ -1309,18 +1682,20 @@ a {
 
     color: var(--oscuro);
 
-    font-size: 20px;
-    font-weight: 700;
+    font-size: 19px;
+
+    font-weight: 800;
 }
 
 .jornada-info {
     max-width: 320px;
 
-    margin: 10px auto 28px;
+    margin:
+        9px auto 27px;
 
-    color: #64748b;
+    color: var(--texto-suave);
 
-    font-size: 14px;
+    font-size: 13px;
 
     line-height: 1.5;
 }
@@ -1337,37 +1712,36 @@ a {
 
     gap: 10px;
 
-    border: 0;
-
     border-radius: 16px;
 
-    background: var(--oscuro);
+    background:
+        linear-gradient(
+            135deg,
+            var(--azul),
+            var(--azul-oscuro)
+        );
 
     color: #ffffff;
 
-    font-size: 15px;
-    font-weight: 800;
+    font-size: 14px;
 
-    letter-spacing: .4px;
+    font-weight: 900;
+
+    letter-spacing: .3px;
 
     box-shadow:
-        0 10px 22px rgba(17, 24, 39, 0.18);
+        0 10px 22px rgba(37,99,235,.20);
 
     transition:
         transform .18s ease,
-        box-shadow .18s ease,
-        background .18s ease;
+        box-shadow .18s ease;
 }
 
 .btn-jornada:hover {
     transform: translateY(-2px);
 
     box-shadow:
-        0 14px 28px rgba(17, 24, 39, 0.22);
-}
-
-.btn-jornada:active {
-    transform: translateY(0);
+        0 14px 28px rgba(37,99,235,.25);
 }
 
 .btn-jornada span {
@@ -1375,34 +1749,45 @@ a {
 }
 
 .jornada-rol {
-    margin: 22px 0 0;
+    margin:
+        21px 0 0;
 
     color: #94a3b8;
 
-    font-size: 12px;
+    font-size: 11px;
+
     font-weight: 600;
 }
 
 
 /* =========================================================
-   22. TABLET
+   24. TABLET
    ========================================================= */
 
-@media (max-width: 1000px) {
+@media (max-width: 1050px) {
+
+    .contenido {
+        width: min(100% - 32px, 1000px);
+    }
 
     .indicadores {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
+    .dashboard-grid {
+        grid-template-columns: 1fr;
     }
 
     .accesos {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns:
+            repeat(3, minmax(0, 1fr));
     }
-
 }
 
 
 /* =========================================================
-   23. MÓVIL
+   25. MÓVIL
    ========================================================= */
 
 @media (max-width: 700px) {
@@ -1413,12 +1798,17 @@ a {
 
     .topbar {
         height: 66px;
-        padding: 0 16px;
+
+        padding:
+            0 16px;
+
+        gap: 10px;
     }
 
     .marca-icono {
         width: 38px;
         height: 38px;
+
         border-radius: 11px;
     }
 
@@ -1440,11 +1830,15 @@ a {
     }
 
     .contenido {
-        padding: 22px 16px;
+        width: 100%;
+
+        padding:
+            22px 16px;
     }
 
     .bienvenida {
         display: block;
+
         margin-bottom: 20px;
     }
 
@@ -1454,6 +1848,7 @@ a {
 
     .estado-jornada {
         width: fit-content;
+
         margin-top: 14px;
     }
 
@@ -1473,7 +1868,8 @@ a {
     }
 
     .accion-texto {
-        min-width: calc(100% - 75px);
+        min-width:
+            calc(100% - 75px);
     }
 
     .accion-texto h2 {
@@ -1487,22 +1883,29 @@ a {
     .accion-principal .btn,
     .btn-terminar-jornada {
         width: 100%;
+
         margin-top: 5px;
     }
 
     .indicadores {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+
         gap: 10px;
     }
 
     .indicador {
-        padding: 15px;
-        gap: 10px;
+        padding: 14px;
+
+        gap: 9px;
+
+        border-radius: 15px;
     }
 
     .indicador-icono {
         width: 40px;
         height: 40px;
+
         font-size: 16px;
     }
 
@@ -1512,6 +1915,7 @@ a {
 
     .dashboard-grid {
         grid-template-columns: 1fr;
+
         gap: 15px;
     }
 
@@ -1528,17 +1932,24 @@ a {
 
         height: 68px;
 
-        background: rgba(255,255,255,.96);
+        background:
+            rgba(255,255,255,.97);
 
-        backdrop-filter: blur(12px);
+        backdrop-filter:
+            blur(12px);
 
-        border-top: 1px solid var(--borde);
+        border-top:
+            1px solid var(--borde);
 
         display: grid;
 
-        grid-template-columns: repeat(5, 1fr);
+        grid-template-columns:
+            repeat(5, 1fr);
 
         z-index: 500;
+
+        box-shadow:
+            0 -5px 20px rgba(15,23,42,.05);
     }
 
     .navegacion-movil button {
@@ -1556,7 +1967,8 @@ a {
         gap: 3px;
 
         font-size: 9px;
-        font-weight: 700;
+
+        font-weight: 800;
     }
 
     .navegacion-movil button span {
@@ -1564,7 +1976,7 @@ a {
     }
 
     .navegacion-movil button.activo {
-        color: var(--oscuro);
+        color: var(--azul);
     }
 
     .resumen-jornada {
@@ -1572,11 +1984,13 @@ a {
     }
 
     .formulario-personal {
-        padding: 20px 16px;
+        padding:
+            20px 16px;
     }
 
     .formulario-grid {
         grid-template-columns: 1fr;
+
         gap: 15px;
     }
 
@@ -1594,7 +2008,8 @@ a {
     }
 
     .empleado-item {
-        padding: 14px 16px;
+        padding:
+            14px 16px;
     }
 
     .empleado-avatar {
@@ -1607,11 +2022,25 @@ a {
         height: 32px;
     }
 
+    .panel-cabecera {
+        padding:
+            17px 16px;
+    }
+
+    .actividad-item {
+        padding:
+            14px 16px;
+    }
+
+    .alerta {
+        padding:
+            13px 16px;
+    }
 }
 
 
 /* =========================================================
-   24. JORNADA EN CELULAR
+   26. JORNADA EN CELULAR
    ========================================================= */
 
 @media (max-width: 600px) {
@@ -1621,7 +2050,9 @@ a {
     }
 
     .jornada-card {
-        padding: 34px 24px 28px;
+        padding:
+            34px 24px 28px;
+
         border-radius: 24px;
     }
 
@@ -1645,12 +2076,11 @@ a {
     .btn-jornada {
         min-height: 60px;
     }
-
 }
 
 
 /* =========================================================
-   25. MÓVILES PEQUEÑOS
+   27. MÓVILES PEQUEÑOS
    ========================================================= */
 
 @media (max-width: 380px) {
@@ -1668,7 +2098,8 @@ a {
     }
 
     .jornada-card {
-        padding: 28px 20px 24px;
+        padding:
+            28px 20px 24px;
     }
 
     .jornada-card h1 {
@@ -1679,184 +2110,80 @@ a {
         font-size: 14px;
     }
 
+    .marca span {
+        display: none;
+    }
 }
 
+
 /* =========================================================
-   AJUSTE ESCRITORIO — CONTROL RESTAURANTE
-   NO AFECTA EL DISEÑO MÓVIL
+   28. ESCRITORIO
    ========================================================= */
 
 @media (min-width: 701px) {
 
-    /* ---------- BARRA SUPERIOR ---------- */
-
     .topbar {
-        height: 82px;
-        padding: 0 42px;
-        gap: 30px;
-    }
+        height: 78px;
 
-    .marca {
-        min-width: 0;
-        flex: 1;
+        padding:
+            0 34px;
     }
-
-    .marca strong {
-        font-size: 17px;
-        line-height: 1.15;
-        white-space: nowrap;
-    }
-
-    .marca span {
-        font-size: 11px;
-        margin-top: 2px;
-        white-space: nowrap;
-    }
-
-    .usuario-boton {
-        flex-shrink: 0;
-        min-width: 185px;
-        justify-content: flex-end;
-    }
-
-    /* ---------- CONTENIDO ---------- */
 
     .contenido {
-        width: min(1440px, calc(100% - 64px));
-        padding: 38px 0 45px;
-    }
+        width:
+            min(1360px, calc(100% - 68px));
 
-    /* ---------- ENCABEZADO ---------- */
+        padding:
+            32px 0 45px;
+    }
 
     .bienvenida {
-        align-items: center;
-        margin-bottom: 30px;
-        gap: 30px;
-    }
-
-    .bienvenida > div:first-child {
-        min-width: 0;
-        flex: 1;
+        margin-bottom: 26px;
     }
 
     .bienvenida h1 {
-        font-size: 32px;
-        line-height: 1.15;
+        font-size: 31px;
     }
-
-    .bienvenida p:not(.etiqueta) {
-        font-size: 14px;
-    }
-
-    .estado-jornada {
-        flex-shrink: 0;
-        white-space: nowrap;
-    }
-
-    /* ---------- ACCIÓN PRINCIPAL ---------- */
 
     .accion-principal {
-        min-height: 112px;
-        padding: 25px 30px;
-        gap: 22px;
-    }
+        min-height: 106px;
 
-    .accion-texto {
-        min-width: 0;
+        padding:
+            24px 28px;
     }
-
-    .accion-texto h2 {
-        font-size: 21px;
-    }
-
-    .accion-texto p {
-        font-size: 13px;
-    }
-
-    .accion-principal .btn,
-    .btn-terminar-jornada {
-        flex-shrink: 0;
-        min-width: 185px;
-    }
-
-    /* ---------- INDICADORES ---------- */
 
     .indicadores {
+        gap: 16px;
+    }
+
+    .dashboard-grid {
         grid-template-columns:
-            repeat(4, minmax(190px, 1fr));
+            minmax(0, 1.5fr)
+            minmax(330px, .85fr);
 
         gap: 20px;
     }
 
-    .indicador {
-        min-width: 0;
-        padding: 21px;
-    }
-
-    .indicador > div:last-child {
-        min-width: 0;
-    }
-
-    .indicador strong {
-        white-space: nowrap;
-    }
-
-    /* ---------- DASHBOARD ---------- */
-
-    .dashboard-grid {
-        grid-template-columns:
-            minmax(0, 1.6fr)
-            minmax(340px, .9fr);
-
-        gap: 24px;
-    }
-
-    .panel {
-        min-width: 0;
-    }
-
-    /* ---------- ACCESOS ---------- */
-
     .accesos {
-        grid-template-columns:
-            repeat(6, minmax(120px, 1fr));
-
-        gap: 15px;
+        gap: 13px;
     }
-
-    .accesos button {
-        min-height: 92px;
-    }
-
-    /* ---------- JORNADA ---------- */
-
-    .resumen-jornada {
-        grid-template-columns:
-            repeat(3, minmax(130px, 1fr));
-    }
-
-    /* ---------- PERSONAL ---------- */
-
-    .formulario-personal {
-        max-width: 1100px;
-        margin: 0 auto;
-    }
-
 }
 
 
 /* =========================================================
-   ESCRITORIO MEDIANO
+   29. LAPTOP
    ========================================================= */
 
 @media (min-width: 701px) and (max-width: 1200px) {
 
     .topbar {
-        padding: 0 25px;
+        padding:
+            0 24px;
     }
 
     .contenido {
-        width: min(100% - 40px, 1100px);
+        width:
+            min(100% - 48px, 1050px);
     }
 
     .marca strong {
@@ -1868,12 +2195,13 @@ a {
     }
 
     .usuario-boton {
-        min-width: 160px;
+        min-width: 150px;
+        justify-content: flex-end;
     }
 
     .indicadores {
         grid-template-columns:
-            repeat(2, minmax(220px, 1fr));
+            repeat(2, minmax(0, 1fr));
     }
 
     .dashboard-grid {
@@ -1882,40 +2210,44 @@ a {
 
     .accesos {
         grid-template-columns:
-            repeat(3, minmax(150px, 1fr));
+            repeat(3, minmax(0, 1fr));
     }
 
+    .accesos button {
+        min-height: 84px;
+    }
 }
 
 
 /* =========================================================
-   LAPTOP / ESCRITORIO — EVITAR AMONTONAMIENTO
+   30. ESCRITORIO GRANDE
    ========================================================= */
 
 @media (min-width: 1201px) {
 
     .topbar {
-        padding-left: 48px;
-        padding-right: 48px;
+        padding:
+            0 48px;
     }
 
     .contenido {
-        width: min(1450px, calc(100% - 96px));
+        width:
+            min(1400px, calc(100% - 96px));
     }
 
     .marca {
-        flex: 0 1 auto;
+        flex-shrink: 0;
     }
 
     .usuario-boton {
-        min-width: 210px;
+        min-width: 190px;
+
+        justify-content: flex-end;
     }
 
     .dashboard-grid {
         grid-template-columns:
             minmax(0, 1.55fr)
-            minmax(360px, .85fr);
+            minmax(350px, .85fr);
     }
-
 }
-```
