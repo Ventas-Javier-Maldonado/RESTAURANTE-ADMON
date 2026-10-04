@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 const CLAVE_JORNADA = "jornada_restaurante";
 const CLAVE_EMPLEADOS = "empleados_restaurante";
+const CLAVE_INVENTARIO = "inventario_restaurante";
 
 const USUARIO_ACTUAL = {
     nombre: "Administrador",
@@ -28,20 +29,6 @@ const USUARIO_ACTUAL = {
 function iniciarAplicacion() {
 
     const jornada = obtenerJornadaActual();
-
-    /*
-       IMPORTANTE:
-
-       La jornada y la sesión son conceptos diferentes.
-
-       Si no existe jornada de hoy:
-       mostramos pantalla para iniciar jornada.
-
-       Si existe una jornada, aunque ya esté finalizada:
-       mostramos el dashboard.
-
-       TERMINAR JORNADA NO BLOQUEA EL SISTEMA.
-    */
 
     if (!jornada) {
         mostrarPantallaJornada();
@@ -310,17 +297,6 @@ function terminarJornada() {
     );
 
 
-    /*
-       MUY IMPORTANTE:
-
-       NO mostramos una pantalla bloqueada.
-       NO cerramos sesión.
-       NO sacamos al usuario del sistema.
-
-       La jornada laboral terminó,
-       pero el acceso al sistema continúa.
-    */
-
     mostrarDashboard(jornada);
 }
 
@@ -422,13 +398,19 @@ function mostrarDashboard(jornada) {
         `;
 
 
+    const inventario =
+        obtenerInventario();
+
+
+    const alertasInventario =
+        obtenerProductosBajoMinimo(
+            inventario
+        ).length;
+
+
     app.innerHTML = `
 
         <div class="sistema">
-
-            <!-- =========================================
-                 TOPBAR
-                 ========================================= -->
 
             <header class="topbar">
 
@@ -479,16 +461,8 @@ function mostrarDashboard(jornada) {
             </header>
 
 
-            <!-- =========================================
-                 CONTENIDO
-                 ========================================= -->
-
             <main class="contenido">
 
-
-                <!-- =====================================
-                     BIENVENIDA
-                     ===================================== -->
 
                 <section class="bienvenida">
 
@@ -521,10 +495,6 @@ function mostrarDashboard(jornada) {
 
                 </section>
 
-
-                <!-- =====================================
-                     INDICADORES
-                     ===================================== -->
 
                 <section class="indicadores">
 
@@ -617,7 +587,7 @@ function mostrarDashboard(jornada) {
                             </span>
 
                             <strong>
-                                0
+                                ${alertasInventario}
                             </strong>
 
                             <small>
@@ -632,16 +602,8 @@ function mostrarDashboard(jornada) {
                 </section>
 
 
-                <!-- =====================================
-                     GRID PRINCIPAL
-                     ===================================== -->
-
                 <section class="dashboard-grid">
 
-
-                    <!-- =================================
-                         ACTIVIDAD
-                         ================================= -->
 
                     <article class="panel">
 
@@ -724,10 +686,6 @@ function mostrarDashboard(jornada) {
                     </article>
 
 
-                    <!-- =================================
-                         ALERTAS
-                         ================================= -->
-
                     <article class="panel">
 
                         <div class="panel-cabecera">
@@ -745,7 +703,7 @@ function mostrarDashboard(jornada) {
                             </div>
 
                             <span class="contador-alertas">
-                                0
+                                ${alertasInventario}
                             </span>
 
                         </div>
@@ -753,25 +711,52 @@ function mostrarDashboard(jornada) {
 
                         <div class="alertas">
 
-                            <div class="alerta alerta-amarilla">
+                            ${
+                                alertasInventario === 0
+                                ? `
+                                    <div class="alerta alerta-amarilla">
 
-                                <div class="alerta-icono">
-                                    ✓
-                                </div>
+                                        <div class="alerta-icono">
+                                            ✓
+                                        </div>
 
-                                <div>
+                                        <div>
 
-                                    <strong>
-                                        Todo en orden
-                                    </strong>
+                                            <strong>
+                                                Todo en orden
+                                            </strong>
 
-                                    <span>
-                                        No hay alertas pendientes.
-                                    </span>
+                                            <span>
+                                                No hay alertas pendientes.
+                                            </span>
 
-                                </div>
+                                        </div>
 
-                            </div>
+                                    </div>
+                                `
+                                : `
+                                    <div class="alerta alerta-amarilla">
+
+                                        <div class="alerta-icono">
+                                            !
+                                        </div>
+
+                                        <div>
+
+                                            <strong>
+                                                Stock bajo
+                                            </strong>
+
+                                            <span>
+                                                ${alertasInventario}
+                                                producto(s) requieren atención.
+                                            </span>
+
+                                        </div>
+
+                                    </div>
+                                `
+                            }
 
                         </div>
 
@@ -780,10 +765,6 @@ function mostrarDashboard(jornada) {
 
                 </section>
 
-
-                <!-- =====================================
-                     ACCESOS RÁPIDOS
-                     ===================================== -->
 
                 <section class="accesos">
 
@@ -833,7 +814,8 @@ function mostrarDashboard(jornada) {
 
                         <button
                             class="accion-principal"
-                            type="button">
+                            type="button"
+                            onclick="mostrarInventario()">
 
                             <span class="accion-icono">
                                 📦
@@ -908,10 +890,6 @@ function mostrarDashboard(jornada) {
             </main>
 
 
-            <!-- =========================================
-                 NAVEGACIÓN MÓVIL
-                 ========================================= -->
-
             <nav class="navegacion-movil">
 
                 <button
@@ -941,7 +919,8 @@ function mostrarDashboard(jornada) {
 
 
                 <button
-                    type="button">
+                    type="button"
+                    onclick="mostrarInventario()">
 
                     <span>
                         📦
@@ -1164,7 +1143,8 @@ function mostrarPersonal() {
 
 
                 <button
-                    type="button">
+                    type="button"
+                    onclick="mostrarInventario()">
 
                     <span>
                         📦
@@ -1295,9 +1275,7 @@ function renderizarEmpleados(empleados) {
                 <article class="empleado-item">
 
                     <div class="empleado-avatar">
-
                         ${iniciales}
-
                     </div>
 
 
@@ -1778,6 +1756,1031 @@ function eliminarEmpleado(indice) {
 
 
 /* =========================================================
+   INVENTARIO
+   ========================================================= */
+
+function obtenerInventario() {
+
+    const datos =
+        localStorage.getItem(
+            CLAVE_INVENTARIO
+        );
+
+
+    if (!datos) {
+        return [];
+    }
+
+
+    try {
+
+        return JSON.parse(datos);
+
+    } catch (error) {
+
+        console.error(
+            "Error al leer inventario:",
+            error
+        );
+
+        return [];
+    }
+}
+
+
+/* =========================================================
+   GUARDAR INVENTARIO
+   ========================================================= */
+
+function guardarInventario(productos) {
+
+    localStorage.setItem(
+        CLAVE_INVENTARIO,
+        JSON.stringify(productos)
+    );
+}
+
+
+/* =========================================================
+   PRODUCTOS BAJO MÍNIMO
+   ========================================================= */
+
+function obtenerProductosBajoMinimo(productos) {
+
+    return productos.filter(
+        producto =>
+            Number(producto.existencia) <=
+            Number(producto.stockMinimo)
+    );
+}
+
+
+/* =========================================================
+   MOSTRAR INVENTARIO
+   ========================================================= */
+
+function mostrarInventario() {
+
+    const app = document.getElementById("app");
+
+    const productos =
+        obtenerInventario();
+
+
+    const productosBajos =
+        obtenerProductosBajoMinimo(
+            productos
+        );
+
+
+    app.innerHTML = `
+
+        <div class="sistema">
+
+            <header class="topbar">
+
+                <div class="marca">
+
+                    <button
+                        class="texto-boton"
+                        type="button"
+                        onclick="regresarDashboard()">
+
+                        ← Regresar
+
+                    </button>
+
+                    <div class="marca-icono">
+                        CR
+                    </div>
+
+                    <div>
+
+                        <strong>
+                            Inventario
+                        </strong>
+
+                        <small>
+                            Control Restaurante
+                        </small>
+
+                    </div>
+
+                </div>
+
+
+                <button
+                    class="usuario-boton"
+                    type="button">
+
+                    <span class="usuario-avatar">
+                        ${obtenerIniciales(
+                            USUARIO_ACTUAL.nombre
+                        )}
+                    </span>
+
+                    <span class="usuario-info">
+
+                        <strong>
+                            ${USUARIO_ACTUAL.nombre}
+                        </strong>
+
+                        <small>
+                            ${USUARIO_ACTUAL.rol}
+                        </small>
+
+                    </span>
+
+                </button>
+
+            </header>
+
+
+            <main class="contenido">
+
+
+                <section class="bienvenida">
+
+                    <div>
+
+                        <div class="etiqueta">
+                            OPERACIÓN
+                        </div>
+
+                        <h1>
+                            Inventario
+                        </h1>
+
+                        <p>
+                            Controla existencias,
+                            costos y niveles mínimos.
+                        </p>
+
+                    </div>
+
+
+                    <button
+                        class="btn-agregar-personal"
+                        type="button"
+                        onclick="mostrarFormularioProducto()">
+
+                        + Agregar producto
+
+                    </button>
+
+                </section>
+
+
+                <section class="indicadores">
+
+
+                    <article class="indicador">
+
+                        <div class="indicador-icono">
+                            📦
+                        </div>
+
+                        <div>
+
+                            <span>
+                                PRODUCTOS
+                            </span>
+
+                            <strong>
+                                ${productos.length}
+                            </strong>
+
+                            <small>
+                                Registrados
+                            </small>
+
+                        </div>
+
+                    </article>
+
+
+                    <article class="indicador">
+
+                        <div class="indicador-icono negativo">
+                            !
+                        </div>
+
+                        <div>
+
+                            <span>
+                                STOCK BAJO
+                            </span>
+
+                            <strong>
+                                ${productosBajos.length}
+                            </strong>
+
+                            <small>
+                                Requieren atención
+                            </small>
+
+                        </div>
+
+                    </article>
+
+
+                </section>
+
+
+                <section class="panel panel-personal">
+
+
+                    <div class="panel-cabecera">
+
+                        <div>
+
+                            <span>
+                                CATÁLOGO
+                            </span>
+
+                            <h2>
+                                Productos
+                            </h2>
+
+                        </div>
+
+                        <span class="contador-alertas">
+                            ${productos.length}
+                        </span>
+
+                    </div>
+
+
+                    <div style="
+                        margin-bottom:20px;
+                    ">
+
+                        <input
+                            type="search"
+                            id="buscarInventario"
+                            placeholder="🔎 Buscar producto..."
+                            oninput="filtrarInventario(this.value)"
+                            style="
+                                width:100%;
+                                padding:14px 16px;
+                                border-radius:12px;
+                                border:1px solid rgba(200,164,93,.35);
+                                background:#0b192a;
+                                color:#fff;
+                                font-size:15px;
+                                box-sizing:border-box;
+                            ">
+
+                    </div>
+
+
+                    <div id="lista-inventario">
+
+                        ${renderizarInventario(
+                            productos
+                        )}
+
+                    </div>
+
+
+                </section>
+
+
+            </main>
+
+
+            <nav class="navegacion-movil">
+
+                <button
+                    type="button"
+                    onclick="regresarDashboard()">
+
+                    <span>
+                        ⌂
+                    </span>
+
+                    Inicio
+
+                </button>
+
+
+                <button
+                    type="button"
+                    onclick="mostrarPersonal()">
+
+                    <span>
+                        👥
+                    </span>
+
+                    Personal
+
+                </button>
+
+
+                <button
+                    class="activo"
+                    type="button"
+                    onclick="mostrarInventario()">
+
+                    <span>
+                        📦
+                    </span>
+
+                    Inventario
+
+                </button>
+
+
+                <button
+                    type="button">
+
+                    <span>
+                        ⋯
+                    </span>
+
+                    Más
+
+                </button>
+
+            </nav>
+
+        </div>
+
+    `;
+}
+
+
+/* =========================================================
+   RENDERIZAR INVENTARIO
+   ========================================================= */
+
+function renderizarInventario(productos) {
+
+    if (!productos.length) {
+
+        return `
+
+            <div class="personal-vacio">
+
+                <div>
+                    📦
+                </div>
+
+                <h3>
+                    Aún no hay productos registrados
+                </h3>
+
+                <p>
+                    Agrega el primer producto
+                    para comenzar a controlar
+                    el inventario.
+                </p>
+
+                <button
+                    class="btn-principal"
+                    type="button"
+                    onclick="mostrarFormularioProducto()">
+
+                    + Agregar producto
+
+                </button>
+
+            </div>
+
+        `;
+    }
+
+
+    return productos.map(
+        producto => {
+
+            const stockBajo =
+                Number(producto.existencia) <=
+                Number(producto.stockMinimo);
+
+
+            return `
+
+                <article
+                    class="empleado-item"
+                    style="
+                        ${
+                            stockBajo
+                            ? "border-color:rgba(239,68,68,.65);"
+                            : ""
+                        }
+                    "
+                >
+
+                    <div class="empleado-avatar">
+                        📦
+                    </div>
+
+
+                    <div class="empleado-info">
+
+                        <strong>
+                            ${producto.nombre}
+                        </strong>
+
+                        <span>
+                            ${producto.categoria}
+                            ·
+                            ${producto.unidad}
+                        </span>
+
+                        <small>
+
+                            Código:
+                            ${producto.codigo}
+
+                            ·
+
+                            Costo:
+                            $${Number(
+                                producto.costo
+                            ).toFixed(2)}
+
+                        </small>
+
+                    </div>
+
+
+                    <div class="empleado-estado">
+
+                        <span
+                            class="${
+                                stockBajo
+                                ? "estado-activo"
+                                : "estado-activo"
+                            }"
+                            style="${
+                                stockBajo
+                                ? "background:rgba(239,68,68,.15);color:#ff8b8b;border-color:rgba(239,68,68,.4);"
+                                : ""
+                            }"
+                        >
+
+                            ${producto.existencia}
+                            ${producto.unidad}
+
+                        </span>
+
+                    </div>
+
+
+                    <button
+                        class="empleado-eliminar"
+                        type="button"
+                        title="Eliminar producto"
+                        onclick="eliminarProducto(${producto.id})">
+
+                        ×
+
+                    </button>
+
+                </article>
+
+            `;
+        }
+    ).join("");
+}
+
+
+/* =========================================================
+   FILTRAR INVENTARIO
+   ========================================================= */
+
+function filtrarInventario(texto) {
+
+    const productos =
+        obtenerInventario();
+
+
+    const busqueda =
+        texto
+            .trim()
+            .toLowerCase();
+
+
+    const filtrados =
+        productos.filter(
+            producto =>
+                producto.nombre
+                    .toLowerCase()
+                    .includes(busqueda) ||
+
+                producto.codigo
+                    .toLowerCase()
+                    .includes(busqueda) ||
+
+                producto.categoria
+                    .toLowerCase()
+                    .includes(busqueda)
+        );
+
+
+    const lista =
+        document.getElementById(
+            "lista-inventario"
+        );
+
+
+    if (lista) {
+
+        lista.innerHTML =
+            renderizarInventario(
+                filtrados
+            );
+    }
+}
+
+
+/* =========================================================
+   FORMULARIO PRODUCTO
+   ========================================================= */
+
+function mostrarFormularioProducto() {
+
+    const app = document.getElementById("app");
+
+
+    app.innerHTML = `
+
+        <div class="sistema">
+
+            <header class="topbar">
+
+                <div class="marca">
+
+                    <button
+                        class="texto-boton"
+                        type="button"
+                        onclick="mostrarInventario()">
+
+                        ← Regresar
+
+                    </button>
+
+                    <div class="marca-icono">
+                        CR
+                    </div>
+
+                    <div>
+
+                        <strong>
+                            Nuevo producto
+                        </strong>
+
+                        <small>
+                            Inventario
+                        </small>
+
+                    </div>
+
+                </div>
+
+            </header>
+
+
+            <main class="contenido">
+
+
+                <section class="bienvenida">
+
+                    <div>
+
+                        <div class="etiqueta">
+                            INVENTARIO
+                        </div>
+
+                        <h1>
+                            Registrar producto
+                        </h1>
+
+                        <p>
+                            Captura los datos básicos
+                            del producto.
+                        </p>
+
+                    </div>
+
+                </section>
+
+
+                <section class="panel">
+
+                    <form
+                        class="formulario-personal"
+                        onsubmit="guardarProducto(event)">
+
+
+                        <div class="formulario-grid">
+
+
+                            <div class="campo">
+
+                                <label>
+                                    Código / SKU
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="codigoProducto"
+                                    required
+                                    placeholder="Ej. CAR-001">
+
+                            </div>
+
+
+                            <div class="campo">
+
+                                <label>
+                                    Nombre del producto
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="nombreProducto"
+                                    required
+                                    placeholder="Ej. Carne de res">
+
+                            </div>
+
+
+                            <div class="campo">
+
+                                <label>
+                                    Categoría
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="categoriaProducto"
+                                    required
+                                    placeholder="Ej. Carnes">
+
+                            </div>
+
+
+                            <div class="campo">
+
+                                <label>
+                                    Unidad de medida
+                                </label>
+
+                                <select
+                                    id="unidadProducto"
+                                    required>
+
+                                    <option value="">
+                                        Seleccionar
+                                    </option>
+
+                                    <option value="pieza">
+                                        Pieza
+                                    </option>
+
+                                    <option value="kg">
+                                        Kilogramo
+                                    </option>
+
+                                    <option value="g">
+                                        Gramo
+                                    </option>
+
+                                    <option value="litro">
+                                        Litro
+                                    </option>
+
+                                    <option value="ml">
+                                        Mililitro
+                                    </option>
+
+                                    <option value="caja">
+                                        Caja
+                                    </option>
+
+                                    <option value="paquete">
+                                        Paquete
+                                    </option>
+
+                                    <option value="botella">
+                                        Botella
+                                    </option>
+
+                                </select>
+
+                            </div>
+
+
+                            <div class="campo">
+
+                                <label>
+                                    Existencia actual
+                                </label>
+
+                                <input
+                                    type="number"
+                                    id="existenciaProducto"
+                                    min="0"
+                                    step="0.01"
+                                    value="0"
+                                    required>
+
+                            </div>
+
+
+                            <div class="campo">
+
+                                <label>
+                                    Stock mínimo
+                                </label>
+
+                                <input
+                                    type="number"
+                                    id="stockMinimoProducto"
+                                    min="0"
+                                    step="0.01"
+                                    value="0"
+                                    required>
+
+                            </div>
+
+
+                            <div class="campo">
+
+                                <label>
+                                    Costo unitario
+                                </label>
+
+                                <input
+                                    type="number"
+                                    id="costoProducto"
+                                    min="0"
+                                    step="0.01"
+                                    value="0"
+                                    required
+                                    placeholder="0.00">
+
+                            </div>
+
+
+                            <div class="campo">
+
+                                <label>
+                                    Precio de venta
+                                </label>
+
+                                <input
+                                    type="number"
+                                    id="precioProducto"
+                                    min="0"
+                                    step="0.01"
+                                    value="0"
+                                    placeholder="0.00">
+
+                            </div>
+
+
+                        </div>
+
+
+                        <div class="acciones-formulario">
+
+                            <button
+                                type="button"
+                                class="btn-secundario"
+                                onclick="mostrarInventario()">
+
+                                Cancelar
+
+                            </button>
+
+
+                            <button
+                                type="submit"
+                                class="btn-principal">
+
+                                Guardar producto
+
+                            </button>
+
+                        </div>
+
+
+                    </form>
+
+                </section>
+
+
+            </main>
+
+        </div>
+
+    `;
+}
+
+
+/* =========================================================
+   GUARDAR PRODUCTO
+   ========================================================= */
+
+function guardarProducto(event) {
+
+    event.preventDefault();
+
+
+    const codigo =
+        document
+            .getElementById(
+                "codigoProducto"
+            )
+            .value
+            .trim()
+            .toUpperCase();
+
+
+    const nombre =
+        document
+            .getElementById(
+                "nombreProducto"
+            )
+            .value
+            .trim();
+
+
+    const categoria =
+        document
+            .getElementById(
+                "categoriaProducto"
+            )
+            .value
+            .trim();
+
+
+    const unidad =
+        document
+            .getElementById(
+                "unidadProducto"
+            )
+            .value;
+
+
+    const existencia =
+        Number(
+            document
+                .getElementById(
+                    "existenciaProducto"
+                )
+                .value
+        );
+
+
+    const stockMinimo =
+        Number(
+            document
+                .getElementById(
+                    "stockMinimoProducto"
+                )
+                .value
+        );
+
+
+    const costo =
+        Number(
+            document
+                .getElementById(
+                    "costoProducto"
+                )
+                .value
+        );
+
+
+    const precio =
+        Number(
+            document
+                .getElementById(
+                    "precioProducto"
+                )
+                .value
+        );
+
+
+    const productos =
+        obtenerInventario();
+
+
+    const codigoDuplicado =
+        productos.some(
+            producto =>
+                producto.codigo === codigo
+        );
+
+
+    if (codigoDuplicado) {
+
+        alert(
+            "Ya existe un producto con ese código / SKU."
+        );
+
+        return;
+    }
+
+
+    const producto = {
+
+        id:
+            Date.now(),
+
+        codigo,
+
+        nombre,
+
+        categoria,
+
+        unidad,
+
+        existencia,
+
+        stockMinimo,
+
+        costo,
+
+        precio,
+
+        estado:
+            "Activo",
+
+        fechaRegistro:
+            new Date().toISOString()
+    };
+
+
+    productos.push(
+        producto
+    );
+
+
+    guardarInventario(
+        productos
+    );
+
+
+    mostrarInventario();
+}
+
+
+/* =========================================================
+   ELIMINAR PRODUCTO
+   ========================================================= */
+
+function eliminarProducto(id) {
+
+    const productos =
+        obtenerInventario();
+
+
+    const producto =
+        productos.find(
+            item =>
+                item.id === id
+        );
+
+
+    if (!producto) {
+        return;
+    }
+
+
+    const confirmar =
+        confirm(
+            `¿Deseas eliminar el producto "${producto.nombre}"?`
+        );
+
+
+    if (!confirmar) {
+        return;
+    }
+
+
+    const nuevosProductos =
+        productos.filter(
+            item =>
+                item.id !== id
+        );
+
+
+    guardarInventario(
+        nuevosProductos
+    );
+
+
+    mostrarInventario();
+}
+
+
+/* =========================================================
    REGRESAR DASHBOARD
    ========================================================= */
 
@@ -1875,10 +2878,6 @@ function capitalizar(texto) {
 
 /* =========================================================
    PANTALLA ANTIGUA DE JORNADA FINALIZADA
-   =========================================================
-   
-   Se conserva por ahora para no romper funciones anteriores,
-   pero YA NO SE UTILIZA PARA BLOQUEAR EL SISTEMA.
    ========================================================= */
 
 function mostrarJornadaFinalizada(jornada) {
@@ -1889,10 +2888,6 @@ function mostrarJornadaFinalizada(jornada) {
 
 /* =========================================================
    CERRAR SESIÓN
-   =========================================================
-   
-   Por ahora NO existe un sistema real de autenticación.
-   No debemos confundir "cerrar jornada" con "cerrar sesión".
    ========================================================= */
 
 function cerrarSesion() {
