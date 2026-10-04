@@ -1680,4 +1680,242 @@ a {
     }
 
 }
+
+/* =========================================================
+   AJUSTE ESCRITORIO — CONTROL RESTAURANTE
+   NO AFECTA EL DISEÑO MÓVIL
+   ========================================================= */
+
+@media (min-width: 701px) {
+
+    /* ---------- BARRA SUPERIOR ---------- */
+
+    .topbar {
+        height: 82px;
+        padding: 0 42px;
+        gap: 30px;
+    }
+
+    .marca {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .marca strong {
+        font-size: 17px;
+        line-height: 1.15;
+        white-space: nowrap;
+    }
+
+    .marca span {
+        font-size: 11px;
+        margin-top: 2px;
+        white-space: nowrap;
+    }
+
+    .usuario-boton {
+        flex-shrink: 0;
+        min-width: 185px;
+        justify-content: flex-end;
+    }
+
+    /* ---------- CONTENIDO ---------- */
+
+    .contenido {
+        width: min(1440px, calc(100% - 64px));
+        padding: 38px 0 45px;
+    }
+
+    /* ---------- ENCABEZADO ---------- */
+
+    .bienvenida {
+        align-items: center;
+        margin-bottom: 30px;
+        gap: 30px;
+    }
+
+    .bienvenida > div:first-child {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .bienvenida h1 {
+        font-size: 32px;
+        line-height: 1.15;
+    }
+
+    .bienvenida p:not(.etiqueta) {
+        font-size: 14px;
+    }
+
+    .estado-jornada {
+        flex-shrink: 0;
+        white-space: nowrap;
+    }
+
+    /* ---------- ACCIÓN PRINCIPAL ---------- */
+
+    .accion-principal {
+        min-height: 112px;
+        padding: 25px 30px;
+        gap: 22px;
+    }
+
+    .accion-texto {
+        min-width: 0;
+    }
+
+    .accion-texto h2 {
+        font-size: 21px;
+    }
+
+    .accion-texto p {
+        font-size: 13px;
+    }
+
+    .accion-principal .btn,
+    .btn-terminar-jornada {
+        flex-shrink: 0;
+        min-width: 185px;
+    }
+
+    /* ---------- INDICADORES ---------- */
+
+    .indicadores {
+        grid-template-columns:
+            repeat(4, minmax(190px, 1fr));
+
+        gap: 20px;
+    }
+
+    .indicador {
+        min-width: 0;
+        padding: 21px;
+    }
+
+    .indicador > div:last-child {
+        min-width: 0;
+    }
+
+    .indicador strong {
+        white-space: nowrap;
+    }
+
+    /* ---------- DASHBOARD ---------- */
+
+    .dashboard-grid {
+        grid-template-columns:
+            minmax(0, 1.6fr)
+            minmax(340px, .9fr);
+
+        gap: 24px;
+    }
+
+    .panel {
+        min-width: 0;
+    }
+
+    /* ---------- ACCESOS ---------- */
+
+    .accesos {
+        grid-template-columns:
+            repeat(6, minmax(120px, 1fr));
+
+        gap: 15px;
+    }
+
+    .accesos button {
+        min-height: 92px;
+    }
+
+    /* ---------- JORNADA ---------- */
+
+    .resumen-jornada {
+        grid-template-columns:
+            repeat(3, minmax(130px, 1fr));
+    }
+
+    /* ---------- PERSONAL ---------- */
+
+    .formulario-personal {
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+
+}
+
+
+/* =========================================================
+   ESCRITORIO MEDIANO
+   ========================================================= */
+
+@media (min-width: 701px) and (max-width: 1200px) {
+
+    .topbar {
+        padding: 0 25px;
+    }
+
+    .contenido {
+        width: min(100% - 40px, 1100px);
+    }
+
+    .marca strong {
+        font-size: 15px;
+    }
+
+    .marca span {
+        font-size: 10px;
+    }
+
+    .usuario-boton {
+        min-width: 160px;
+    }
+
+    .indicadores {
+        grid-template-columns:
+            repeat(2, minmax(220px, 1fr));
+    }
+
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .accesos {
+        grid-template-columns:
+            repeat(3, minmax(150px, 1fr));
+    }
+
+}
+
+
+/* =========================================================
+   LAPTOP / ESCRITORIO — EVITAR AMONTONAMIENTO
+   ========================================================= */
+
+@media (min-width: 1201px) {
+
+    .topbar {
+        padding-left: 48px;
+        padding-right: 48px;
+    }
+
+    .contenido {
+        width: min(1450px, calc(100% - 96px));
+    }
+
+    .marca {
+        flex: 0 1 auto;
+    }
+
+    .usuario-boton {
+        min-width: 210px;
+    }
+
+    .dashboard-grid {
+        grid-template-columns:
+            minmax(0, 1.55fr)
+            minmax(360px, .85fr);
+    }
+
+}
 ```
