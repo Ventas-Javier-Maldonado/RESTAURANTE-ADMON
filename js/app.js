@@ -15,6 +15,10 @@ document.addEventListener("DOMContentLoaded", () => {
 const CLAVE_JORNADA = "jornada_restaurante";
 const CLAVE_EMPLEADOS = "empleados_restaurante";
 const CLAVE_INVENTARIO = "inventario_restaurante";
+const CLAVE_JORNADA = "jornada_restaurante";
+const CLAVE_EMPLEADOS = "empleados_restaurante";
+const CLAVE_INVENTARIO = "inventario_restaurante";
+const CLAVE_MOVIMIENTOS = "movimientos_inventario_restaurante";
 
 const USUARIO_ACTUAL = {
     nombre: "Administrador",
