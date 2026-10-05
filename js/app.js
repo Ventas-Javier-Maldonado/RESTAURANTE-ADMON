@@ -643,7 +643,7 @@ function mostrarDashboard(jornada) {
 
                        <button
     type="button"
-    onclick="mostrarProductosVenta()">
+    onclick="alert('BOTON PRODUCTOS OK')"
 
     <span>
         🍽️
