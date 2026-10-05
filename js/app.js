@@ -4798,6 +4798,476 @@ const productosActivos = productosVenta.filter(
 
     `;
 
+   function mostrarProductosVenta(){
+
+    const app = document.getElementById("app");
+
+    if(!app){
+        return;
+    }
+
+    const productos = obtenerProductosVenta();
+
+    app.innerHTML = `
+
+        <div class="pantalla">
+
+            <header class="topbar">
+
+                <div>
+
+                    <h1>Productos de venta</h1>
+
+                    <p>
+                        Administra los productos que realmente se venden al cliente.
+                    </p>
+
+                </div>
+
+                <button
+                    type="button"
+                    onclick="mostrarDashboard(obtenerJornadaActual())"
+                >
+                    ← Regresar
+                </button>
+
+            </header>
+
+
+            <main class="contenido">
+
+                <section class="card">
+
+                    <div class="card-header">
+
+                        <div>
+
+                            <h2>Menú de venta</h2>
+
+                            <p>
+                                Estos productos aparecerán en el módulo de Ventas.
+                            </p>
+
+                        </div>
+
+                        <button
+                            type="button"
+                            onclick="mostrarFormularioProductoVenta()"
+                        >
+                            + Nuevo producto
+                        </button>
+
+                    </div>
+
+
+                    <div class="tabla-contenedor">
+
+                        ${
+                            productos.length === 0
+
+                            ?
+
+                            `
+                            <div class="mensaje-vacio">
+
+                                <h3>No hay productos de venta</h3>
+
+                                <p>
+                                    Registra el primer producto del menú.
+                                </p>
+
+                            </div>
+                            `
+
+                            :
+
+                            `
+                            <table class="tabla">
+
+                                <thead>
+
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Producto</th>
+                                        <th>Categoría</th>
+                                        <th>Precio</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+
+                                </thead>
+
+                                <tbody>
+
+                                    ${
+                                        productos.map(producto => `
+
+                                            <tr>
+
+                                                <td>
+                                                    ${producto.codigo || "-"}
+                                                </td>
+
+                                                <td>
+                                                    <strong>
+                                                        ${producto.nombre}
+                                                    </strong>
+                                                </td>
+
+                                                <td>
+                                                    ${producto.categoria || "-"}
+                                                </td>
+
+                                                <td>
+                                                    $${Number(producto.precio || 0).toFixed(2)}
+                                                </td>
+
+                                                <td>
+                                                    ${producto.estado === "inactivo"
+                                                        ? "Inactivo"
+                                                        : "Activo"
+                                                    }
+                                                </td>
+
+                                                <td>
+
+                                                    <button
+                                                        type="button"
+                                                        onclick="editarProductoVenta('${producto.id}')"
+                                                    >
+                                                        Editar
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        onclick="eliminarProductoVenta('${producto.id}')"
+                                                    >
+                                                        Eliminar
+                                                    </button>
+
+                                                </td>
+
+                                            </tr>
+
+                                        `).join("")
+                                    }
+
+                                </tbody>
+
+                            </table>
+                            `
+                        }
+
+                    </div>
+
+                </section>
+
+            </main>
+
+        </div>
+
+    `;
+}
+
+function mostrarFormularioProductoVenta(id = null){
+
+    const productos = obtenerProductosVenta();
+
+    const producto = id
+        ? productos.find(p => String(p.id) === String(id))
+        : null;
+
+    const app = document.getElementById("app");
+
+    if(!app){
+        return;
+    }
+
+    app.innerHTML = `
+
+        <div class="pantalla">
+
+            <header class="topbar">
+
+                <div>
+
+                    <h1>
+                        ${producto ? "Editar producto" : "Nuevo producto"}
+                    </h1>
+
+                    <p>
+                        Producto que se ofrecerá al cliente.
+                    </p>
+
+                </div>
+
+                <button
+                    type="button"
+                    onclick="mostrarProductosVenta()"
+                >
+                    ← Regresar
+                </button>
+
+            </header>
+
+
+            <main class="contenido">
+
+                <section class="card">
+
+                    <form
+                        onsubmit="guardarProductoVenta(event, ${id ? `'${id}'` : "null"})"
+                    >
+
+                        <div class="form-grid">
+
+                            <div class="campo">
+
+                                <label>
+                                    Código / SKU
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="codigoProductoVenta"
+                                    value="${producto?.codigo || ""}"
+                                    placeholder="Ej. CV-001"
+                                >
+
+                            </div>
+
+
+                            <div class="campo">
+
+                                <label>
+                                    Nombre del producto
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="nombreProductoVenta"
+                                    value="${producto?.nombre || ""}"
+                                    placeholder="Ej. Ceviche de camarón"
+                                    required
+                                >
+
+                            </div>
+
+
+                            <div class="campo">
+
+                                <label>
+                                    Categoría
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="categoriaProductoVenta"
+                                    value="${producto?.categoria || ""}"
+                                    placeholder="Ej. Mariscos"
+                                >
+
+                            </div>
+
+
+                            <div class="campo">
+
+                                <label>
+                                    Precio de venta
+                                </label>
+
+                                <input
+                                    type="number"
+                                    id="precioProductoVenta"
+                                    value="${producto?.precio ?? ""}"
+                                    min="0"
+                                    step="0.01"
+                                    required
+                                >
+
+                            </div>
+
+
+                            <div class="campo">
+
+                                <label>
+                                    Estado
+                                </label>
+
+                                <select id="estadoProductoVenta">
+
+                                    <option
+                                        value="activo"
+                                        ${producto?.estado !== "inactivo" ? "selected" : ""}
+                                    >
+                                        Activo
+                                    </option>
+
+                                    <option
+                                        value="inactivo"
+                                        ${producto?.estado === "inactivo" ? "selected" : ""}
+                                    >
+                                        Inactivo
+                                    </option>
+
+                                </select>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="acciones-formulario">
+
+                            <button
+                                type="button"
+                                onclick="mostrarProductosVenta()"
+                            >
+                                Cancelar
+                            </button>
+
+                            <button
+                                type="submit"
+                            >
+                                ${producto ? "Guardar cambios" : "Guardar producto"}
+                            </button>
+
+                        </div>
+
+                    </form>
+
+                </section>
+
+            </main>
+
+        </div>
+
+    `;
+}
+
+function guardarProductoVenta(event, id = null){
+
+    event.preventDefault();
+
+    const productos = obtenerProductosVenta();
+
+    const nombre = document
+        .getElementById("nombreProductoVenta")
+        .value
+        .trim();
+
+    const codigo = document
+        .getElementById("codigoProductoVenta")
+        .value
+        .trim();
+
+    const categoria = document
+        .getElementById("categoriaProductoVenta")
+        .value
+        .trim();
+
+    const precio = Number(
+        document.getElementById("precioProductoVenta").value
+    );
+
+    const estado = document
+        .getElementById("estadoProductoVenta")
+        .value;
+
+    if(!nombre){
+        alert("Escribe el nombre del producto.");
+        return;
+    }
+
+    if(isNaN(precio) || precio < 0){
+        alert("Ingresa un precio válido.");
+        return;
+    }
+
+    if(id){
+
+        const producto = productos.find(
+            p => String(p.id) === String(id)
+        );
+
+        if(!producto){
+            alert("Producto no encontrado.");
+            return;
+        }
+
+        producto.codigo = codigo;
+        producto.nombre = nombre;
+        producto.categoria = categoria;
+        producto.precio = precio;
+        producto.estado = estado;
+        producto.fechaModificacion = new Date().toISOString();
+
+    }else{
+
+        productos.push({
+
+            id: Date.now(),
+
+            codigo,
+            nombre,
+            categoria,
+            precio,
+            estado,
+
+            fechaRegistro: new Date().toISOString(),
+
+            fechaModificacion: new Date().toISOString()
+
+        });
+
+    }
+
+    guardarProductosVenta(productos);
+
+    alert(
+        id
+        ? "Producto actualizado correctamente."
+        : "Producto registrado correctamente."
+    );
+
+    mostrarProductosVenta();
+}
+
+function editarProductoVenta(id){
+
+    mostrarFormularioProductoVenta(id);
+}
+
+
+function eliminarProductoVenta(id){
+
+    const productos = obtenerProductosVenta();
+
+    const producto = productos.find(
+        p => String(p.id) === String(id)
+    );
+
+    if(!producto){
+        return;
+    }
+
+    const confirmar = confirm(
+        `¿Deseas eliminar "${producto.nombre}"?`
+    );
+
+    if(!confirmar){
+        return;
+    }
+
+    const nuevosProductos = productos.filter(
+        p => String(p.id) !== String(id)
+    );
+
+    guardarProductosVenta(nuevosProductos);
+
+    mostrarProductosVenta();
+}   
+
 
     renderizarCarritoVenta();
 
