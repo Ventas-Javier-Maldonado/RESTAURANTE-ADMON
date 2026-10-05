@@ -4519,6 +4519,35 @@ const CLAVE_VENTAS = "ventas_restaurante";
 
 let carritoVenta = [];
 
+const CLAVE_PRODUCTOS_VENTA = "productos_venta_restaurante";
+const CLAVE_RECETAS = "recetas_restaurante";
+
+function obtenerProductosVenta(){
+    return JSON.parse(
+        localStorage.getItem(CLAVE_PRODUCTOS_VENTA)
+    ) || [];
+}
+
+function guardarProductosVenta(productos){
+    localStorage.setItem(
+        CLAVE_PRODUCTOS_VENTA,
+        JSON.stringify(productos)
+    );
+}
+
+function obtenerRecetas(){
+    return JSON.parse(
+        localStorage.getItem(CLAVE_RECETAS)
+    ) || [];
+}
+
+function guardarRecetas(recetas){
+    localStorage.setItem(
+        CLAVE_RECETAS,
+        JSON.stringify(recetas)
+    );
+}
+
 
 /* =========================================================
    OBTENER VENTAS
@@ -4590,14 +4619,12 @@ function mostrarVentas(){
         return;
     }
 
-    const inventario = obtenerInventario();
+  const productosVenta = obtenerProductosVenta();
 
-    const productosActivos = inventario.filter(
-        producto =>
-            producto.estado !== "inactivo" &&
-            Number(producto.existencia) > 0
-    );
-
+const productosActivos = productosVenta.filter(
+    producto =>
+        producto.estado !== "inactivo"
+);
 
     app.innerHTML = `
 
@@ -4662,11 +4689,11 @@ function mostrarVentas(){
                             `
                             <div class="mensaje-vacio">
 
-                                <h3>No hay productos disponibles</h3>
+                              <h3>No hay productos de venta</h3>
 
-                                <p>
-                                    Agrega productos al inventario antes de realizar una venta.
-                                </p>
+<p>
+    Agrega productos al menú de venta antes de realizar una venta.
+</p>
 
                             </div>
                             `
