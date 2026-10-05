@@ -2233,11 +2233,31 @@ function renderizarInventario(productos) {
                     </div>
 
 
-                   <div style="
+    <div style="
     display:flex;
     gap:8px;
     align-items:center;
 ">
+
+    <button
+        type="button"
+        title="Movimientos"
+        onclick="mostrarMovimientosProducto(${producto.id})"
+        style="
+            width:38px;
+            height:38px;
+            border-radius:10px;
+            border:1px solid rgba(200,164,93,.45);
+            background:#164d3a;
+            color:#ffffff;
+            font-size:17px;
+            cursor:pointer;
+        ">
+
+        ↕️
+
+    </button>
+
 
     <button
         type="button"
@@ -2257,6 +2277,19 @@ function renderizarInventario(productos) {
         ✏️
 
     </button>
+
+
+    <button
+        class="empleado-eliminar"
+        type="button"
+        title="Eliminar producto"
+        onclick="eliminarProducto(${producto.id})">
+
+        ×
+
+    </button>
+
+</div>
 
 
     <button
@@ -3237,6 +3270,1127 @@ function guardarEdicionProducto(event, id) {
 
 
     mostrarInventario();
+}
+
+/* =========================================================
+   MOVIMIENTOS DE INVENTARIO
+   ========================================================= */
+
+
+/* =========================================================
+   OBTENER MOVIMIENTOS
+   ========================================================= */
+
+function obtenerMovimientosInventario() {
+
+    const datos =
+        localStorage.getItem(
+            CLAVE_MOVIMIENTOS
+        );
+
+
+    if (!datos) {
+        return [];
+    }
+
+
+    try {
+
+        return JSON.parse(datos);
+
+    } catch (error) {
+
+        console.error(
+            "Error al leer movimientos:",
+            error
+        );
+
+        return [];
+    }
+}
+
+
+/* =========================================================
+   GUARDAR MOVIMIENTOS
+   ========================================================= */
+
+function guardarMovimientosInventario(
+    movimientos
+) {
+
+    localStorage.setItem(
+        CLAVE_MOVIMIENTOS,
+        JSON.stringify(
+            movimientos
+        )
+    );
+}
+
+
+/* =========================================================
+   MOSTRAR MOVIMIENTOS DE PRODUCTO
+   ========================================================= */
+
+function mostrarMovimientosProducto(
+    id
+) {
+
+    const productos =
+        obtenerInventario();
+
+
+    const producto =
+        productos.find(
+            item =>
+                item.id === id
+        );
+
+
+    if (!producto) {
+        return;
+    }
+
+
+    const movimientos =
+        obtenerMovimientosInventario()
+            .filter(
+                movimiento =>
+                    movimiento.productoId === id
+            )
+            .sort(
+                (a, b) =>
+                    new Date(b.fecha) -
+                    new Date(a.fecha)
+            );
+
+
+    const app =
+        document.getElementById("app");
+
+
+    app.innerHTML = `
+
+        <div class="sistema">
+
+            <header class="topbar">
+
+                <div class="marca">
+
+                    <button
+                        class="texto-boton"
+                        type="button"
+                        onclick="mostrarInventario()">
+
+                        ← Regresar
+
+                    </button>
+
+
+                    <div class="marca-icono">
+                        CR
+                    </div>
+
+
+                    <div>
+
+                        <strong>
+                            Movimientos
+                        </strong>
+
+                        <small>
+                            Inventario
+                        </small>
+
+                    </div>
+
+                </div>
+
+
+                <button
+                    class="usuario-boton"
+                    type="button">
+
+                    <span class="usuario-avatar">
+                        ${obtenerIniciales(
+                            USUARIO_ACTUAL.nombre
+                        )}
+                    </span>
+
+                    <span class="usuario-info">
+
+                        <strong>
+                            ${USUARIO_ACTUAL.nombre}
+                        </strong>
+
+                        <small>
+                            ${USUARIO_ACTUAL.rol}
+                        </small>
+
+                    </span>
+
+                </button>
+
+            </header>
+
+
+            <main class="contenido">
+
+
+                <section class="bienvenida">
+
+                    <div>
+
+                        <div class="etiqueta">
+                            INVENTARIO
+                        </div>
+
+
+                        <h1>
+                            ${producto.nombre}
+                        </h1>
+
+
+                        <p>
+                            Historial de movimientos
+                            del producto.
+                        </p>
+
+                    </div>
+
+
+                    <button
+                        class="btn-agregar-personal"
+                        type="button"
+                        onclick="mostrarFormularioMovimiento(${producto.id})">
+
+                        + Nuevo movimiento
+
+                    </button>
+
+                </section>
+
+
+                <section class="indicadores">
+
+
+                    <article class="indicador">
+
+                        <div class="indicador-icono">
+                            📦
+                        </div>
+
+
+                        <div>
+
+                            <span>
+                                EXISTENCIA
+                            </span>
+
+
+                            <strong>
+                                ${producto.existencia}
+                            </strong>
+
+
+                            <small>
+                                ${producto.unidad}
+                            </small>
+
+                        </div>
+
+                    </article>
+
+
+                    <article class="indicador">
+
+                        <div class="indicador-icono">
+                            ↕
+                        </div>
+
+
+                        <div>
+
+                            <span>
+                                MOVIMIENTOS
+                            </span>
+
+
+                            <strong>
+                                ${movimientos.length}
+                            </strong>
+
+
+                            <small>
+                                Registrados
+                            </small>
+
+                        </div>
+
+                    </article>
+
+
+                </section>
+
+
+                <section class="panel panel-personal">
+
+
+                    <div class="panel-cabecera">
+
+                        <div>
+
+                            <span>
+                                HISTORIAL
+                            </span>
+
+
+                            <h2>
+                                Movimientos
+                            </h2>
+
+                        </div>
+
+
+                        <span class="contador-alertas">
+                            ${movimientos.length}
+                        </span>
+
+                    </div>
+
+
+                    <div>
+
+                        ${
+                            renderizarMovimientos(
+                                movimientos
+                            )
+                        }
+
+                    </div>
+
+
+                </section>
+
+
+            </main>
+
+
+            <nav class="navegacion-movil">
+
+                <button
+                    type="button"
+                    onclick="regresarDashboard()">
+
+                    <span>
+                        ⌂
+                    </span>
+
+                    Inicio
+
+                </button>
+
+
+                <button
+                    type="button"
+                    onclick="mostrarPersonal()">
+
+                    <span>
+                        👥
+                    </span>
+
+                    Personal
+
+                </button>
+
+
+                <button
+                    class="activo"
+                    type="button"
+                    onclick="mostrarInventario()">
+
+                    <span>
+                        📦
+                    </span>
+
+                    Inventario
+
+                </button>
+
+
+                <button
+                    type="button">
+
+                    <span>
+                        ⋯
+                    </span>
+
+                    Más
+
+                </button>
+
+            </nav>
+
+        </div>
+
+    `;
+}
+
+
+/* =========================================================
+   RENDERIZAR MOVIMIENTOS
+   ========================================================= */
+
+function renderizarMovimientos(
+    movimientos
+) {
+
+    if (!movimientos.length) {
+
+        return `
+
+            <div class="personal-vacio">
+
+                <div>
+                    ↕️
+                </div>
+
+
+                <h3>
+                    Sin movimientos registrados
+                </h3>
+
+
+                <p>
+                    Cuando registres una entrada,
+                    salida, merma o ajuste,
+                    aparecerá aquí.
+                </p>
+
+
+                <button
+                    class="btn-principal"
+                    type="button"
+                    onclick="mostrarFormularioMovimiento(
+                        obtenerInventario()[0]?.id
+                    )">
+
+                    + Registrar movimiento
+
+                </button>
+
+            </div>
+
+        `;
+    }
+
+
+    return movimientos.map(
+        movimiento => {
+
+            let color =
+                "#82bcff";
+
+            let signo =
+                "";
+
+
+            if (
+                movimiento.tipo ===
+                "Entrada"
+            ) {
+
+                color =
+                    "#65d695";
+
+                signo =
+                    "+";
+
+            }
+
+
+            if (
+                movimiento.tipo ===
+                "Salida"
+            ) {
+
+                color =
+                    "#ff8b8b";
+
+                signo =
+                    "-";
+
+            }
+
+
+            if (
+                movimiento.tipo ===
+                "Merma"
+            ) {
+
+                color =
+                    "#ffb86b";
+
+                signo =
+                    "-";
+
+            }
+
+
+            if (
+                movimiento.tipo ===
+                "Ajuste"
+            ) {
+
+                color =
+                    "#82bcff";
+
+            }
+
+
+            return `
+
+                <article
+                    class="empleado-item"
+                    style="
+                        border-color:
+                        rgba(200,164,93,.22);
+                    "
+                >
+
+                    <div
+                        class="empleado-avatar"
+                        style="
+                            color:${color};
+                        "
+                    >
+
+                        ${signo || "↕"}
+
+                    </div>
+
+
+                    <div class="empleado-info">
+
+                        <strong>
+                            ${movimiento.tipo}
+                        </strong>
+
+
+                        <span>
+
+                            ${
+                                movimiento.tipo ===
+                                "Ajuste"
+
+                                ? `Nueva existencia:
+                                   ${movimiento.cantidad}
+                                   ${movimiento.unidad}`
+
+                                : `${signo}
+                                   ${movimiento.cantidad}
+                                   ${movimiento.unidad}`
+                            }
+
+                        </span>
+
+
+                        <small>
+
+                            ${formatearFechaHora(
+                                movimiento.fecha
+                            )}
+
+                            ·
+
+                            ${movimiento.usuario}
+
+                        </small>
+
+
+                        ${
+                            movimiento.motivo
+                            ? `
+                                <small>
+                                    Motivo:
+                                    ${movimiento.motivo}
+                                </small>
+                            `
+                            : ""
+                        }
+
+                    </div>
+
+
+                    <div
+                        class="empleado-estado"
+                        style="
+                            color:${color};
+                        "
+                    >
+
+                        ${
+                            movimiento.tipo ===
+                            "Ajuste"
+
+                            ? movimiento.cantidad
+
+                            : `${signo}${movimiento.cantidad}`
+                        }
+
+                    </div>
+
+                </article>
+
+            `;
+
+        }
+    ).join("");
+}
+
+
+/* =========================================================
+   FORMULARIO DE MOVIMIENTO
+   ========================================================= */
+
+function mostrarFormularioMovimiento(
+    productoId
+) {
+
+    const productos =
+        obtenerInventario();
+
+
+    const producto =
+        productos.find(
+            item =>
+                item.id === productoId
+        );
+
+
+    if (!producto) {
+        return;
+    }
+
+
+    const app =
+        document.getElementById("app");
+
+
+    app.innerHTML = `
+
+        <div class="sistema">
+
+            <header class="topbar">
+
+                <div class="marca">
+
+                    <button
+                        class="texto-boton"
+                        type="button"
+                        onclick="mostrarMovimientosProducto(${producto.id})">
+
+                        ← Regresar
+
+                    </button>
+
+
+                    <div class="marca-icono">
+                        CR
+                    </div>
+
+
+                    <div>
+
+                        <strong>
+                            Nuevo movimiento
+                        </strong>
+
+                        <small>
+                            Inventario
+                        </small>
+
+                    </div>
+
+                </div>
+
+            </header>
+
+
+            <main class="contenido">
+
+
+                <section class="bienvenida">
+
+                    <div>
+
+                        <div class="etiqueta">
+                            INVENTARIO
+                        </div>
+
+
+                        <h1>
+                            ${producto.nombre}
+                        </h1>
+
+
+                        <p>
+                            Existencia actual:
+                            <strong>
+                                ${producto.existencia}
+                                ${producto.unidad}
+                            </strong>
+                        </p>
+
+                    </div>
+
+                </section>
+
+
+                <section class="panel">
+
+                    <form
+                        class="formulario-personal"
+                        onsubmit="
+                            guardarMovimiento(
+                                event,
+                                ${producto.id}
+                            )
+                        ">
+
+
+                        <div class="formulario-grid">
+
+
+                            <div class="campo campo-completo">
+
+                                <label>
+                                    Tipo de movimiento
+                                </label>
+
+
+                                <select
+                                    id="tipoMovimiento"
+                                    required>
+
+                                    <option value="">
+                                        Seleccionar
+                                    </option>
+
+
+                                    <option value="Entrada">
+                                        Entrada
+                                    </option>
+
+
+                                    <option value="Salida">
+                                        Salida
+                                    </option>
+
+
+                                    <option value="Merma">
+                                        Merma
+                                    </option>
+
+
+                                    <option value="Ajuste">
+                                        Ajuste
+                                    </option>
+
+                                </select>
+
+                            </div>
+
+
+                            <div
+                                class="campo"
+                                id="campoCantidad"
+                            >
+
+                                <label>
+                                    Cantidad
+                                </label>
+
+
+                                <input
+                                    type="number"
+                                    id="cantidadMovimiento"
+                                    min="0"
+                                    step="0.01"
+                                    required
+                                    placeholder="0.00">
+
+                            </div>
+
+
+                            <div
+                                class="campo"
+                                id="campoExistenciaNueva"
+                                style="display:none;"
+                            >
+
+                                <label>
+                                    Nueva existencia
+                                </label>
+
+
+                                <input
+                                    type="number"
+                                    id="nuevaExistenciaMovimiento"
+                                    min="0"
+                                    step="0.01"
+                                    placeholder="0.00">
+
+                            </div>
+
+
+                            <div class="campo campo-completo">
+
+                                <label>
+                                    Motivo / observación
+                                </label>
+
+
+                                <textarea
+                                    id="motivoMovimiento"
+                                    rows="4"
+                                    placeholder="Ej. Compra de proveedor, producto dañado, corrección de inventario..."></textarea>
+
+                            </div>
+
+
+                        </div>
+
+
+                        <div class="acciones-formulario">
+
+                            <button
+                                type="button"
+                                class="btn-secundario"
+                                onclick="
+                                    mostrarMovimientosProducto(
+                                        ${producto.id}
+                                    )
+                                ">
+
+                                Cancelar
+
+                            </button>
+
+
+                            <button
+                                type="submit"
+                                class="btn-principal">
+
+                                Guardar movimiento
+
+                            </button>
+
+                        </div>
+
+
+                    </form>
+
+                </section>
+
+
+            </main>
+
+        </div>
+
+    `;
+
+
+    const tipo =
+        document.getElementById(
+            "tipoMovimiento"
+        );
+
+
+    tipo.addEventListener(
+        "change",
+        function() {
+
+            const cantidad =
+                document.getElementById(
+                    "campoCantidad"
+                );
+
+
+            const nuevaExistencia =
+                document.getElementById(
+                    "campoExistenciaNueva"
+                );
+
+
+            if (
+                this.value ===
+                "Ajuste"
+            ) {
+
+                cantidad.style.display =
+                    "none";
+
+
+                nuevaExistencia.style.display =
+                    "block";
+
+
+                document.getElementById(
+                    "cantidadMovimiento"
+                ).required = false;
+
+
+                document.getElementById(
+                    "nuevaExistenciaMovimiento"
+                ).required = true;
+
+            } else {
+
+                cantidad.style.display =
+                    "block";
+
+
+                nuevaExistencia.style.display =
+                    "none";
+
+
+                document.getElementById(
+                    "cantidadMovimiento"
+                ).required = true;
+
+
+                document.getElementById(
+                    "nuevaExistenciaMovimiento"
+                ).required = false;
+
+            }
+
+        }
+    );
+}
+
+
+/* =========================================================
+   GUARDAR MOVIMIENTO
+   ========================================================= */
+
+function guardarMovimiento(
+    event,
+    productoId
+) {
+
+    event.preventDefault();
+
+
+    const productos =
+        obtenerInventario();
+
+
+    const indice =
+        productos.findIndex(
+            producto =>
+                producto.id ===
+                productoId
+        );
+
+
+    if (indice === -1) {
+        return;
+    }
+
+
+    const producto =
+        productos[indice];
+
+
+    const tipo =
+        document.getElementById(
+            "tipoMovimiento"
+        ).value;
+
+
+    const cantidad =
+        Number(
+            document.getElementById(
+                "cantidadMovimiento"
+            ).value
+        );
+
+
+    const nuevaExistencia =
+        Number(
+            document.getElementById(
+                "nuevaExistenciaMovimiento"
+            ).value
+        );
+
+
+    const motivo =
+        document.getElementById(
+            "motivoMovimiento"
+        ).value.trim();
+
+
+    let existenciaAnterior =
+        Number(
+            producto.existencia
+        );
+
+
+    let existenciaNueva =
+        existenciaAnterior;
+
+
+    if (
+        tipo === "Entrada"
+    ) {
+
+        existenciaNueva =
+            existenciaAnterior +
+            cantidad;
+
+    }
+
+
+    if (
+        tipo === "Salida" ||
+        tipo === "Merma"
+    ) {
+
+        existenciaNueva =
+            existenciaAnterior -
+            cantidad;
+
+
+        if (
+            existenciaNueva < 0
+        ) {
+
+            alert(
+                "No puedes sacar más producto del que existe actualmente."
+            );
+
+            return;
+        }
+
+    }
+
+
+    if (
+        tipo === "Ajuste"
+    ) {
+
+        if (
+            isNaN(
+                nuevaExistencia
+            )
+        ) {
+
+            alert(
+                "Captura la nueva existencia."
+            );
+
+            return;
+        }
+
+
+        existenciaNueva =
+            nuevaExistencia;
+    }
+
+
+    const movimiento = {
+
+        id:
+            Date.now(),
+
+        productoId:
+            producto.id,
+
+        productoNombre:
+            producto.nombre,
+
+        tipo,
+
+        cantidad:
+            tipo === "Ajuste"
+            ? nuevaExistencia
+            : cantidad,
+
+        existenciaAnterior,
+
+        existenciaNueva,
+
+        unidad:
+            producto.unidad,
+
+        motivo,
+
+        usuario:
+            USUARIO_ACTUAL.nombre,
+
+        fecha:
+            new Date().toISOString()
+
+    };
+
+
+    producto.existencia =
+        existenciaNueva;
+
+
+    const movimientos =
+        obtenerMovimientosInventario();
+
+
+    movimientos.push(
+        movimiento
+    );
+
+
+    guardarInventario(
+        productos
+    );
+
+
+    guardarMovimientosInventario(
+        movimientos
+    );
+
+
+    mostrarMovimientosProducto(
+        productoId
+    );
+}
+
+
+/* =========================================================
+   FECHA Y HORA DE MOVIMIENTO
+   ========================================================= */
+
+function formatearFechaHora(
+    fecha
+) {
+
+    if (!fecha) {
+        return "—";
+    }
+
+
+    const fechaObjeto =
+        new Date(fecha);
+
+
+    return fechaObjeto.toLocaleString(
+        "es-MX",
+        {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+        }
+    );
 }
 
 
