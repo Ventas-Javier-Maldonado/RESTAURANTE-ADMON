@@ -668,6 +668,20 @@ function mostrarDashboard(jornada) {
 
                         </button>
 
+                        <button
+    type="button"
+    onclick="mostrarVentas()">
+
+    <span>
+        🛒
+    </span>
+
+    <span>
+        Ventas
+    </span>
+
+</button>
+
                     </div>
 
                 </section>
@@ -830,22 +844,6 @@ function mostrarDashboard(jornada) {
     `;
 }
 
- <button
-        type="button"
-        onclick="mostrarVentas()">
-
-        <span>
-            🛒
-        </span>
-
-        <span>
-            Ventas
-        </span>
-
-    </button>
-
-
-</div>
 
 /* =========================================================
    REGRESAR AL DASHBOARD
