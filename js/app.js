@@ -15,9 +15,6 @@ document.addEventListener("DOMContentLoaded", () => {
 const CLAVE_JORNADA = "jornada_restaurante";
 const CLAVE_EMPLEADOS = "empleados_restaurante";
 const CLAVE_INVENTARIO = "inventario_restaurante";
-const CLAVE_JORNADA = "jornada_restaurante";
-const CLAVE_EMPLEADOS = "empleados_restaurante";
-const CLAVE_INVENTARIO = "inventario_restaurante";
 const CLAVE_MOVIMIENTOS = "movimientos_inventario_restaurante";
 
 const USUARIO_ACTUAL = {
@@ -171,7 +168,9 @@ function mostrarPantallaJornada() {
                 </button>
 
                 <p class="jornada-rol">
-                    ${USUARIO_ACTUAL.nombre} · ${USUARIO_ACTUAL.rol}
+                    ${USUARIO_ACTUAL.nombre}
+                    ·
+                    ${USUARIO_ACTUAL.rol}
                 </p>
 
             </section>
@@ -187,50 +186,18 @@ function mostrarPantallaJornada() {
 
 function iniciarJornada() {
 
-    const jornadaExistente = obtenerJornadaActual();
-
-    if (jornadaExistente) {
-
-        mostrarDashboard(jornadaExistente);
-
-        return;
-    }
-
-    const ahora = new Date();
-
     const jornada = {
-
-        usuario: USUARIO_ACTUAL.nombre,
-
-        rol: USUARIO_ACTUAL.rol,
-
         fecha: obtenerFechaActual(),
-
-        entrada: ahora.toLocaleTimeString(
-            "es-MX",
-            {
-                hour: "2-digit",
-                minute: "2-digit"
-            }
-        ),
-
+        entrada: new Date().toISOString(),
         salida: null,
-
-        timestampEntrada: ahora.getTime(),
-
-        timestampSalida: null,
-
-        horasTrabajadas: null,
-
-        estado: "activa"
+        usuario: USUARIO_ACTUAL.nombre,
+        estado: "Activa"
     };
-
 
     localStorage.setItem(
         CLAVE_JORNADA,
         JSON.stringify(jornada)
     );
-
 
     mostrarDashboard(jornada);
 }
@@ -242,97 +209,77 @@ function iniciarJornada() {
 
 function terminarJornada() {
 
-    const jornada = obtenerJornadaActual();
+    const jornada =
+        obtenerJornadaActual();
 
     if (!jornada) {
-
-        mostrarPantallaJornada();
-
         return;
     }
 
-
-    if (jornada.estado === "finalizada") {
-
-        mostrarDashboard(jornada);
-
-        return;
-    }
-
-
-    const confirmar = confirm(
-        "¿Deseas terminar tu jornada de hoy?"
-    );
-
+    const confirmar =
+        confirm(
+            "¿Deseas registrar tu salida de la jornada?"
+        );
 
     if (!confirmar) {
         return;
     }
 
+    jornada.salida =
+        new Date().toISOString();
 
-    const ahora = new Date();
-
-
-    jornada.salida = ahora.toLocaleTimeString(
-        "es-MX",
-        {
-            hour: "2-digit",
-            minute: "2-digit"
-        }
-    );
-
-
-    jornada.timestampSalida = ahora.getTime();
-
-
-    jornada.horasTrabajadas =
-        calcularHorasTrabajadas(
-            jornada.timestampEntrada,
-            jornada.timestampSalida
-        );
-
-
-    jornada.estado = "finalizada";
-
+    jornada.estado =
+        "Terminada";
 
     localStorage.setItem(
         CLAVE_JORNADA,
         JSON.stringify(jornada)
     );
 
-
     mostrarDashboard(jornada);
 }
 
 
 /* =========================================================
-   CALCULAR HORAS
+   HORAS TRABAJADAS
    ========================================================= */
 
-function calcularHorasTrabajadas(
-    entrada,
-    salida
-) {
+function calcularHorasTrabajadas(jornada) {
 
-    const diferencia = salida - entrada;
+    if (!jornada || !jornada.entrada) {
+        return "0 h 00 min";
+    }
 
-    const minutosTotales =
+    const inicio =
+        new Date(jornada.entrada);
+
+    const fin =
+        jornada.salida
+            ? new Date(jornada.salida)
+            : new Date();
+
+    const diferencia =
+        Math.max(
+            0,
+            fin - inicio
+        );
+
+    const minutos =
         Math.floor(
             diferencia / 60000
         );
 
-
     const horas =
         Math.floor(
-            minutosTotales / 60
+            minutos / 60
         );
 
+    const minutosRestantes =
+        minutos % 60;
 
-    const minutos =
-        minutosTotales % 60;
-
-
-    return `${horas} h ${minutos} min`;
+    return `${horas} h ${String(
+        minutosRestantes
+    ).padStart(2, "0")} min`;
 }
 
 
@@ -342,75 +289,16 @@ function calcularHorasTrabajadas(
 
 function mostrarDashboard(jornada) {
 
-    const app = document.getElementById("app");
-
-    const jornadaActiva =
-        jornada &&
-        jornada.estado === "activa";
-
-
-    const estadoJornada = jornadaActiva
-        ? `
-            <div class="estado-jornada">
-
-                <span class="punto-verde"></span>
-
-                Jornada iniciada a las
-                <strong>
-                    ${jornada.entrada}
-                </strong>
-
-            </div>
-        `
-        : `
-            <div class="estado-jornada estado-jornada-finalizada">
-
-                <span class="punto-gris"></span>
-
-                Jornada finalizada a las
-                <strong>
-                    ${jornada.salida}
-                </strong>
-
-                · ${jornada.horasTrabajadas}
-
-            </div>
-        `;
-
-
-    const botonJornada = jornadaActiva
-        ? `
-            <button
-                class="btn-terminar-jornada"
-                type="button"
-                onclick="terminarJornada()">
-
-                🏁 TERMINAR JORNADA
-
-            </button>
-        `
-        : `
-            <div class="jornada-finalizada-info">
-
-                ✓ Jornada de hoy finalizada
-
-                <span>
-                    ${jornada.horasTrabajadas}
-                </span>
-
-            </div>
-        `;
-
+    const app =
+        document.getElementById("app");
 
     const inventario =
         obtenerInventario();
 
-
-    const alertasInventario =
+    const productosBajoMinimo =
         obtenerProductosBajoMinimo(
             inventario
-        ).length;
-
+        );
 
     app.innerHTML = `
 
@@ -425,6 +313,7 @@ function mostrarDashboard(jornada) {
                     </div>
 
                     <div>
+
                         <strong>
                             Control Restaurante
                         </strong>
@@ -432,6 +321,7 @@ function mostrarDashboard(jornada) {
                         <small>
                             Administración
                         </small>
+
                     </div>
 
                 </div>
@@ -439,8 +329,7 @@ function mostrarDashboard(jornada) {
 
                 <button
                     class="usuario-boton"
-                    type="button"
-                    title="Usuario actual">
+                    type="button">
 
                     <span class="usuario-avatar">
                         ${obtenerIniciales(
@@ -473,29 +362,84 @@ function mostrarDashboard(jornada) {
                     <div>
 
                         <div class="etiqueta">
-                            PANEL DE CONTROL
+                            PANEL PRINCIPAL
                         </div>
 
                         <h1>
-                            Buenos días,
+                            Buen día,
                             ${USUARIO_ACTUAL.nombre}
                         </h1>
 
                         <p>
-                            Aquí tienes el estado actual
-                            de la operación del restaurante.
+                            Control y operación
+                            del restaurante.
                         </p>
 
                     </div>
 
+                </section>
 
-                    <div class="resumen-jornada">
 
-                        ${estadoJornada}
+                <section class="jornada-resumen">
 
-                        ${botonJornada}
+                    <div class="jornada-resumen-icono">
+                        ✓
+                    </div>
+
+                    <div>
+
+                        <span>
+                            JORNADA
+                        </span>
+
+                        <strong>
+                            ${
+                                jornada.estado === "Activa"
+                                    ? "Jornada iniciada"
+                                    : "Jornada terminada"
+                            }
+                        </strong>
+
+                        <small>
+                            Entrada:
+                            ${
+                                jornada.entrada
+                                    ? new Date(
+                                        jornada.entrada
+                                    ).toLocaleTimeString(
+                                        "es-MX",
+                                        {
+                                            hour:
+                                                "2-digit",
+                                            minute:
+                                                "2-digit"
+                                        }
+                                    )
+                                    : "--:--"
+                            }
+                        </small>
 
                     </div>
+
+
+                    ${
+                        jornada.estado === "Activa"
+                            ? `
+                                <button
+                                    class="btn-jornada-salida"
+                                    type="button"
+                                    onclick="terminarJornada()">
+
+                                    TERMINAR JORNADA
+
+                                </button>
+                            `
+                            : `
+                                <div class="jornada-terminada">
+                                    Jornada terminada
+                                </div>
+                            `
+                    }
 
                 </section>
 
@@ -505,8 +449,8 @@ function mostrarDashboard(jornada) {
 
                     <article class="indicador">
 
-                        <div class="indicador-icono positivo">
-                            $
+                        <div class="indicador-icono">
+                            💰
                         </div>
 
                         <div>
@@ -530,8 +474,8 @@ function mostrarDashboard(jornada) {
 
                     <article class="indicador">
 
-                        <div class="indicador-icono negativo">
-                            −
+                        <div class="indicador-icono">
+                            📉
                         </div>
 
                         <div>
@@ -556,7 +500,7 @@ function mostrarDashboard(jornada) {
                     <article class="indicador">
 
                         <div class="indicador-icono">
-                            $
+                            📊
                         </div>
 
                         <div>
@@ -580,208 +524,83 @@ function mostrarDashboard(jornada) {
 
                     <article class="indicador">
 
-                        <div class="indicador-icono negativo">
-                            !
+                        <div class="indicador-icono">
+                            📦
                         </div>
 
                         <div>
 
                             <span>
-                                ALERTAS
+                                INVENTARIO
                             </span>
 
                             <strong>
-                                ${alertasInventario}
+                                ${inventario.length}
                             </strong>
 
                             <small>
-                                Pendientes
+                                Productos
                             </small>
 
                         </div>
 
                     </article>
 
-
                 </section>
 
 
-                <section class="dashboard-grid">
+                ${
+                    productosBajoMinimo.length
+                        ? `
+                            <section class="alerta-inventario">
 
-
-                    <article class="panel">
-
-                        <div class="panel-cabecera">
-
-                            <div>
-
-                                <span>
-                                    OPERACIÓN
-                                </span>
-
-                                <h2>
-                                    Actividad reciente
-                                </h2>
-
-                            </div>
-
-                            <button
-                                class="texto-boton"
-                                type="button">
-
-                                Ver todo
-
-                            </button>
-
-                        </div>
-
-
-                        <div class="actividad">
-
-
-                            <div class="actividad-item">
-
-                                <div class="actividad-icono positivo">
-                                    $
+                                <div class="alerta-icono">
+                                    ⚠️
                                 </div>
 
-                                <div class="actividad-info">
+                                <div>
 
                                     <strong>
-                                        Sin movimientos registrados
-                                    </strong>
-
-                                    <span>
-                                        Los movimientos aparecerán aquí
-                                    </span>
-
-                                </div>
-
-                            </div>
-
-
-                            <div class="actividad-item">
-
-                                <div class="actividad-icono">
-                                    ✓
-                                </div>
-
-                                <div class="actividad-info">
-
-                                    <strong>
-                                        Jornada
+                                        Atención de inventario
                                     </strong>
 
                                     <span>
                                         ${
-                                            jornadaActiva
-                                            ? `Iniciada a las ${jornada.entrada}`
-                                            : `Finalizada a las ${jornada.salida}`
+                                            productosBajoMinimo.length
                                         }
+                                        producto(s)
+                                        están en su mínimo
+                                        o por debajo.
                                     </span>
 
                                 </div>
 
-                            </div>
+                                <button
+                                    type="button"
+                                    onclick="mostrarInventario()">
+
+                                    Revisar
+
+                                </button>
+
+                            </section>
+                        `
+                        : ""
+                }
 
 
-                        </div>
-
-                    </article>
-
-
-                    <article class="panel">
-
-                        <div class="panel-cabecera">
-
-                            <div>
-
-                                <span>
-                                    ATENCIÓN
-                                </span>
-
-                                <h2>
-                                    Alertas
-                                </h2>
-
-                            </div>
-
-                            <span class="contador-alertas">
-                                ${alertasInventario}
-                            </span>
-
-                        </div>
-
-
-                        <div class="alertas">
-
-                            ${
-                                alertasInventario === 0
-                                ? `
-                                    <div class="alerta alerta-amarilla">
-
-                                        <div class="alerta-icono">
-                                            ✓
-                                        </div>
-
-                                        <div>
-
-                                            <strong>
-                                                Todo en orden
-                                            </strong>
-
-                                            <span>
-                                                No hay alertas pendientes.
-                                            </span>
-
-                                        </div>
-
-                                    </div>
-                                `
-                                : `
-                                    <div class="alerta alerta-amarilla">
-
-                                        <div class="alerta-icono">
-                                            !
-                                        </div>
-
-                                        <div>
-
-                                            <strong>
-                                                Stock bajo
-                                            </strong>
-
-                                            <span>
-                                                ${alertasInventario}
-                                                producto(s) requieren atención.
-                                            </span>
-
-                                        </div>
-
-                                    </div>
-                                `
-                            }
-
-                        </div>
-
-                    </article>
-
-
-                </section>
-
-
-                <section class="accesos">
+                <section class="panel">
 
                     <div class="panel-cabecera">
 
                         <div>
 
                             <span>
-                                OPERACIÓN
+                                ACCESOS RÁPIDOS
                             </span>
 
                             <h2>
-                                Accesos rápidos
+                                Operación
                             </h2>
 
                         </div>
@@ -789,102 +608,159 @@ function mostrarDashboard(jornada) {
                     </div>
 
 
-                    <div class="dashboard-grid">
+                    <div class="accesos">
 
 
                         <button
-                            class="accion-principal"
                             type="button"
                             onclick="mostrarPersonal()">
 
-                            <span class="accion-icono">
+                            <span>
                                 👥
                             </span>
 
-                            <span class="accion-texto">
-
-                                <strong>
-                                    Personal
-                                </strong>
-
-                                <small>
-                                    Empleados y jornadas
-                                </small>
-
+                            <span>
+                                Personal
                             </span>
 
                         </button>
 
 
                         <button
-                            class="accion-principal"
                             type="button"
                             onclick="mostrarInventario()">
 
-                            <span class="accion-icono">
+                            <span>
                                 📦
                             </span>
 
-                            <span class="accion-texto">
-
-                                <strong>
-                                    Inventario
-                                </strong>
-
-                                <small>
-                                    Existencias y mínimos
-                                </small>
-
+                            <span>
+                                Inventario
                             </span>
 
                         </button>
 
 
                         <button
-                            class="accion-principal"
                             type="button">
 
-                            <span class="accion-icono">
+                            <span>
                                 🧾
                             </span>
 
-                            <span class="accion-texto">
-
-                                <strong>
-                                    Tickets
-                                </strong>
-
-                                <small>
-                                    Compras y validación
-                                </small>
-
+                            <span>
+                                Tickets
                             </span>
 
                         </button>
 
 
                         <button
-                            class="accion-principal"
                             type="button">
 
-                            <span class="accion-icono">
-                                💰
+                            <span>
+                                💵
                             </span>
 
-                            <span class="accion-texto">
-
-                                <strong>
-                                    Caja
-                                </strong>
-
-                                <small>
-                                    Entradas y salidas
-                                </small>
-
+                            <span>
+                                Caja
                             </span>
 
                         </button>
 
+                    </div>
+
+                </section>
+
+
+                <section class="panel">
+
+                    <div class="panel-cabecera">
+
+                        <div>
+
+                            <span>
+                                RESUMEN
+                            </span>
+
+                            <h2>
+                                Jornada actual
+                            </h2>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="resumen-jornada">
+
+                        <div>
+
+                            <span>
+                                Entrada
+                            </span>
+
+                            <strong>
+                                ${
+                                    jornada.entrada
+                                        ? new Date(
+                                            jornada.entrada
+                                        ).toLocaleTimeString(
+                                            "es-MX",
+                                            {
+                                                hour:
+                                                    "2-digit",
+                                                minute:
+                                                    "2-digit"
+                                            }
+                                        )
+                                        : "--:--"
+                                }
+                            </strong>
+
+                        </div>
+
+
+                        <div>
+
+                            <span>
+                                Salida
+                            </span>
+
+                            <strong>
+                                ${
+                                    jornada.salida
+                                        ? new Date(
+                                            jornada.salida
+                                        ).toLocaleTimeString(
+                                            "es-MX",
+                                            {
+                                                hour:
+                                                    "2-digit",
+                                                minute:
+                                                    "2-digit"
+                                            }
+                                        )
+                                        : "En curso"
+                                }
+                            </strong>
+
+                        </div>
+
+
+                        <div>
+
+                            <span>
+                                Tiempo trabajado
+                            </span>
+
+                            <strong>
+                                ${calcularHorasTrabajadas(
+                                    jornada
+                                )}
+                            </strong>
+
+                        </div>
 
                     </div>
 
@@ -897,8 +773,9 @@ function mostrarDashboard(jornada) {
             <nav class="navegacion-movil">
 
                 <button
+                    class="activo"
                     type="button"
-                    onclick="mostrarDashboard(obtenerJornadaActual())">
+                    onclick="regresarDashboard()">
 
                     <span>
                         ⌂
@@ -948,9 +825,27 @@ function mostrarDashboard(jornada) {
 
             </nav>
 
-
         </div>
+
     `;
+}
+
+
+/* =========================================================
+   REGRESAR AL DASHBOARD
+   ========================================================= */
+
+function regresarDashboard() {
+
+    const jornada =
+        obtenerJornadaActual();
+
+    if (!jornada) {
+        mostrarPantallaJornada();
+        return;
+    }
+
+    mostrarDashboard(jornada);
 }
 
 
@@ -958,12 +853,53 @@ function mostrarDashboard(jornada) {
    PERSONAL
    ========================================================= */
 
+function obtenerEmpleados() {
+
+    const datos =
+        localStorage.getItem(
+            CLAVE_EMPLEADOS
+        );
+
+    if (!datos) {
+        return [];
+    }
+
+    try {
+
+        return JSON.parse(datos);
+
+    } catch (error) {
+
+        console.error(
+            "Error al leer empleados:",
+            error
+        );
+
+        return [];
+    }
+}
+
+
+function guardarEmpleados(
+    empleados
+) {
+
+    localStorage.setItem(
+        CLAVE_EMPLEADOS,
+        JSON.stringify(
+            empleados
+        )
+    );
+}
+
+
 function mostrarPersonal() {
 
-    const app = document.getElementById("app");
+    const app =
+        document.getElementById("app");
 
-    const empleados = obtenerEmpleados();
-
+    const empleados =
+        obtenerEmpleados();
 
     app.innerHTML = `
 
@@ -978,7 +914,7 @@ function mostrarPersonal() {
                         type="button"
                         onclick="regresarDashboard()">
 
-                        ← Regresar
+                        ← Inicio
 
                     </button>
 
@@ -993,7 +929,7 @@ function mostrarPersonal() {
                         </strong>
 
                         <small>
-                            Control Restaurante
+                            Administración
                         </small>
 
                     </div>
@@ -1036,16 +972,16 @@ function mostrarPersonal() {
                     <div>
 
                         <div class="etiqueta">
-                            ADMINISTRACIÓN
+                            PERSONAL
                         </div>
 
                         <h1>
-                            Personal
+                            Personal del restaurante
                         </h1>
 
                         <p>
-                            Administra empleados,
-                            puestos y condiciones de trabajo.
+                            Administración de empleados
+                            y colaboradores.
                         </p>
 
                     </div>
@@ -1056,26 +992,71 @@ function mostrarPersonal() {
                         type="button"
                         onclick="mostrarFormularioEmpleado()">
 
-                        + Agregar personal
+                        + Agregar empleado
 
                     </button>
 
                 </section>
 
 
-                <section class="resumen-jornada">
+                <section class="indicadores">
 
-                    <div class="estado-jornada">
 
-                        <span class="punto-verde"></span>
+                    <article class="indicador">
 
-                        Personal registrado:
+                        <div class="indicador-icono">
+                            👥
+                        </div>
 
-                        <strong>
-                            ${empleados.length}
-                        </strong>
+                        <div>
 
-                    </div>
+                            <span>
+                                PERSONAL
+                            </span>
+
+                            <strong>
+                                ${empleados.length}
+                            </strong>
+
+                            <small>
+                                Registrados
+                            </small>
+
+                        </div>
+
+                    </article>
+
+
+                    <article class="indicador">
+
+                        <div class="indicador-icono">
+                            ✓
+                        </div>
+
+                        <div>
+
+                            <span>
+                                ACTIVOS
+                            </span>
+
+                            <strong>
+                                ${
+                                    empleados.filter(
+                                        empleado =>
+                                            empleado.estado ===
+                                            "Activo"
+                                    ).length
+                                }
+                            </strong>
+
+                            <small>
+                                Actualmente
+                            </small>
+
+                        </div>
+
+                    </article>
+
 
                 </section>
 
@@ -1087,7 +1068,7 @@ function mostrarPersonal() {
                         <div>
 
                             <span>
-                                PLANTILLA
+                                EQUIPO
                             </span>
 
                             <h2>
@@ -1103,7 +1084,7 @@ function mostrarPersonal() {
                     </div>
 
 
-                    <div id="lista-personal">
+                    <div id="lista-empleados">
 
                         ${renderizarEmpleados(
                             empleados
@@ -1179,56 +1160,12 @@ function mostrarPersonal() {
 
 
 /* =========================================================
-   OBTENER EMPLEADOS
-   ========================================================= */
-
-function obtenerEmpleados() {
-
-    const datos =
-        localStorage.getItem(
-            CLAVE_EMPLEADOS
-        );
-
-
-    if (!datos) {
-        return [];
-    }
-
-
-    try {
-
-        return JSON.parse(datos);
-
-    } catch (error) {
-
-        console.error(
-            "Error al leer empleados:",
-            error
-        );
-
-        return [];
-    }
-}
-
-
-/* =========================================================
-   GUARDAR EMPLEADOS
-   ========================================================= */
-
-function guardarEmpleados(empleados) {
-
-    localStorage.setItem(
-        CLAVE_EMPLEADOS,
-        JSON.stringify(empleados)
-    );
-}
-
-
-/* =========================================================
    RENDERIZAR EMPLEADOS
    ========================================================= */
 
-function renderizarEmpleados(empleados) {
+function renderizarEmpleados(
+    empleados
+) {
 
     if (!empleados.length) {
 
@@ -1241,13 +1178,13 @@ function renderizarEmpleados(empleados) {
                 </div>
 
                 <h3>
-                    Aún no hay personal registrado
+                    Aún no hay empleados registrados
                 </h3>
 
                 <p>
                     Agrega el primer empleado
                     para comenzar a administrar
-                    la plantilla.
+                    el personal.
                 </p>
 
                 <button
@@ -1266,20 +1203,16 @@ function renderizarEmpleados(empleados) {
 
 
     return empleados.map(
-        (empleado, indice) => {
-
-            const iniciales =
-                obtenerIniciales(
-                    empleado.nombre
-                );
-
+        empleado => {
 
             return `
 
                 <article class="empleado-item">
 
                     <div class="empleado-avatar">
-                        ${iniciales}
+                        ${obtenerIniciales(
+                            empleado.nombre
+                        )}
                     </div>
 
 
@@ -1290,16 +1223,17 @@ function renderizarEmpleados(empleados) {
                         </strong>
 
                         <span>
-                            ${empleado.tipoContrato}
-                            ·
-                            ${empleado.jornada}
+                            ${
+                                empleado.puesto ||
+                                "Sin puesto"
+                            }
                         </span>
 
                         <small>
-                            Ingreso:
-                            ${formatearFecha(
-                                empleado.fechaIngreso
-                            )}
+                            ${
+                                empleado.telefono ||
+                                "Sin teléfono"
+                            }
                         </small>
 
                     </div>
@@ -1308,23 +1242,52 @@ function renderizarEmpleados(empleados) {
                     <div class="empleado-estado">
 
                         <span class="estado-activo">
-
-                            ${empleado.estado}
-
+                            ${
+                                empleado.estado ||
+                                "Activo"
+                            }
                         </span>
 
                     </div>
 
 
-                    <button
-                        class="empleado-eliminar"
-                        type="button"
-                        title="Eliminar empleado"
-                        onclick="eliminarEmpleado(${indice})">
+                    <div
+                        style="
+                            display:flex;
+                            gap:8px;
+                            align-items:center;
+                        "
+                    >
 
-                        ×
+                        <button
+                            type="button"
+                            title="Editar empleado"
+                            onclick="mostrarFormularioEmpleado(${empleado.id})"
+                            style="
+                                width:38px;
+                                height:38px;
+                                border-radius:10px;
+                                border:1px solid rgba(200,164,93,.45);
+                                background:#123d67;
+                                color:#ffffff;
+                                font-size:17px;
+                                cursor:pointer;
+                            "
+                        >
+                            ✏️
+                        </button>
 
-                    </button>
+
+                        <button
+                            class="empleado-eliminar"
+                            type="button"
+                            title="Eliminar empleado"
+                            onclick="eliminarEmpleado(${empleado.id})"
+                        >
+                            ×
+                        </button>
+
+                    </div>
 
                 </article>
 
@@ -1335,12 +1298,29 @@ function renderizarEmpleados(empleados) {
 
 
 /* =========================================================
-   FORMULARIO PERSONAL
+   FORMULARIO EMPLEADO
    ========================================================= */
 
-function mostrarFormularioEmpleado() {
+function mostrarFormularioEmpleado(
+    id = null
+) {
 
-    const app = document.getElementById("app");
+    const app =
+        document.getElementById("app");
+
+    const empleados =
+        obtenerEmpleados();
+
+    const empleado =
+        id !== null
+            ? empleados.find(
+                item =>
+                    item.id === id
+            )
+            : null;
+
+    const editando =
+        Boolean(empleado);
 
 
     app.innerHTML = `
@@ -1367,7 +1347,11 @@ function mostrarFormularioEmpleado() {
                     <div>
 
                         <strong>
-                            Nuevo empleado
+                            ${
+                                editando
+                                    ? "Editar empleado"
+                                    : "Nuevo empleado"
+                            }
                         </strong>
 
                         <small>
@@ -1393,12 +1377,16 @@ function mostrarFormularioEmpleado() {
                         </div>
 
                         <h1>
-                            Registrar empleado
+                            ${
+                                editando
+                                    ? "Editar empleado"
+                                    : "Registrar empleado"
+                            }
                         </h1>
 
                         <p>
-                            Captura los datos básicos
-                            del colaborador.
+                            Captura los datos
+                            principales del personal.
                         </p>
 
                     </div>
@@ -1410,13 +1398,17 @@ function mostrarFormularioEmpleado() {
 
                     <form
                         class="formulario-personal"
-                        onsubmit="guardarEmpleado(event)">
+                        onsubmit="guardarEmpleado(event, ${
+                            editando
+                                ? empleado.id
+                                : "null"
+                        })">
 
 
                         <div class="formulario-grid">
 
 
-                            <div class="campo campo-completo">
+                            <div class="campo">
 
                                 <label>
                                     Nombre completo
@@ -1426,7 +1418,29 @@ function mostrarFormularioEmpleado() {
                                     type="text"
                                     id="nombreEmpleado"
                                     required
-                                    placeholder="Nombre completo">
+                                    value="${
+                                        empleado?.nombre ||
+                                        ""
+                                    }"
+                                    placeholder="Ej. Juan Pérez">
+
+                            </div>
+
+
+                            <div class="campo">
+
+                                <label>
+                                    Puesto
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="puestoEmpleado"
+                                    value="${
+                                        empleado?.puesto ||
+                                        ""
+                                    }"
+                                    placeholder="Ej. Mesero">
 
                             </div>
 
@@ -1440,7 +1454,52 @@ function mostrarFormularioEmpleado() {
                                 <input
                                     type="tel"
                                     id="telefonoEmpleado"
-                                    placeholder="Teléfono">
+                                    value="${
+                                        empleado?.telefono ||
+                                        ""
+                                    }"
+                                    placeholder="Ej. 322 000 0000">
+
+                            </div>
+
+
+                            <div class="campo">
+
+                                <label>
+                                    Estado
+                                </label>
+
+                                <select
+                                    id="estadoEmpleado">
+
+                                    <option
+                                        value="Activo"
+                                        ${
+                                            (
+                                                empleado?.estado ||
+                                                "Activo"
+                                            ) ===
+                                            "Activo"
+                                                ? "selected"
+                                                : ""
+                                        }
+                                    >
+                                        Activo
+                                    </option>
+
+                                    <option
+                                        value="Inactivo"
+                                        ${
+                                            empleado?.estado ===
+                                            "Inactivo"
+                                                ? "selected"
+                                                : ""
+                                        }
+                                    >
+                                        Inactivo
+                                    </option>
+
+                                </select>
 
                             </div>
 
@@ -1454,21 +1513,10 @@ function mostrarFormularioEmpleado() {
                                 <input
                                     type="date"
                                     id="fechaIngresoEmpleado"
-                                    required>
-
-                            </div>
-
-
-                            <div class="campo campo-completo">
-
-                                <label>
-                                    Dirección
-                                </label>
-
-                                <input
-                                    type="text"
-                                    id="direccionEmpleado"
-                                    placeholder="Domicilio">
+                                    value="${
+                                        empleado?.fechaIngreso ||
+                                        obtenerFechaActual()
+                                    }">
 
                             </div>
 
@@ -1476,118 +1524,75 @@ function mostrarFormularioEmpleado() {
                             <div class="campo">
 
                                 <label>
-                                    Tipo de contrato
+                                    Tipo de jornada
                                 </label>
 
                                 <select
-                                    id="tipoContratoEmpleado"
-                                    required>
+                                    id="tipoJornadaEmpleado">
 
-                                    <option value="">
-                                        Seleccionar
-                                    </option>
-
-                                    <option>
+                                    <option
+                                        value="Tiempo completo"
+                                        ${
+                                            (
+                                                empleado?.tipoJornada ||
+                                                "Tiempo completo"
+                                            ) ===
+                                            "Tiempo completo"
+                                                ? "selected"
+                                                : ""
+                                        }
+                                    >
                                         Tiempo completo
                                     </option>
 
-                                    <option>
+                                    <option
+                                        value="Medio tiempo"
+                                        ${
+                                            empleado?.tipoJornada ===
+                                            "Medio tiempo"
+                                                ? "selected"
+                                                : ""
+                                        }
+                                    >
                                         Medio tiempo
                                     </option>
 
-                                    <option>
+                                    <option
+                                        value="Fines de semana"
+                                        ${
+                                            empleado?.tipoJornada ===
+                                            "Fines de semana"
+                                                ? "selected"
+                                                : ""
+                                        }
+                                    >
                                         Fines de semana
                                     </option>
 
-                                    <option>
+                                    <option
+                                        value="Temporal"
+                                        ${
+                                            empleado?.tipoJornada ===
+                                            "Temporal"
+                                                ? "selected"
+                                                : ""
+                                        }
+                                    >
                                         Temporal
                                     </option>
 
-                                    <option>
-                                        Estacional
-                                    </option>
-
                                 </select>
 
                             </div>
-
-
-                            <div class="campo">
-
-                                <label>
-                                    Jornada
-                                </label>
-
-                                <select
-                                    id="jornadaEmpleado"
-                                    required>
-
-                                    <option value="">
-                                        Seleccionar
-                                    </option>
-
-                                    <option>
-                                        Completa
-                                    </option>
-
-                                    <option>
-                                        Parcial
-                                    </option>
-
-                                    <option>
-                                        Variable
-                                    </option>
-
-                                </select>
-
-                            </div>
-
-
-                            <div class="campo">
-
-                                <label>
-                                    Estado
-                                </label>
-
-                                <select
-                                    id="estadoEmpleado"
-                                    required>
-
-                                    <option value="Activo">
-                                        Activo
-                                    </option>
-
-                                    <option value="Inactivo">
-                                        Inactivo
-                                    </option>
-
-                                </select>
-
-                            </div>
-
-
-                            <div class="campo campo-completo">
-
-                                <label>
-                                    Observaciones
-                                </label>
-
-                                <textarea
-                                    id="observacionesEmpleado"
-                                    rows="4"
-                                    placeholder="Observaciones adicionales"></textarea>
-
-                            </div>
-
 
                         </div>
 
 
-                        <div class="acciones-formulario">
+                        <div class="formulario-acciones">
 
                             <button
-                                type="button"
                                 class="btn-secundario"
+                                type="button"
                                 onclick="mostrarPersonal()">
 
                                 Cancelar
@@ -1596,15 +1601,18 @@ function mostrarFormularioEmpleado() {
 
 
                             <button
-                                type="submit"
-                                class="btn-principal">
+                                class="btn-principal"
+                                type="submit">
 
-                                Guardar empleado
+                                ${
+                                    editando
+                                        ? "Guardar cambios"
+                                        : "Guardar empleado"
+                                }
 
                             </button>
 
                         </div>
-
 
                     </form>
 
@@ -1623,94 +1631,132 @@ function mostrarFormularioEmpleado() {
    GUARDAR EMPLEADO
    ========================================================= */
 
-function guardarEmpleado(event) {
+function guardarEmpleado(
+    event,
+    id = null
+) {
 
     event.preventDefault();
-
-
-    const empleado = {
-
-        id:
-            Date.now(),
-
-        nombre:
-            document
-                .getElementById(
-                    "nombreEmpleado"
-                )
-                .value
-                .trim(),
-
-        telefono:
-            document
-                .getElementById(
-                    "telefonoEmpleado"
-                )
-                .value
-                .trim(),
-
-        direccion:
-            document
-                .getElementById(
-                    "direccionEmpleado"
-                )
-                .value
-                .trim(),
-
-        fechaIngreso:
-            document
-                .getElementById(
-                    "fechaIngresoEmpleado"
-                )
-                .value,
-
-        tipoContrato:
-            document
-                .getElementById(
-                    "tipoContratoEmpleado"
-                )
-                .value,
-
-        jornada:
-            document
-                .getElementById(
-                    "jornadaEmpleado"
-                )
-                .value,
-
-        estado:
-            document
-                .getElementById(
-                    "estadoEmpleado"
-                )
-                .value,
-
-        observaciones:
-            document
-                .getElementById(
-                    "observacionesEmpleado"
-                )
-                .value
-                .trim(),
-
-        fechaRegistro:
-            new Date().toISOString()
-    };
-
 
     const empleados =
         obtenerEmpleados();
 
+    const nombre =
+        document
+            .getElementById(
+                "nombreEmpleado"
+            )
+            .value
+            .trim();
 
-    empleados.push(
-        empleado
-    );
+    const puesto =
+        document
+            .getElementById(
+                "puestoEmpleado"
+            )
+            .value
+            .trim();
+
+    const telefono =
+        document
+            .getElementById(
+                "telefonoEmpleado"
+            )
+            .value
+            .trim();
+
+    const estado =
+        document
+            .getElementById(
+                "estadoEmpleado"
+            )
+            .value;
+
+    const fechaIngreso =
+        document
+            .getElementById(
+                "fechaIngresoEmpleado"
+            )
+            .value;
+
+    const tipoJornada =
+        document
+            .getElementById(
+                "tipoJornadaEmpleado"
+            )
+            .value;
+
+
+    if (!nombre) {
+
+        alert(
+            "Escribe el nombre del empleado."
+        );
+
+        return;
+    }
+
+
+    if (id !== null) {
+
+        const empleado =
+            empleados.find(
+                item =>
+                    item.id === id
+            );
+
+        if (empleado) {
+
+            empleado.nombre =
+                nombre;
+
+            empleado.puesto =
+                puesto;
+
+            empleado.telefono =
+                telefono;
+
+            empleado.estado =
+                estado;
+
+            empleado.fechaIngreso =
+                fechaIngreso;
+
+            empleado.tipoJornada =
+                tipoJornada;
+
+            empleado.fechaModificacion =
+                new Date().toISOString();
+        }
+
+    } else {
+
+        empleados.push({
+
+            id: Date.now(),
+
+            nombre,
+
+            puesto,
+
+            telefono,
+
+            estado,
+
+            fechaIngreso,
+
+            tipoJornada,
+
+            fechaRegistro:
+                new Date().toISOString()
+
+        });
+    }
 
 
     guardarEmpleados(
         empleados
     );
-
 
     mostrarPersonal();
 }
@@ -1720,40 +1766,44 @@ function guardarEmpleado(event) {
    ELIMINAR EMPLEADO
    ========================================================= */
 
-function eliminarEmpleado(indice) {
+function eliminarEmpleado(
+    id
+) {
 
     const empleados =
         obtenerEmpleados();
 
+    const empleado =
+        empleados.find(
+            item =>
+                item.id === id
+        );
 
-    if (
-        !empleados[indice]
-    ) {
+    if (!empleado) {
         return;
     }
 
 
     const confirmar =
         confirm(
-            `¿Deseas eliminar a ${empleados[indice].nombre}?`
+            `¿Deseas eliminar a ${empleado.nombre}?`
         );
-
 
     if (!confirmar) {
         return;
     }
 
 
-    empleados.splice(
-        indice,
-        1
-    );
+    const restantes =
+        empleados.filter(
+            item =>
+                item.id !== id
+        );
 
 
     guardarEmpleados(
-        empleados
+        restantes
     );
-
 
     mostrarPersonal();
 }
@@ -1770,11 +1820,9 @@ function obtenerInventario() {
             CLAVE_INVENTARIO
         );
 
-
     if (!datos) {
         return [];
     }
-
 
     try {
 
@@ -1792,29 +1840,31 @@ function obtenerInventario() {
 }
 
 
-/* =========================================================
-   GUARDAR INVENTARIO
-   ========================================================= */
-
-function guardarInventario(productos) {
+function guardarInventario(
+    productos
+) {
 
     localStorage.setItem(
         CLAVE_INVENTARIO,
-        JSON.stringify(productos)
+        JSON.stringify(
+            productos
+        )
     );
 }
 
 
-/* =========================================================
-   PRODUCTOS BAJO MÍNIMO
-   ========================================================= */
-
-function obtenerProductosBajoMinimo(productos) {
+function obtenerProductosBajoMinimo(
+    productos
+) {
 
     return productos.filter(
         producto =>
-            Number(producto.existencia) <=
-            Number(producto.stockMinimo)
+            Number(
+                producto.existencia
+            ) <=
+            Number(
+                producto.stockMinimo
+            )
     );
 }
 
@@ -1825,13 +1875,13 @@ function obtenerProductosBajoMinimo(productos) {
 
 function mostrarInventario() {
 
-    const app = document.getElementById("app");
+    const app =
+        document.getElementById("app");
 
     const productos =
         obtenerInventario();
 
-
-    const productosBajos =
+    const productosBajoMinimo =
         obtenerProductosBajoMinimo(
             productos
         );
@@ -1850,7 +1900,7 @@ function mostrarInventario() {
                         type="button"
                         onclick="regresarDashboard()">
 
-                        ← Regresar
+                        ← Inicio
 
                     </button>
 
@@ -1865,7 +1915,7 @@ function mostrarInventario() {
                         </strong>
 
                         <small>
-                            Control Restaurante
+                            Administración
                         </small>
 
                     </div>
@@ -1908,16 +1958,16 @@ function mostrarInventario() {
                     <div>
 
                         <div class="etiqueta">
-                            OPERACIÓN
+                            INVENTARIO
                         </div>
 
                         <h1>
-                            Inventario
+                            Control de inventario
                         </h1>
 
                         <p>
-                            Controla existencias,
-                            costos y niveles mínimos.
+                            Productos, existencias
+                            y niveles mínimos.
                         </p>
 
                     </div>
@@ -1965,8 +2015,8 @@ function mostrarInventario() {
 
                     <article class="indicador">
 
-                        <div class="indicador-icono negativo">
-                            !
+                        <div class="indicador-icono">
+                            ⚠️
                         </div>
 
                         <div>
@@ -1976,7 +2026,7 @@ function mostrarInventario() {
                             </span>
 
                             <strong>
-                                ${productosBajos.length}
+                                ${productosBajoMinimo.length}
                             </strong>
 
                             <small>
@@ -1991,15 +2041,28 @@ function mostrarInventario() {
                 </section>
 
 
-                <section class="panel panel-personal">
+                <section class="panel">
 
+                    <div class="buscador-inventario">
+
+                        <input
+                            type="search"
+                            placeholder="Buscar producto, código o categoría..."
+                            oninput="filtrarInventario(this.value)">
+
+                    </div>
+
+                </section>
+
+
+                <section class="panel panel-personal">
 
                     <div class="panel-cabecera">
 
                         <div>
 
                             <span>
-                                CATÁLOGO
+                                EXISTENCIAS
                             </span>
 
                             <h2>
@@ -2015,29 +2078,6 @@ function mostrarInventario() {
                     </div>
 
 
-                    <div style="
-                        margin-bottom:20px;
-                    ">
-
-                        <input
-                            type="search"
-                            id="buscarInventario"
-                            placeholder="🔎 Buscar producto..."
-                            oninput="filtrarInventario(this.value)"
-                            style="
-                                width:100%;
-                                padding:14px 16px;
-                                border-radius:12px;
-                                border:1px solid rgba(200,164,93,.35);
-                                background:#0b192a;
-                                color:#fff;
-                                font-size:15px;
-                                box-sizing:border-box;
-                            ">
-
-                    </div>
-
-
                     <div id="lista-inventario">
 
                         ${renderizarInventario(
@@ -2045,7 +2085,6 @@ function mostrarInventario() {
                         )}
 
                     </div>
-
 
                 </section>
 
@@ -2118,7 +2157,9 @@ function mostrarInventario() {
    RENDERIZAR INVENTARIO
    ========================================================= */
 
-function renderizarInventario(productos) {
+function renderizarInventario(
+    productos
+) {
 
     if (!productos.length) {
 
@@ -2213,11 +2254,7 @@ function renderizarInventario(productos) {
                     <div class="empleado-estado">
 
                         <span
-                            class="${
-                                stockBajo
-                                ? "estado-activo"
-                                : "estado-activo"
-                            }"
+                            class="estado-activo"
                             style="${
                                 stockBajo
                                 ? "background:rgba(239,68,68,.15);color:#ff8b8b;border-color:rgba(239,68,68,.4);"
@@ -2233,78 +2270,62 @@ function renderizarInventario(productos) {
                     </div>
 
 
-    <div style="
-    display:flex;
-    gap:8px;
-    align-items:center;
-">
+                    <div
+                        style="
+                            display:flex;
+                            gap:8px;
+                            align-items:center;
+                        "
+                    >
 
-    <button
-        type="button"
-        title="Movimientos"
-        onclick="mostrarMovimientosProducto(${producto.id})"
-        style="
-            width:38px;
-            height:38px;
-            border-radius:10px;
-            border:1px solid rgba(200,164,93,.45);
-            background:#164d3a;
-            color:#ffffff;
-            font-size:17px;
-            cursor:pointer;
-        ">
-
-        ↕️
-
-    </button>
-
-
-    <button
-        type="button"
-        title="Editar producto"
-        onclick="editarProducto(${producto.id})"
-        style="
-            width:38px;
-            height:38px;
-            border-radius:10px;
-            border:1px solid rgba(200,164,93,.45);
-            background:#123d67;
-            color:#ffffff;
-            font-size:17px;
-            cursor:pointer;
-        ">
-
-        ✏️
-
-    </button>
+                        <button
+                            type="button"
+                            title="Movimientos"
+                            onclick="mostrarMovimientosProducto(${producto.id})"
+                            style="
+                                width:38px;
+                                height:38px;
+                                border-radius:10px;
+                                border:1px solid rgba(200,164,93,.45);
+                                background:#164d3a;
+                                color:#ffffff;
+                                font-size:17px;
+                                cursor:pointer;
+                            "
+                        >
+                            ↕️
+                        </button>
 
 
-    <button
-        class="empleado-eliminar"
-        type="button"
-        title="Eliminar producto"
-        onclick="eliminarProducto(${producto.id})">
+                        <button
+                            type="button"
+                            title="Editar producto"
+                            onclick="editarProducto(${producto.id})"
+                            style="
+                                width:38px;
+                                height:38px;
+                                border-radius:10px;
+                                border:1px solid rgba(200,164,93,.45);
+                                background:#123d67;
+                                color:#ffffff;
+                                font-size:17px;
+                                cursor:pointer;
+                            "
+                        >
+                            ✏️
+                        </button>
 
-        ×
 
-    </button>
+                        <button
+                            class="empleado-eliminar"
+                            type="button"
+                            title="Eliminar producto"
+                            onclick="eliminarProducto(${producto.id})"
+                        >
+                            ×
+                        </button>
 
-</div>
-
-
-    <button
-        class="empleado-eliminar"
-        type="button"
-        title="Eliminar producto"
-        onclick="eliminarProducto(${producto.id})">
-
-        ×
-
-    </button>
-
-</div>
-
-                    </button>
+                    </div>
 
                 </article>
 
@@ -2318,7 +2339,9 @@ function renderizarInventario(productos) {
    FILTRAR INVENTARIO
    ========================================================= */
 
-function filtrarInventario(texto) {
+function filtrarInventario(
+    texto
+) {
 
     const productos =
         obtenerInventario();
@@ -2333,15 +2356,21 @@ function filtrarInventario(texto) {
     const filtrados =
         productos.filter(
             producto =>
-                producto.nombre
+                String(
+                    producto.nombre
+                )
                     .toLowerCase()
                     .includes(busqueda) ||
 
-                producto.codigo
+                String(
+                    producto.codigo
+                )
                     .toLowerCase()
                     .includes(busqueda) ||
 
-                producto.categoria
+                String(
+                    producto.categoria
+                )
                     .toLowerCase()
                     .includes(busqueda)
         );
@@ -2369,7 +2398,8 @@ function filtrarInventario(texto) {
 
 function mostrarFormularioProducto() {
 
-    const app = document.getElementById("app");
+    const app =
+        document.getElementById("app");
 
 
     app.innerHTML = `
@@ -2532,10 +2562,6 @@ function mostrarFormularioProducto() {
                                         Paquete
                                     </option>
 
-                                    <option value="botella">
-                                        Botella
-                                    </option>
-
                                 </select>
 
                             </div>
@@ -2544,7 +2570,7 @@ function mostrarFormularioProducto() {
                             <div class="campo">
 
                                 <label>
-                                    Existencia actual
+                                    Existencia inicial
                                 </label>
 
                                 <input
@@ -2578,7 +2604,7 @@ function mostrarFormularioProducto() {
                             <div class="campo">
 
                                 <label>
-                                    Costo unitario
+                                    Costo
                                 </label>
 
                                 <input
@@ -2587,8 +2613,7 @@ function mostrarFormularioProducto() {
                                     min="0"
                                     step="0.01"
                                     value="0"
-                                    required
-                                    placeholder="0.00">
+                                    required>
 
                             </div>
 
@@ -2605,19 +2630,18 @@ function mostrarFormularioProducto() {
                                     min="0"
                                     step="0.01"
                                     value="0"
-                                    placeholder="0.00">
+                                    required>
 
                             </div>
-
 
                         </div>
 
 
-                        <div class="acciones-formulario">
+                        <div class="formulario-acciones">
 
                             <button
-                                type="button"
                                 class="btn-secundario"
+                                type="button"
                                 onclick="mostrarInventario()">
 
                                 Cancelar
@@ -2626,15 +2650,14 @@ function mostrarFormularioProducto() {
 
 
                             <button
-                                type="submit"
-                                class="btn-principal">
+                                class="btn-principal"
+                                type="submit">
 
                                 Guardar producto
 
                             </button>
 
                         </div>
-
 
                     </form>
 
@@ -2653,9 +2676,15 @@ function mostrarFormularioProducto() {
    GUARDAR PRODUCTO
    ========================================================= */
 
-function guardarProducto(event) {
+function guardarProducto(
+    event
+) {
 
     event.preventDefault();
+
+
+    const productos =
+        obtenerInventario();
 
 
     const codigo =
@@ -2664,9 +2693,7 @@ function guardarProducto(event) {
                 "codigoProducto"
             )
             .value
-            .trim()
-            .toUpperCase();
-
+            .trim();
 
     const nombre =
         document
@@ -2676,7 +2703,6 @@ function guardarProducto(event) {
             .value
             .trim();
 
-
     const categoria =
         document
             .getElementById(
@@ -2685,14 +2711,12 @@ function guardarProducto(event) {
             .value
             .trim();
 
-
     const unidad =
         document
             .getElementById(
                 "unidadProducto"
             )
             .value;
-
 
     const existencia =
         Number(
@@ -2703,7 +2727,6 @@ function guardarProducto(event) {
                 .value
         );
 
-
     const stockMinimo =
         Number(
             document
@@ -2713,7 +2736,6 @@ function guardarProducto(event) {
                 .value
         );
 
-
     const costo =
         Number(
             document
@@ -2722,7 +2744,6 @@ function guardarProducto(event) {
                 )
                 .value
         );
-
 
     const precio =
         Number(
@@ -2734,31 +2755,39 @@ function guardarProducto(event) {
         );
 
 
-    const productos =
-        obtenerInventario();
-
-
-    const codigoDuplicado =
-        productos.some(
-            producto =>
-                producto.codigo === codigo
-        );
-
-
-    if (codigoDuplicado) {
+    if (!codigo || !nombre || !categoria || !unidad) {
 
         alert(
-            "Ya existe un producto con ese código / SKU."
+            "Completa todos los campos obligatorios."
         );
 
         return;
     }
 
 
-    const producto = {
+    const codigoExiste =
+        productos.some(
+            producto =>
+                String(
+                    producto.codigo
+                ).toLowerCase() ===
+                codigo.toLowerCase()
+        );
 
-        id:
-            Date.now(),
+
+    if (codigoExiste) {
+
+        alert(
+            "Ya existe un producto con ese código."
+        );
+
+        return;
+    }
+
+
+    const nuevoProducto = {
+
+        id: Date.now(),
 
         codigo,
 
@@ -2768,24 +2797,45 @@ function guardarProducto(event) {
 
         unidad,
 
-        existencia,
+        existencia:
+            Number.isFinite(
+                existencia
+            )
+                ? existencia
+                : 0,
 
-        stockMinimo,
+        stockMinimo:
+            Number.isFinite(
+                stockMinimo
+            )
+                ? stockMinimo
+                : 0,
 
-        costo,
+        costo:
+            Number.isFinite(
+                costo
+            )
+                ? costo
+                : 0,
 
-        precio,
+        precio:
+            Number.isFinite(
+                precio
+            )
+                ? precio
+                : 0,
 
         estado:
             "Activo",
 
         fechaRegistro:
             new Date().toISOString()
+
     };
 
 
     productos.push(
-        producto
+        nuevoProducto
     );
 
 
@@ -2797,11 +2847,14 @@ function guardarProducto(event) {
     mostrarInventario();
 }
 
+
 /* =========================================================
    EDITAR PRODUCTO
    ========================================================= */
 
-function editarProducto(id) {
+function editarProducto(
+    id
+) {
 
     const productos =
         obtenerInventario();
@@ -2820,7 +2873,9 @@ function editarProducto(id) {
 
 
     const app =
-        document.getElementById("app");
+        document.getElementById(
+            "app"
+        );
 
 
     app.innerHTML = `
@@ -2840,9 +2895,11 @@ function editarProducto(id) {
 
                     </button>
 
+
                     <div class="marca-icono">
                         CR
                     </div>
+
 
                     <div>
 
@@ -2877,10 +2934,8 @@ function editarProducto(id) {
                         </h1>
 
                         <p>
-                            Modifica la información de:
-                            <strong>
-                                ${producto.nombre}
-                            </strong>
+                            Modifica los datos
+                            del producto.
                         </p>
 
                     </div>
@@ -2906,9 +2961,9 @@ function editarProducto(id) {
 
                                 <input
                                     type="text"
-                                    id="editarCodigoProducto"
-                                    value="${producto.codigo}"
-                                    required>
+                                    id="codigoProducto"
+                                    required
+                                    value="${producto.codigo || ""}">
 
                             </div>
 
@@ -2921,9 +2976,9 @@ function editarProducto(id) {
 
                                 <input
                                     type="text"
-                                    id="editarNombreProducto"
-                                    value="${producto.nombre}"
-                                    required>
+                                    id="nombreProducto"
+                                    required
+                                    value="${producto.nombre || ""}">
 
                             </div>
 
@@ -2936,9 +2991,9 @@ function editarProducto(id) {
 
                                 <input
                                     type="text"
-                                    id="editarCategoriaProducto"
-                                    value="${producto.categoria}"
-                                    required>
+                                    id="categoriaProducto"
+                                    required
+                                    value="${producto.categoria || ""}">
 
                             </div>
 
@@ -2950,39 +3005,70 @@ function editarProducto(id) {
                                 </label>
 
                                 <select
-                                    id="editarUnidadProducto"
+                                    id="unidadProducto"
                                     required>
 
-                                    <option value="pieza">
+                                    <option value="pieza"
+                                        ${
+                                            producto.unidad === "pieza"
+                                                ? "selected"
+                                                : ""
+                                        }>
                                         Pieza
                                     </option>
 
-                                    <option value="kg">
+                                    <option value="kg"
+                                        ${
+                                            producto.unidad === "kg"
+                                                ? "selected"
+                                                : ""
+                                        }>
                                         Kilogramo
                                     </option>
 
-                                    <option value="g">
+                                    <option value="g"
+                                        ${
+                                            producto.unidad === "g"
+                                                ? "selected"
+                                                : ""
+                                        }>
                                         Gramo
                                     </option>
 
-                                    <option value="litro">
+                                    <option value="litro"
+                                        ${
+                                            producto.unidad === "litro"
+                                                ? "selected"
+                                                : ""
+                                        }>
                                         Litro
                                     </option>
 
-                                    <option value="ml">
+                                    <option value="ml"
+                                        ${
+                                            producto.unidad === "ml"
+                                                ? "selected"
+                                                : ""
+                                        }>
                                         Mililitro
                                     </option>
 
-                                    <option value="caja">
+                                    <option value="caja"
+                                        ${
+                                            producto.unidad === "caja"
+                                                ? "selected"
+                                                : ""
+                                        }>
                                         Caja
                                     </option>
 
-                                    <option value="paquete">
+                                    <option value="paquete"
+                                        ${
+                                            producto.unidad === "paquete"
+                                                ? "selected"
+                                                : ""
+                                        }>
                                         Paquete
-                                    </option>
-
-                                    <option value="botella">
-                                        Botella
                                     </option>
 
                                 </select>
@@ -2993,16 +3079,16 @@ function editarProducto(id) {
                             <div class="campo">
 
                                 <label>
-                                    Existencia actual
+                                    Existencia
                                 </label>
 
                                 <input
                                     type="number"
-                                    id="editarExistenciaProducto"
+                                    id="existenciaProducto"
                                     min="0"
                                     step="0.01"
-                                    value="${producto.existencia}"
-                                    required>
+                                    required
+                                    value="${producto.existencia ?? 0}">
 
                             </div>
 
@@ -3015,11 +3101,11 @@ function editarProducto(id) {
 
                                 <input
                                     type="number"
-                                    id="editarStockMinimoProducto"
+                                    id="stockMinimoProducto"
                                     min="0"
                                     step="0.01"
-                                    value="${producto.stockMinimo}"
-                                    required>
+                                    required
+                                    value="${producto.stockMinimo ?? 0}">
 
                             </div>
 
@@ -3027,16 +3113,16 @@ function editarProducto(id) {
                             <div class="campo">
 
                                 <label>
-                                    Costo unitario
+                                    Costo
                                 </label>
 
                                 <input
                                     type="number"
-                                    id="editarCostoProducto"
+                                    id="costoProducto"
                                     min="0"
                                     step="0.01"
-                                    value="${producto.costo}"
-                                    required>
+                                    required
+                                    value="${producto.costo ?? 0}">
 
                             </div>
 
@@ -3049,45 +3135,22 @@ function editarProducto(id) {
 
                                 <input
                                     type="number"
-                                    id="editarPrecioProducto"
+                                    id="precioProducto"
                                     min="0"
                                     step="0.01"
-                                    value="${producto.precio}"
-                                    required>
+                                    required
+                                    value="${producto.precio ?? 0}">
 
                             </div>
-
-
-                            <div class="campo">
-
-                                <label>
-                                    Estado
-                                </label>
-
-                                <select
-                                    id="editarEstadoProducto">
-
-                                    <option value="Activo">
-                                        Activo
-                                    </option>
-
-                                    <option value="Inactivo">
-                                        Inactivo
-                                    </option>
-
-                                </select>
-
-                            </div>
-
 
                         </div>
 
 
-                        <div class="acciones-formulario">
+                        <div class="formulario-acciones">
 
                             <button
-                                type="button"
                                 class="btn-secundario"
+                                type="button"
                                 onclick="mostrarInventario()">
 
                                 Cancelar
@@ -3096,15 +3159,14 @@ function editarProducto(id) {
 
 
                             <button
-                                type="submit"
-                                class="btn-principal">
+                                class="btn-principal"
+                                type="submit">
 
                                 Guardar cambios
 
                             </button>
 
                         </div>
-
 
                     </form>
 
@@ -3116,24 +3178,17 @@ function editarProducto(id) {
         </div>
 
     `;
-
-
-    document.getElementById(
-        "editarUnidadProducto"
-    ).value = producto.unidad;
-
-
-    document.getElementById(
-        "editarEstadoProducto"
-    ).value = producto.estado || "Activo";
 }
 
 
 /* =========================================================
-   GUARDAR EDICIÓN DEL PRODUCTO
+   GUARDAR EDICIÓN DE PRODUCTO
    ========================================================= */
 
-function guardarEdicionProducto(event, id) {
+function guardarEdicionProducto(
+    event,
+    id
+) {
 
     event.preventDefault();
 
@@ -3142,14 +3197,19 @@ function guardarEdicionProducto(event, id) {
         obtenerInventario();
 
 
-    const indice =
-        productos.findIndex(
-            producto =>
-                producto.id === id
+    const producto =
+        productos.find(
+            item =>
+                item.id === id
         );
 
 
-    if (indice === -1) {
+    if (!producto) {
+
+        alert(
+            "No se encontró el producto."
+        );
+
         return;
     }
 
@@ -3157,110 +3217,143 @@ function guardarEdicionProducto(event, id) {
     const codigo =
         document
             .getElementById(
-                "editarCodigoProducto"
+                "codigoProducto"
             )
             .value
-            .trim()
-            .toUpperCase();
+            .trim();
 
+    const nombre =
+        document
+            .getElementById(
+                "nombreProducto"
+            )
+            .value
+            .trim();
 
-    const codigoDuplicado =
-        productos.some(
-            (producto, posicion) =>
-                producto.codigo === codigo &&
-                posicion !== indice
+    const categoria =
+        document
+            .getElementById(
+                "categoriaProducto"
+            )
+            .value
+            .trim();
+
+    const unidad =
+        document
+            .getElementById(
+                "unidadProducto"
+            )
+            .value;
+
+    const existencia =
+        Number(
+            document
+                .getElementById(
+                    "existenciaProducto"
+                )
+                .value
+        );
+
+    const stockMinimo =
+        Number(
+            document
+                .getElementById(
+                    "stockMinimoProducto"
+                )
+                .value
+        );
+
+    const costo =
+        Number(
+            document
+                .getElementById(
+                    "costoProducto"
+                )
+                .value
+        );
+
+    const precio =
+        Number(
+            document
+                .getElementById(
+                    "precioProducto"
+                )
+                .value
         );
 
 
-    if (codigoDuplicado) {
+    if (!codigo || !nombre || !categoria || !unidad) {
 
         alert(
-            "Ya existe otro producto con ese código / SKU."
+            "Completa todos los campos obligatorios."
         );
 
         return;
     }
 
 
-    productos[indice].codigo =
+    const codigoDuplicado =
+        productos.some(
+            item =>
+                item.id !== id &&
+                String(
+                    item.codigo
+                ).toLowerCase() ===
+                codigo.toLowerCase()
+        );
+
+
+    if (codigoDuplicado) {
+
+        alert(
+            "Ya existe otro producto con ese código."
+        );
+
+        return;
+    }
+
+
+    producto.codigo =
         codigo;
 
+    producto.nombre =
+        nombre;
 
-    productos[indice].nombre =
-        document
-            .getElementById(
-                "editarNombreProducto"
-            )
-            .value
-            .trim();
+    producto.categoria =
+        categoria;
 
+    producto.unidad =
+        unidad;
 
-    productos[indice].categoria =
-        document
-            .getElementById(
-                "editarCategoriaProducto"
-            )
-            .value
-            .trim();
+    producto.existencia =
+        Number.isFinite(
+            existencia
+        )
+            ? existencia
+            : 0;
 
+    producto.stockMinimo =
+        Number.isFinite(
+            stockMinimo
+        )
+            ? stockMinimo
+            : 0;
 
-    productos[indice].unidad =
-        document
-            .getElementById(
-                "editarUnidadProducto"
-            )
-            .value;
+    producto.costo =
+        Number.isFinite(
+            costo
+        )
+            ? costo
+            : 0;
 
+    producto.precio =
+        Number.isFinite(
+            precio
+        )
+            ? precio
+            : 0;
 
-    productos[indice].existencia =
-        Number(
-            document
-                .getElementById(
-                    "editarExistenciaProducto"
-                )
-                .value
-        );
-
-
-    productos[indice].stockMinimo =
-        Number(
-            document
-                .getElementById(
-                    "editarStockMinimoProducto"
-                )
-                .value
-        );
-
-
-    productos[indice].costo =
-        Number(
-            document
-                .getElementById(
-                    "editarCostoProducto"
-                )
-                .value
-        );
-
-
-    productos[indice].precio =
-        Number(
-            document
-                .getElementById(
-                    "editarPrecioProducto"
-                )
-                .value
-        );
-
-
-    productos[indice].estado =
-        document
-            .getElementById(
-                "editarEstadoProducto"
-            )
-            .value;
-
-
-    productos[indice].fechaModificacion =
+    producto.fechaModificacion =
         new Date().toISOString();
 
 
@@ -3272,13 +3365,60 @@ function guardarEdicionProducto(event, id) {
     mostrarInventario();
 }
 
+
 /* =========================================================
-   MOVIMIENTOS DE INVENTARIO
+   ELIMINAR PRODUCTO
    ========================================================= */
 
+function eliminarProducto(
+    id
+) {
+
+    const productos =
+        obtenerInventario();
+
+
+    const producto =
+        productos.find(
+            item =>
+                item.id === id
+        );
+
+
+    if (!producto) {
+        return;
+    }
+
+
+    const confirmar =
+        confirm(
+            `¿Deseas eliminar el producto "${producto.nombre}"?`
+        );
+
+
+    if (!confirmar) {
+        return;
+    }
+
+
+    const restantes =
+        productos.filter(
+            item =>
+                item.id !== id
+        );
+
+
+    guardarInventario(
+        restantes
+    );
+
+
+    mostrarInventario();
+}
+
 
 /* =========================================================
-   OBTENER MOVIMIENTOS
+   MOVIMIENTOS DE INVENTARIO
    ========================================================= */
 
 function obtenerMovimientosInventario() {
@@ -3296,7 +3436,9 @@ function obtenerMovimientosInventario() {
 
     try {
 
-        return JSON.parse(datos);
+        return JSON.parse(
+            datos
+        );
 
     } catch (error) {
 
@@ -3309,10 +3451,6 @@ function obtenerMovimientosInventario() {
     }
 }
 
-
-/* =========================================================
-   GUARDAR MOVIMIENTOS
-   ========================================================= */
 
 function guardarMovimientosInventario(
     movimientos
@@ -3562,7 +3700,8 @@ function mostrarMovimientosProducto(
 
                         ${
                             renderizarMovimientos(
-                                movimientos
+                                movimientos,
+                                producto.id
                             )
                         }
 
@@ -3641,7 +3780,8 @@ function mostrarMovimientosProducto(
    ========================================================= */
 
 function renderizarMovimientos(
-    movimientos
+    movimientos,
+    productoId
 ) {
 
     if (!movimientos.length) {
@@ -3670,9 +3810,7 @@ function renderizarMovimientos(
                 <button
                     class="btn-principal"
                     type="button"
-                    onclick="mostrarFormularioMovimiento(
-                        obtenerInventario()[0]?.id
-                    )">
+                    onclick="mostrarFormularioMovimiento(${productoId})">
 
                     + Registrar movimiento
 
@@ -3809,47 +3947,52 @@ function renderizarMovimientos(
 
                         ${
                             movimiento.motivo
-                            ? `
-                                <small>
-                                    Motivo:
-                                    ${movimiento.motivo}
-                                </small>
-                            `
-                            : ""
+                                ? `
+                                    <small>
+                                        ${movimiento.motivo}
+                                    </small>
+                                `
+                                : ""
                         }
 
                     </div>
 
 
-                    <div
-                        class="empleado-estado"
-                        style="
-                            color:${color};
-                        "
-                    >
+                    <div class="empleado-estado">
 
-                        ${
-                            movimiento.tipo ===
-                            "Ajuste"
+                        <span
+                            class="estado-activo"
+                            style="
+                                color:${color};
+                                border-color:${color};
+                                background:transparent;
+                            "
+                        >
 
-                            ? movimiento.cantidad
+                            ${
+                                movimiento.existenciaAnterior
+                            }
 
-                            : `${signo}${movimiento.cantidad}`
-                        }
+                            →
+
+                            ${
+                                movimiento.existenciaNueva
+                            }
+
+                        </span>
 
                     </div>
 
                 </article>
 
             `;
-
         }
     ).join("");
 }
 
 
 /* =========================================================
-   FORMULARIO DE MOVIMIENTO
+   FORMULARIO MOVIMIENTO
    ========================================================= */
 
 function mostrarFormularioMovimiento(
@@ -3934,11 +4077,8 @@ function mostrarFormularioMovimiento(
 
 
                         <p>
-                            Existencia actual:
-                            <strong>
-                                ${producto.existencia}
-                                ${producto.unidad}
-                            </strong>
+                            Registrar movimiento
+                            de inventario.
                         </p>
 
                     </div>
@@ -3950,23 +4090,17 @@ function mostrarFormularioMovimiento(
 
                     <form
                         class="formulario-personal"
-                        onsubmit="
-                            guardarMovimiento(
-                                event,
-                                ${producto.id}
-                            )
-                        ">
+                        onsubmit="guardarMovimiento(event, ${producto.id})">
 
 
                         <div class="formulario-grid">
 
 
-                            <div class="campo campo-completo">
+                            <div class="campo">
 
                                 <label>
                                     Tipo de movimiento
                                 </label>
-
 
                                 <select
                                     id="tipoMovimiento"
@@ -3976,21 +4110,17 @@ function mostrarFormularioMovimiento(
                                         Seleccionar
                                     </option>
 
-
                                     <option value="Entrada">
                                         Entrada
                                     </option>
-
 
                                     <option value="Salida">
                                         Salida
                                     </option>
 
-
                                     <option value="Merma">
                                         Merma
                                     </option>
-
 
                                     <option value="Ajuste">
                                         Ajuste
@@ -4001,15 +4131,11 @@ function mostrarFormularioMovimiento(
                             </div>
 
 
-                            <div
-                                class="campo"
-                                id="campoCantidad"
-                            >
+                            <div class="campo">
 
                                 <label>
                                     Cantidad
                                 </label>
-
 
                                 <input
                                     type="number"
@@ -4017,60 +4143,47 @@ function mostrarFormularioMovimiento(
                                     min="0"
                                     step="0.01"
                                     required
-                                    placeholder="0.00">
+                                    placeholder="Ej. 10">
 
                             </div>
 
 
-                            <div
-                                class="campo"
-                                id="campoExistenciaNueva"
-                                style="display:none;"
-                            >
+                            <div class="campo">
 
                                 <label>
-                                    Nueva existencia
+                                    Motivo / referencia
                                 </label>
-
 
                                 <input
-                                    type="number"
-                                    id="nuevaExistenciaMovimiento"
-                                    min="0"
-                                    step="0.01"
-                                    placeholder="0.00">
+                                    type="text"
+                                    id="motivoMovimiento"
+                                    placeholder="Ej. Compra, venta, merma...">
 
                             </div>
 
 
-                            <div class="campo campo-completo">
+                            <div class="campo">
 
                                 <label>
-                                    Motivo / observación
+                                    Existencia actual
                                 </label>
 
-
-                                <textarea
-                                    id="motivoMovimiento"
-                                    rows="4"
-                                    placeholder="Ej. Compra de proveedor, producto dañado, corrección de inventario..."></textarea>
+                                <input
+                                    type="text"
+                                    value="${producto.existencia} ${producto.unidad}"
+                                    disabled>
 
                             </div>
-
 
                         </div>
 
 
-                        <div class="acciones-formulario">
+                        <div class="formulario-acciones">
 
                             <button
-                                type="button"
                                 class="btn-secundario"
-                                onclick="
-                                    mostrarMovimientosProducto(
-                                        ${producto.id}
-                                    )
-                                ">
+                                type="button"
+                                onclick="mostrarMovimientosProducto(${producto.id})">
 
                                 Cancelar
 
@@ -4078,15 +4191,14 @@ function mostrarFormularioMovimiento(
 
 
                             <button
-                                type="submit"
-                                class="btn-principal">
+                                class="btn-principal"
+                                type="submit">
 
-                                Guardar movimiento
+                                Registrar movimiento
 
                             </button>
 
                         </div>
-
 
                     </form>
 
@@ -4098,75 +4210,6 @@ function mostrarFormularioMovimiento(
         </div>
 
     `;
-
-
-    const tipo =
-        document.getElementById(
-            "tipoMovimiento"
-        );
-
-
-    tipo.addEventListener(
-        "change",
-        function() {
-
-            const cantidad =
-                document.getElementById(
-                    "campoCantidad"
-                );
-
-
-            const nuevaExistencia =
-                document.getElementById(
-                    "campoExistenciaNueva"
-                );
-
-
-            if (
-                this.value ===
-                "Ajuste"
-            ) {
-
-                cantidad.style.display =
-                    "none";
-
-
-                nuevaExistencia.style.display =
-                    "block";
-
-
-                document.getElementById(
-                    "cantidadMovimiento"
-                ).required = false;
-
-
-                document.getElementById(
-                    "nuevaExistenciaMovimiento"
-                ).required = true;
-
-            } else {
-
-                cantidad.style.display =
-                    "block";
-
-
-                nuevaExistencia.style.display =
-                    "none";
-
-
-                document.getElementById(
-                    "cantidadMovimiento"
-                ).required = true;
-
-
-                document.getElementById(
-                    "nuevaExistenciaMovimiento"
-                ).required = false;
-
-            }
-
-        }
-    );
 }
 
 
@@ -4186,55 +4229,77 @@ function guardarMovimiento(
         obtenerInventario();
 
 
-    const indice =
-        productos.findIndex(
-            producto =>
-                producto.id ===
-                productoId
+    const producto =
+        productos.find(
+            item =>
+                item.id === productoId
         );
 
 
-    if (indice === -1) {
+    if (!producto) {
+
+        alert(
+            "No se encontró el producto."
+        );
+
         return;
     }
 
 
-    const producto =
-        productos[indice];
-
-
     const tipo =
-        document.getElementById(
-            "tipoMovimiento"
-        ).value;
+        document
+            .getElementById(
+                "tipoMovimiento"
+            )
+            .value;
 
 
     const cantidad =
         Number(
-            document.getElementById(
-                "cantidadMovimiento"
-            ).value
-        );
-
-
-    const nuevaExistencia =
-        Number(
-            document.getElementById(
-                "nuevaExistenciaMovimiento"
-            ).value
+            document
+                .getElementById(
+                    "cantidadMovimiento"
+                )
+                .value
         );
 
 
     const motivo =
-        document.getElementById(
-            "motivoMovimiento"
-        ).value.trim();
+        document
+            .getElementById(
+                "motivoMovimiento"
+            )
+            .value
+            .trim();
 
 
-    let existenciaAnterior =
+    if (!tipo) {
+
+        alert(
+            "Selecciona el tipo de movimiento."
+        );
+
+        return;
+    }
+
+
+    if (
+        !Number.isFinite(cantidad) ||
+        cantidad <= 0
+    ) {
+
+        alert(
+            "La cantidad debe ser mayor que cero."
+        );
+
+        return;
+    }
+
+
+    const existenciaAnterior =
         Number(
             producto.existencia
-        );
+        ) || 0;
 
 
     let existenciaNueva =
@@ -4242,67 +4307,74 @@ function guardarMovimiento(
 
 
     if (
-        tipo === "Entrada"
+        tipo ===
+        "Entrada"
     ) {
 
-        existenciaNueva =
-            existenciaAnterior +
+        existenciaNueva +=
             cantidad;
-
     }
 
 
     if (
-        tipo === "Salida" ||
-        tipo === "Merma"
+        tipo ===
+        "Salida"
     ) {
 
-        existenciaNueva =
-            existenciaAnterior -
+        existenciaNueva -=
             cantidad;
-
-
-        if (
-            existenciaNueva < 0
-        ) {
-
-            alert(
-                "No puedes sacar más producto del que existe actualmente."
-            );
-
-            return;
-        }
-
     }
 
 
     if (
-        tipo === "Ajuste"
+        tipo ===
+        "Merma"
     ) {
 
-        if (
-            isNaN(
-                nuevaExistencia
-            )
-        ) {
-
-            alert(
-                "Captura la nueva existencia."
-            );
-
-            return;
-        }
-
-
-        existenciaNueva =
-            nuevaExistencia;
+        existenciaNueva -=
+            cantidad;
     }
 
 
-    const movimiento = {
+    if (
+        tipo ===
+        "Ajuste"
+    ) {
 
-        id:
-            Date.now(),
+        existenciaNueva =
+            cantidad;
+    }
+
+
+    if (
+        existenciaNueva < 0
+    ) {
+
+        alert(
+            "No puedes registrar una salida o merma mayor a la existencia disponible."
+        );
+
+        return;
+    }
+
+
+    producto.existencia =
+        Number(
+            existenciaNueva.toFixed(2)
+        );
+
+
+    producto.fechaModificacion =
+        new Date().toISOString();
+
+
+    const movimientos =
+        obtenerMovimientosInventario();
+
+
+    movimientos.push({
+
+        id: Date.now(),
 
         productoId:
             producto.id,
@@ -4312,17 +4384,15 @@ function guardarMovimiento(
 
         tipo,
 
-        cantidad:
-            tipo === "Ajuste"
-            ? nuevaExistencia
-            : cantidad,
-
-        existenciaAnterior,
-
-        existenciaNueva,
+        cantidad,
 
         unidad:
             producto.unidad,
+
+        existenciaAnterior,
+
+        existenciaNueva:
+            producto.existencia,
 
         motivo,
 
@@ -4332,20 +4402,7 @@ function guardarMovimiento(
         fecha:
             new Date().toISOString()
 
-    };
-
-
-    producto.existencia =
-        existenciaNueva;
-
-
-    const movimientos =
-        obtenerMovimientosInventario();
-
-
-    movimientos.push(
-        movimiento
-    );
+    });
 
 
     guardarInventario(
@@ -4359,29 +4416,75 @@ function guardarMovimiento(
 
 
     mostrarMovimientosProducto(
-        productoId
+        producto.id
     );
 }
 
 
 /* =========================================================
-   FECHA Y HORA DE MOVIMIENTO
+   UTILIDADES
    ========================================================= */
+
+function obtenerIniciales(
+    nombre
+) {
+
+    if (!nombre) {
+        return "CR";
+    }
+
+
+    const partes =
+        nombre
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean);
+
+
+    if (partes.length === 1) {
+
+        return partes[0]
+            .substring(0, 2)
+            .toUpperCase();
+    }
+
+
+    return (
+        partes[0][0] +
+        partes[1][0]
+    ).toUpperCase();
+}
+
+
+function capitalizar(
+    texto
+) {
+
+    if (!texto) {
+        return "";
+    }
+
+
+    return texto.charAt(0)
+        .toUpperCase() +
+        texto.slice(1);
+}
+
 
 function formatearFechaHora(
     fecha
 ) {
 
     if (!fecha) {
-        return "—";
+        return "";
     }
 
 
-    const fechaObjeto =
+    const fechaObj =
         new Date(fecha);
 
 
-    return fechaObjeto.toLocaleString(
+    return fechaObj.toLocaleString(
         "es-MX",
         {
             day: "2-digit",
@@ -4391,173 +4494,4 @@ function formatearFechaHora(
             minute: "2-digit"
         }
     );
-}
-
-
-/* =========================================================
-   ELIMINAR PRODUCTO
-   ========================================================= */
-
-function eliminarProducto(id) {
-
-    const productos =
-        obtenerInventario();
-
-
-    const producto =
-        productos.find(
-            item =>
-                item.id === id
-        );
-
-
-    if (!producto) {
-        return;
-    }
-
-
-    const confirmar =
-        confirm(
-            `¿Deseas eliminar el producto "${producto.nombre}"?`
-        );
-
-
-    if (!confirmar) {
-        return;
-    }
-
-
-    const nuevosProductos =
-        productos.filter(
-            item =>
-                item.id !== id
-        );
-
-
-    guardarInventario(
-        nuevosProductos
-    );
-
-
-    mostrarInventario();
-}
-
-
-/* =========================================================
-   REGRESAR DASHBOARD
-   ========================================================= */
-
-function regresarDashboard() {
-
-    const jornada =
-        obtenerJornadaActual();
-
-
-    if (!jornada) {
-
-        mostrarPantallaJornada();
-
-        return;
-    }
-
-
-    mostrarDashboard(
-        jornada
-    );
-}
-
-
-/* =========================================================
-   INICIALES
-   ========================================================= */
-
-function obtenerIniciales(nombre) {
-
-    if (!nombre) {
-        return "CR";
-    }
-
-
-    const palabras =
-        nombre
-            .trim()
-            .split(/\s+/);
-
-
-    if (palabras.length === 1) {
-
-        return palabras[0]
-            .substring(0, 2)
-            .toUpperCase();
-    }
-
-
-    return (
-        palabras[0][0] +
-        palabras[1][0]
-    ).toUpperCase();
-}
-
-
-/* =========================================================
-   FORMATEAR FECHA
-   ========================================================= */
-
-function formatearFecha(fecha) {
-
-    if (!fecha) {
-        return "—";
-    }
-
-
-    const partes =
-        fecha.split("-");
-
-
-    if (partes.length !== 3) {
-        return fecha;
-    }
-
-
-    return `${partes[2]}/${partes[1]}/${partes[0]}`;
-}
-
-
-/* =========================================================
-   CAPITALIZAR
-   ========================================================= */
-
-function capitalizar(texto) {
-
-    if (!texto) {
-        return "";
-    }
-
-
-    return texto.charAt(0).toUpperCase()
-        + texto.slice(1);
-}
-
-
-/* =========================================================
-   PANTALLA ANTIGUA DE JORNADA FINALIZADA
-   ========================================================= */
-
-function mostrarJornadaFinalizada(jornada) {
-
-    mostrarDashboard(jornada);
-}
-
-
-/* =========================================================
-   CERRAR SESIÓN
-   ========================================================= */
-
-function cerrarSesion() {
-
-    alert(
-        "La jornada permanece registrada. " +
-        "El acceso al sistema continúa disponible."
-    );
-
 }
