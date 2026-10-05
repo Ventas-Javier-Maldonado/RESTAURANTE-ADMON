@@ -830,6 +830,22 @@ function mostrarDashboard(jornada) {
     `;
 }
 
+ <button
+        type="button"
+        onclick="mostrarVentas()">
+
+        <span>
+            🛒
+        </span>
+
+        <span>
+            Ventas
+        </span>
+
+    </button>
+
+
+</div>
 
 /* =========================================================
    REGRESAR AL DASHBOARD
@@ -4494,4 +4510,1042 @@ function formatearFechaHora(
             minute: "2-digit"
         }
     );
+}
+
+/* =========================================================
+   CONTROL RESTAURANTE
+   MÓDULO DE VENTAS
+   ========================================================= */
+
+const CLAVE_VENTAS = "ventas_restaurante";
+
+let carritoVenta = [];
+
+
+/* =========================================================
+   OBTENER VENTAS
+   ========================================================= */
+
+function obtenerVentas(){
+
+    const ventas = localStorage.getItem(CLAVE_VENTAS);
+
+    if(!ventas){
+        return [];
+    }
+
+    try{
+
+        return JSON.parse(ventas);
+
+    }catch(error){
+
+        console.error("Error leyendo ventas:", error);
+
+        return [];
+
+    }
+
+}
+
+
+/* =========================================================
+   GUARDAR VENTAS
+   ========================================================= */
+
+function guardarVentas(ventas){
+
+    localStorage.setItem(
+        CLAVE_VENTAS,
+        JSON.stringify(ventas)
+    );
+
+}
+
+
+/* =========================================================
+   GENERAR FOLIO
+   ========================================================= */
+
+function generarFolioVenta(){
+
+    const ventas = obtenerVentas();
+
+    const numero = ventas.length + 1;
+
+    return "V-" + String(numero).padStart(5, "0");
+
+}
+
+
+/* =========================================================
+   MOSTRAR VENTAS
+   ========================================================= */
+
+function mostrarVentas(){
+
+    carritoVenta = [];
+
+    const app = document.getElementById("app");
+
+    if(!app){
+        return;
+    }
+
+    const inventario = obtenerInventario();
+
+    const productosActivos = inventario.filter(
+        producto =>
+            producto.estado !== "inactivo" &&
+            Number(producto.existencia) > 0
+    );
+
+
+    app.innerHTML = `
+
+        <div class="pantalla">
+
+            <header class="topbar">
+
+                <div>
+
+                    <h1>Ventas</h1>
+
+                    <p>
+                        Registrar venta
+                    </p>
+
+                </div>
+
+                <button
+                    type="button"
+                    onclick="mostrarDashboard(obtenerJornadaActual())"
+                >
+                    ← Regresar
+                </button>
+
+            </header>
+
+
+            <main class="contenido">
+
+
+                <!-- =====================================
+                     PRODUCTOS
+                     ===================================== -->
+
+                <section class="card">
+
+                    <div class="card-header">
+
+                        <div>
+
+                            <h2>Productos</h2>
+
+                            <p>
+                                Selecciona los productos para agregar a la venta.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+
+                    <div
+                        id="listaProductosVenta"
+                        class="grid-productos-venta"
+                    >
+
+                        ${
+                            productosActivos.length === 0
+
+                            ?
+
+                            `
+                            <div class="mensaje-vacio">
+
+                                <h3>No hay productos disponibles</h3>
+
+                                <p>
+                                    Agrega productos al inventario antes de realizar una venta.
+                                </p>
+
+                            </div>
+                            `
+
+                            :
+
+                            productosActivos.map(producto => `
+
+                                <button
+                                    type="button"
+                                    class="producto-venta"
+                                    onclick="agregarProductoVenta('${producto.id}')"
+                                >
+
+                                    <div>
+
+                                        <strong>
+                                            ${producto.nombre}
+                                        </strong>
+
+                                        <small>
+                                            ${producto.codigo || "Sin código"}
+                                        </small>
+
+                                    </div>
+
+
+                                    <div>
+
+                                        <strong>
+                                            $${Number(producto.precio || 0).toFixed(2)}
+                                        </strong>
+
+                                        <small>
+                                            Stock: ${producto.existencia} ${producto.unidad || ""}
+                                        </small>
+
+                                    </div>
+
+                                </button>
+
+                            `).join("")
+
+                        }
+
+                    </div>
+
+                </section>
+
+
+
+                <!-- =====================================
+                     CARRITO
+                     ===================================== -->
+
+                <section class="card">
+
+                    <div class="card-header">
+
+                        <div>
+
+                            <h2>Venta actual</h2>
+
+                            <p>
+                                Productos seleccionados
+                            </p>
+
+                        </div>
+
+                        <strong id="folioVenta">
+                            ${generarFolioVenta()}
+                        </strong>
+
+                    </div>
+
+
+                    <div id="carritoVenta">
+
+                        <div class="mensaje-vacio">
+
+                            <h3>Venta vacía</h3>
+
+                            <p>
+                                Selecciona productos para comenzar.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+
+                    <div id="resumenVenta">
+
+                    </div>
+
+                </section>
+
+
+            </main>
+
+        </div>
+
+    `;
+
+
+    renderizarCarritoVenta();
+
+}
+
+
+/* =========================================================
+   AGREGAR PRODUCTO A LA VENTA
+   ========================================================= */
+
+function agregarProductoVenta(id){
+
+    const inventario = obtenerInventario();
+
+    const producto = inventario.find(
+        item => String(item.id) === String(id)
+    );
+
+
+    if(!producto){
+
+        alert("No se encontró el producto.");
+
+        return;
+
+    }
+
+
+    const existencia = Number(producto.existencia || 0);
+
+
+    if(existencia <= 0){
+
+        alert("Este producto no tiene existencia.");
+
+        return;
+
+    }
+
+
+    const existente = carritoVenta.find(
+        item => String(item.productoId) === String(id)
+    );
+
+
+    if(existente){
+
+        if(
+            Number(existente.cantidad) + 1 >
+            existencia
+        ){
+
+            alert(
+                "No hay suficiente existencia de este producto."
+            );
+
+            return;
+
+        }
+
+
+        existente.cantidad++;
+
+    }else{
+
+        carritoVenta.push({
+
+            productoId: producto.id,
+
+            codigo: producto.codigo || "",
+
+            nombre: producto.nombre,
+
+            unidad: producto.unidad || "pieza",
+
+            precio: Number(producto.precio || 0),
+
+            cantidad: 1
+
+        });
+
+    }
+
+
+    renderizarCarritoVenta();
+
+}
+
+
+/* =========================================================
+   CAMBIAR CANTIDAD
+   ========================================================= */
+
+function cambiarCantidadVenta(index, nuevaCantidad){
+
+    nuevaCantidad = Number(nuevaCantidad);
+
+
+    if(!Number.isFinite(nuevaCantidad)){
+        return;
+    }
+
+
+    if(nuevaCantidad <= 0){
+
+        eliminarProductoVenta(index);
+
+        return;
+
+    }
+
+
+    const item = carritoVenta[index];
+
+
+    if(!item){
+        return;
+    }
+
+
+    const inventario = obtenerInventario();
+
+    const producto = inventario.find(
+        producto =>
+            String(producto.id) ===
+            String(item.productoId)
+    );
+
+
+    if(!producto){
+        return;
+    }
+
+
+    const existencia = Number(
+        producto.existencia || 0
+    );
+
+
+    if(nuevaCantidad > existencia){
+
+        alert(
+            "La cantidad supera la existencia disponible."
+        );
+
+        renderizarCarritoVenta();
+
+        return;
+
+    }
+
+
+    item.cantidad = nuevaCantidad;
+
+    renderizarCarritoVenta();
+
+}
+
+
+/* =========================================================
+   ELIMINAR PRODUCTO DEL CARRITO
+   ========================================================= */
+
+function eliminarProductoVenta(index){
+
+    carritoVenta.splice(index, 1);
+
+    renderizarCarritoVenta();
+
+}
+
+
+/* =========================================================
+   RENDERIZAR CARRITO
+   ========================================================= */
+
+function renderizarCarritoVenta(){
+
+    const contenedor =
+        document.getElementById("carritoVenta");
+
+    const resumen =
+        document.getElementById("resumenVenta");
+
+
+    if(!contenedor || !resumen){
+        return;
+    }
+
+
+    if(carritoVenta.length === 0){
+
+        contenedor.innerHTML = `
+
+            <div class="mensaje-vacio">
+
+                <h3>Venta vacía</h3>
+
+                <p>
+                    Selecciona productos para comenzar.
+                </p>
+
+            </div>
+
+        `;
+
+
+        resumen.innerHTML = "";
+
+        return;
+
+    }
+
+
+    let subtotal = 0;
+
+
+    contenedor.innerHTML = `
+
+        <div class="tabla-venta">
+
+            ${carritoVenta.map((item, index) => {
+
+                const importe =
+                    Number(item.precio) *
+                    Number(item.cantidad);
+
+                subtotal += importe;
+
+
+                return `
+
+                    <div class="item-venta">
+
+                        <div class="item-venta-info">
+
+                            <strong>
+                                ${item.nombre}
+                            </strong>
+
+                            <small>
+                                ${item.unidad}
+                                ·
+                                $${Number(item.precio).toFixed(2)}
+                            </small>
+
+                        </div>
+
+
+                        <div class="item-venta-cantidad">
+
+                            <button
+                                type="button"
+                                onclick="cambiarCantidadVenta(
+                                    ${index},
+                                    ${Number(item.cantidad) - 1}
+                                )"
+                            >
+                                −
+                            </button>
+
+
+                            <input
+                                type="number"
+                                min="0.01"
+                                step="0.01"
+                                value="${item.cantidad}"
+                                onchange="cambiarCantidadVenta(
+                                    ${index},
+                                    this.value
+                                )"
+                            >
+
+
+                            <button
+                                type="button"
+                                onclick="cambiarCantidadVenta(
+                                    ${index},
+                                    ${Number(item.cantidad) + 1}
+                                )"
+                            >
+                                +
+                            </button>
+
+                        </div>
+
+
+                        <strong>
+                            $${importe.toFixed(2)}
+                        </strong>
+
+
+                        <button
+                            type="button"
+                            onclick="eliminarProductoVenta(${index})"
+                            title="Eliminar"
+                        >
+                            ✕
+                        </button>
+
+                    </div>
+
+                `;
+
+            }).join("")}
+
+        </div>
+
+    `;
+
+
+    resumen.innerHTML = `
+
+        <div class="resumen-venta">
+
+            <div>
+
+                <span>
+                    Subtotal
+                </span>
+
+                <strong>
+                    $${subtotal.toFixed(2)}
+                </strong>
+
+            </div>
+
+
+            <div>
+
+                <span>
+                    Total
+                </span>
+
+                <strong class="total-venta">
+                    $${subtotal.toFixed(2)}
+                </strong>
+
+            </div>
+
+
+            <div class="metodo-pago">
+
+                <label>
+                    Método de pago
+                </label>
+
+
+                <select id="metodoPagoVenta">
+
+                    <option value="Efectivo">
+                        Efectivo
+                    </option>
+
+                    <option value="Tarjeta">
+                        Tarjeta
+                    </option>
+
+                    <option value="Transferencia">
+                        Transferencia
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <button
+                type="button"
+                class="btn-principal"
+                onclick="registrarVenta()"
+            >
+                REGISTRAR VENTA
+            </button>
+
+        </div>
+
+    `;
+
+}
+
+
+/* =========================================================
+   REGISTRAR VENTA
+   ========================================================= */
+
+function registrarVenta(){
+
+    if(carritoVenta.length === 0){
+
+        alert(
+            "Agrega al menos un producto a la venta."
+        );
+
+        return;
+
+    }
+
+
+    const metodoPagoElement =
+        document.getElementById("metodoPagoVenta");
+
+
+    const metodoPago =
+        metodoPagoElement
+            ? metodoPagoElement.value
+            : "Efectivo";
+
+
+    const inventario = obtenerInventario();
+
+
+    /*
+       PRIMERO VALIDAMOS TODA LA EXISTENCIA.
+       Así evitamos descontar algunos productos
+       y dejar otros sin descontar si existe un problema.
+    */
+
+    for(const item of carritoVenta){
+
+        const producto = inventario.find(
+            producto =>
+                String(producto.id) ===
+                String(item.productoId)
+        );
+
+
+        if(!producto){
+
+            alert(
+                "El producto " +
+                item.nombre +
+                " ya no existe en el inventario."
+            );
+
+            return;
+
+        }
+
+
+        const existencia =
+            Number(producto.existencia || 0);
+
+
+        const cantidad =
+            Number(item.cantidad || 0);
+
+
+        if(cantidad <= 0){
+
+            alert(
+                "La cantidad de " +
+                item.nombre +
+                " no es válida."
+            );
+
+            return;
+
+        }
+
+
+        if(cantidad > existencia){
+
+            alert(
+                "No hay suficiente existencia de " +
+                item.nombre +
+                "."
+            );
+
+            return;
+
+        }
+
+    }
+
+
+    /*
+       CALCULAR TOTALES
+    */
+
+    let subtotal = 0;
+
+
+    const itemsVenta = carritoVenta.map(item => {
+
+        const importe =
+            Number(item.precio) *
+            Number(item.cantidad);
+
+
+        subtotal += importe;
+
+
+        return {
+
+            productoId: item.productoId,
+
+            codigo: item.codigo,
+
+            nombre: item.nombre,
+
+            unidad: item.unidad,
+
+            cantidad: Number(item.cantidad),
+
+            precio: Number(item.precio),
+
+            importe: Number(importe.toFixed(2))
+
+        };
+
+    });
+
+
+    const total =
+        Number(subtotal.toFixed(2));
+
+
+    const folio =
+        generarFolioVenta();
+
+
+    const fecha =
+        new Date().toISOString();
+
+
+    /*
+       CREAR LA VENTA
+    */
+
+    const venta = {
+
+        id: Date.now(),
+
+        folio: folio,
+
+        fecha: fecha,
+
+        usuario:
+            typeof USUARIO_ACTUAL !== "undefined"
+                ? USUARIO_ACTUAL.nombre
+                : "Administrador",
+
+        items: itemsVenta,
+
+        subtotal:
+            Number(subtotal.toFixed(2)),
+
+        descuento: 0,
+
+        total: total,
+
+        metodoPago: metodoPago,
+
+        estado: "Completada"
+
+    };
+
+
+    /*
+       DESCONTAR INVENTARIO
+    */
+
+    const movimientos =
+        obtenerMovimientosInventario();
+
+
+    for(const item of carritoVenta){
+
+        const producto =
+            inventario.find(
+                producto =>
+                    String(producto.id) ===
+                    String(item.productoId)
+            );
+
+
+        const existenciaAnterior =
+            Number(producto.existencia || 0);
+
+
+        const cantidad =
+            Number(item.cantidad);
+
+
+        const existenciaNueva =
+            existenciaAnterior - cantidad;
+
+
+        producto.existencia =
+            existenciaNueva;
+
+
+        producto.fechaModificacion =
+            new Date().toISOString();
+
+
+        /*
+           REGISTRAMOS TAMBIÉN EL MOVIMIENTO
+           COMO SALIDA POR VENTA.
+        */
+
+        movimientos.push({
+
+            id:
+                Date.now() +
+                Math.floor(Math.random() * 100000),
+
+            productoId:
+                producto.id,
+
+            productoNombre:
+                producto.nombre,
+
+            tipo:
+                "Salida",
+
+            cantidad:
+                cantidad,
+
+            unidad:
+                producto.unidad || "",
+
+            existenciaAnterior:
+                existenciaAnterior,
+
+            existenciaNueva:
+                existenciaNueva,
+
+            motivo:
+                "Venta " + folio,
+
+            ventaId:
+                venta.id,
+
+            folioVenta:
+                folio,
+
+            usuario:
+                typeof USUARIO_ACTUAL !== "undefined"
+                    ? USUARIO_ACTUAL.nombre
+                    : "Administrador",
+
+            fecha:
+                fecha
+
+        });
+
+    }
+
+
+    /*
+       GUARDAR INVENTARIO
+    */
+
+    guardarInventario(inventario);
+
+
+    /*
+       GUARDAR MOVIMIENTOS
+    */
+
+    guardarMovimientosInventario(movimientos);
+
+
+    /*
+       GUARDAR VENTA
+    */
+
+    const ventas =
+        obtenerVentas();
+
+
+    ventas.push(venta);
+
+
+    guardarVentas(ventas);
+
+
+    /*
+       LIMPIAR CARRITO
+    */
+
+    carritoVenta = [];
+
+
+    /*
+       CONFIRMACIÓN
+    */
+
+    alert(
+        "Venta registrada correctamente.\n\n" +
+        "Folio: " + folio + "\n" +
+        "Total: $" + total.toFixed(2) + "\n" +
+        "Pago: " + metodoPago
+    );
+
+
+    /*
+       VOLVER A VENTAS
+       PARA PODER CONTINUAR VENDIENDO
+    */
+
+    mostrarVentas();
+
+}
+
+
+/* =========================================================
+   VENTAS DEL DÍA
+   ========================================================= */
+
+function obtenerVentasDelDia(){
+
+    const ventas =
+        obtenerVentas();
+
+
+    const hoy =
+        new Date();
+
+
+    const año =
+        hoy.getFullYear();
+
+
+    const mes =
+        String(
+            hoy.getMonth() + 1
+        ).padStart(2, "0");
+
+
+    const dia =
+        String(
+            hoy.getDate()
+        ).padStart(2, "0");
+
+
+    const fechaHoy =
+        `${año}-${mes}-${dia}`;
+
+
+    return ventas.filter(venta => {
+
+        if(!venta.fecha){
+            return false;
+        }
+
+
+        return venta.fecha.startsWith(
+            fechaHoy
+        );
+
+    });
+
+}
+
+
+/* =========================================================
+   TOTAL DE VENTAS DEL DÍA
+   ========================================================= */
+
+function obtenerTotalVentasDelDia(){
+
+    const ventas =
+        obtenerVentasDelDia();
+
+
+    return ventas.reduce(
+        (total, venta) =>
+            total +
+            Number(venta.total || 0),
+        0
+    );
+
 }
