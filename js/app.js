@@ -641,18 +641,33 @@ function mostrarDashboard(jornada) {
                         </button>
 
 
-                        <button
-                            type="button">
+                       <button
+    type="button"
+    onclick="mostrarProductosVenta()">
 
-                            <span>
-                                🧾
-                            </span>
+    <span>
+        🍽️
+    </span>
 
-                            <span>
-                                Tickets
-                            </span>
+    <span>
+        Productos de venta
+    </span>
 
-                        </button>
+</button>
+
+
+<button
+    type="button">
+
+    <span>
+        🧾
+    </span>
+
+    <span>
+        Tickets
+    </span>
+
+</button>
 
 
                         <button
