@@ -283,10 +283,6 @@ function calcularHorasTrabajadas(jornada) {
 }
 
 
-/* =========================================================
-   DASHBOARD
-   ========================================================= */
-
 function mostrarDashboard(jornada) {
 
     const app =
@@ -643,7 +639,7 @@ function mostrarDashboard(jornada) {
 
                        <button
     type="button"
-    onclick="alert('BOTON PRODUCTOS OK')"
+    onclick="mostrarProductosVenta()">
 
     <span>
         🍽️
@@ -685,14 +681,14 @@ function mostrarDashboard(jornada) {
 
                         <button
     type="button"
-    onclick="mostrarProductosVenta()">
+    onclick="mostrarVentas()">
 
     <span>
-        🍽️
+        🛒
     </span>
 
     <span>
-        Productos de venta
+        Ventas
     </span>
 
 </button>
@@ -858,8 +854,6 @@ function mostrarDashboard(jornada) {
 
     `;
 }
-
-
 /* =========================================================
    REGRESAR AL DASHBOARD
    ========================================================= */
