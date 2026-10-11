@@ -5673,69 +5673,45 @@ function agregarProductoVenta(id){
 }
 
 /* =========================================================
-   CAMBIAR CANTIDAD
+   CAMBIAR CANTIDAD DE PLATILLOS
    ========================================================= */
 
 function cambiarCantidadVenta(index, nuevaCantidad){
 
     nuevaCantidad = Number(nuevaCantidad);
 
-
-    if(!Number.isFinite(nuevaCantidad)){
+    if(
+        !Number.isInteger(nuevaCantidad) ||
+        nuevaCantidad < 0
+    ){
+        alert("Ingresa una cantidad válida de platillos.");
+        renderizarCarritoVenta();
         return;
     }
 
-
-    if(nuevaCantidad <= 0){
-
+    if(nuevaCantidad === 0){
         eliminarProductoVenta(index);
-
         return;
-
     }
-
 
     const item = carritoVenta[index];
-
 
     if(!item){
         return;
     }
 
-
-    const inventario = obtenerInventario();
-
-    const producto = inventario.find(
-        producto =>
-            String(producto.id) ===
-            String(item.productoId)
+    const producto = obtenerProductosVenta().find(
+        p => String(p.id) === String(item.productoId)
     );
-
 
     if(!producto){
+        alert("El platillo ya no existe en Productos de venta.");
         return;
     }
-
-
-    const existencia = Number(
-        producto.existencia || 0
-    );
-
-
-    if(nuevaCantidad > existencia){
-
-        alert(
-            "La cantidad supera la existencia disponible."
-        );
-
-        renderizarCarritoVenta();
-
-        return;
-
-    }
-
 
     item.cantidad = nuevaCantidad;
+
+    renderizarCarritoVenta();
 
 }
 
