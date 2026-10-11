@@ -2008,61 +2008,65 @@ function mostrarInventario() {
                 </section>
 
 
-                <section class="indicadores">
+              <section class="indicadores">
+
+    <article
+        class="indicador"
+        role="button"
+        tabindex="0"
+        onclick="document.getElementById('lista-inventario').scrollIntoView({behavior:'smooth',block:'start'})"
+        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}"
+        style="cursor:pointer;"
+    >
+
+        <div class="indicador-icono">
+            📦
+        </div>
+
+        <div>
+
+            <span>
+                PRODUCTOS
+            </span>
+
+            <strong>
+                ${productos.length}
+            </strong>
+
+            <small>
+                Registrados
+            </small>
+
+        </div>
+
+    </article>
 
 
-                    <article class="indicador">
+    <article class="indicador">
 
-                        <div class="indicador-icono">
-                            📦
-                        </div>
+        <div class="indicador-icono">
+            ⚠️
+        </div>
 
-                        <div>
+        <div>
 
-                            <span>
-                                PRODUCTOS
-                            </span>
+            <span>
+                STOCK BAJO
+            </span>
 
-                            <strong>
-                                ${productos.length}
-                            </strong>
+            <strong>
+                ${productosBajoMinimo.length}
+            </strong>
 
-                            <small>
-                                Registrados
-                            </small>
+            <small>
+                Requieren atención
+            </small>
 
-                        </div>
+        </div>
 
-                    </article>
+    </article>
 
-
-                    <article class="indicador">
-
-                        <div class="indicador-icono">
-                            ⚠️
-                        </div>
-
-                        <div>
-
-                            <span>
-                                STOCK BAJO
-                            </span>
-
-                            <strong>
-                                ${productosBajoMinimo.length}
-                            </strong>
-
-                            <small>
-                                Requieren atención
-                            </small>
-
-                        </div>
-
-                    </article>
-
-
-                </section>
-
+</section>
 
                 <section class="panel">
 
