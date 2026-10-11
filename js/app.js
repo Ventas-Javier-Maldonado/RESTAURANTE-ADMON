@@ -4813,9 +4813,7 @@ const productosActivos = productosVenta.filter(
 
    function mostrarProductosVenta(){
 
-    const app = document.getElementById("app");
-
-    alert("ENTRÓ A PRODUCTOS DE VENTA");  
+    const app = document.getElementById("app");  
 
     if(!app){
         return;
