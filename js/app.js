@@ -4869,6 +4869,12 @@ const productosActivos = productosVenta.filter(
                         >
                             + Nuevo producto
                         </button>
+                        <button
+    type="button"
+    onclick="mostrarRecetas()"
+>
+    Recetas
+</button>
 
                     </div>
 
