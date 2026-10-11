@@ -5632,82 +5632,45 @@ function eliminarCatalogoProductoVenta(id){
 
 function agregarProductoVenta(id){
 
-    const inventario = obtenerInventario();
+    const productos = obtenerProductosVenta();
 
-    const producto = inventario.find(
+    const producto = productos.find(
         item => String(item.id) === String(id)
     );
 
-
     if(!producto){
 
-        alert("No se encontró el producto.");
-
+        alert("No se encontró el producto de venta.");
         return;
 
     }
-
-
-    const existencia = Number(producto.existencia || 0);
-
-
-    if(existencia <= 0){
-
-        alert("Este producto no tiene existencia.");
-
-        return;
-
-    }
-
 
     const existente = carritoVenta.find(
         item => String(item.productoId) === String(id)
     );
 
-
     if(existente){
 
-        if(
-            Number(existente.cantidad) + 1 >
-            existencia
-        ){
-
-            alert(
-                "No hay suficiente existencia de este producto."
-            );
-
-            return;
-
-        }
-
-
-        existente.cantidad++;
+        existente.cantidad += 1;
 
     }else{
 
         carritoVenta.push({
 
             productoId: producto.id,
-
             codigo: producto.codigo || "",
-
             nombre: producto.nombre,
-
-            unidad: producto.unidad || "pieza",
-
+            unidad: "platillo",
             precio: Number(producto.precio || 0),
-
             cantidad: 1
 
         });
 
     }
 
-
     renderizarCarritoVenta();
 
 }
-
 
 /* =========================================================
    CAMBIAR CANTIDAD
