@@ -5095,6 +5095,234 @@ function mostrarRecetas(){
 
 }
 
+/* =========================================================
+   FORMULARIO DE RECETAS
+   ========================================================= */
+
+function mostrarFormularioReceta(productoId){
+
+    const app = document.getElementById("app");
+
+    if(!app) return;
+
+    const productos = obtenerProductosVenta();
+    const inventario = obtenerInventario();
+    const recetas = obtenerRecetas();
+
+    const producto = productos.find(
+        p => String(p.id) === String(productoId)
+    );
+
+    if(!producto){
+        alert("Producto de venta no encontrado.");
+        mostrarRecetas();
+        return;
+    }
+
+    const receta = recetas.find(
+        r => String(r.productoId) === String(productoId)
+    );
+
+    const ingredientes = receta && Array.isArray(receta.ingredientes)
+        ? receta.ingredientes
+        : [];
+
+    app.innerHTML = `
+
+        <div class="pantalla">
+
+            <header class="topbar">
+
+                <div>
+                    <h1>Receta</h1>
+                    <p>${producto.nombre}</p>
+                </div>
+
+                <button
+                    type="button"
+                    onclick="mostrarRecetas()"
+                >
+                    ← Regresar
+                </button>
+
+            </header>
+
+            <main class="contenido">
+
+                <section class="card">
+
+                    <div class="card-header">
+
+                        <div>
+                            <h2>Ingredientes del platillo</h2>
+                            <p>
+                                Indica la cantidad utilizada
+                                para preparar una porción.
+                            </p>
+                        </div>
+
+                    </div>
+
+                    <form
+                        id="formularioReceta"
+                        onsubmit="guardarFormularioReceta(event, '${producto.id}')"
+                    >
+
+                        ${
+                            inventario.length === 0
+
+                            ? `<p>
+                                No hay ingredientes en Inventario.
+                               </p>`
+
+                            : inventario.map(item => {
+
+                                const ingrediente = ingredientes.find(
+                                    i => String(i.productoId) === String(item.id)
+                                );
+
+                                const cantidad = ingrediente
+                                    ? ingrediente.cantidad
+                                    : "";
+
+                                return `
+
+                                    <div class="campo">
+
+                                        <label>
+                                            ${item.nombre}
+                                            (${item.unidad || "unidad"})
+                                        </label>
+
+                                        <input
+                                            type="number"
+                                            class="cantidad-ingrediente"
+                                            data-producto-id="${item.id}"
+                                            min="0"
+                                            step="any"
+                                            value="${cantidad}"
+                                            placeholder="0"
+                                        >
+
+                                    </div>
+
+                                `;
+
+                            }).join("")
+                        }
+
+                        <button
+                            type="submit"
+                            ${inventario.length === 0 ? "disabled" : ""}
+                        >
+                            Guardar receta
+                        </button>
+
+                    </form>
+
+                </section>
+
+            </main>
+
+        </div>
+
+    `;
+
+}
+
+
+/* =========================================================
+   GUARDAR RECETA
+   ========================================================= */
+
+function guardarFormularioReceta(event, productoId){
+
+    event.preventDefault();
+
+    const inventario = obtenerInventario();
+    const recetas = obtenerRecetas();
+
+    const campos = document.querySelectorAll(
+        "#formularioReceta .cantidad-ingrediente"
+    );
+
+    const ingredientes = [];
+
+    for(const campo of campos){
+
+        const valor = campo.value.trim();
+
+        if(valor === ""){
+            continue;
+        }
+
+        const cantidad = Number(valor);
+
+        if(!Number.isFinite(cantidad) || cantidad < 0){
+            alert("Revisa las cantidades de los ingredientes.");
+            return;
+        }
+
+        if(cantidad === 0){
+            continue;
+        }
+
+        const item = inventario.find(
+            p => String(p.id) === String(campo.dataset.productoId)
+        );
+
+        if(!item){
+            alert("Uno de los ingredientes ya no existe.");
+            return;
+        }
+
+        ingredientes.push({
+            productoId: item.id,
+            cantidad: cantidad
+        });
+
+    }
+
+    if(ingredientes.length === 0){
+        alert("Agrega al menos un ingrediente con cantidad mayor a cero.");
+        return;
+    }
+
+    const indice = recetas.findIndex(
+        r => String(r.productoId) === String(productoId)
+    );
+
+    const nuevaReceta = {
+        productoId: productoId,
+        ingredientes: ingredientes,
+        fechaModificacion: new Date().toISOString()
+    };
+
+    if(indice >= 0){
+
+        recetas[indice] = {
+            ...recetas[indice],
+            ...nuevaReceta
+        };
+
+    } else {
+
+        recetas.push({
+            id: Date.now().toString(),
+            ...nuevaReceta,
+            fechaRegistro: new Date().toISOString()
+        });
+
+    }
+
+    guardarRecetas(recetas);
+
+    alert("Receta guardada correctamente.");
+
+    mostrarRecetas();
+
+}
+
 function mostrarFormularioProductoVenta(id = null){
 
     const productos = obtenerProductosVenta();
