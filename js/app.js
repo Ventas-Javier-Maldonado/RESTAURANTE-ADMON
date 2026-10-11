@@ -2180,23 +2180,16 @@ function mostrarInventario() {
    RENDERIZAR INVENTARIO
    ========================================================= */
 
-function renderizarInventario(
-    productos
-) {
+function renderizarInventario(productos) {
 
     if (!productos.length) {
 
         return `
-
             <div class="personal-vacio">
 
-                <div>
-                    📦
-                </div>
+                <div>📦</div>
 
-                <h3>
-                    Aún no hay productos registrados
-                </h3>
+                <h3>Aún no hay productos registrados</h3>
 
                 <p>
                     Agrega el primer producto
@@ -2207,156 +2200,163 @@ function renderizarInventario(
                 <button
                     class="btn-principal"
                     type="button"
-                    onclick="mostrarFormularioProducto()">
-
+                    onclick="mostrarFormularioProducto()"
+                >
                     + Agregar producto
-
                 </button>
 
             </div>
-
         `;
     }
 
+    return productos.map(producto => {
 
-    return productos.map(
-        producto => {
+        const existencia = Number(producto.existencia || 0);
+        const stockMinimo = Number(producto.stockMinimo || 0);
+        const costo = Number(producto.costo || 0);
 
-            const stockBajo =
-                Number(producto.existencia) <=
-                Number(producto.stockMinimo);
+        const valorTotal = existencia * costo;
 
+        const stockBajo = existencia <= stockMinimo;
 
-            return `
+        return `
 
-                <article
-                    class="empleado-item"
-                    style="
-                        ${
+            <article
+                class="empleado-item"
+                style="${
+                    stockBajo
+                    ? "border-color:rgba(239,68,68,.65);"
+                    : ""
+                }"
+            >
+
+                <div class="empleado-avatar">
+                    📦
+                </div>
+
+                <div class="empleado-info">
+
+                    <strong>
+                        ${producto.nombre}
+                    </strong>
+
+                    <span>
+                        ${producto.categoria}
+                        ·
+                        ${producto.unidad}
+                    </span>
+
+                    <small>
+                        Código: ${producto.codigo}
+                    </small>
+
+                    <small>
+                        Costo unitario:
+                        $${costo.toFixed(2)}
+                    </small>
+
+                    <small>
+                        Valor en inventario:
+                        $${valorTotal.toFixed(2)}
+                    </small>
+
+                    <small>
+                        Stock mínimo:
+                        ${stockMinimo} ${producto.unidad}
+                    </small>
+
+                </div>
+
+                <div class="empleado-estado">
+
+                    <span
+                        class="estado-activo"
+                        style="${
                             stockBajo
-                            ? "border-color:rgba(239,68,68,.65);"
+                            ? "background:rgba(239,68,68,.15);color:#ff8b8b;border-color:rgba(239,68,68,.4);"
                             : ""
-                        }
+                        }"
+                    >
+
+                        ${existencia.toFixed(3)}
+                        ${producto.unidad}
+
+                    </span>
+
+                    ${
+                        stockBajo
+                        ? `
+                            <small style="color:#ff8b8b;">
+                                ⚠️ Stock bajo
+                            </small>
+                        `
+                        : ""
+                    }
+
+                </div>
+
+                <div
+                    style="
+                        display:flex;
+                        gap:8px;
+                        align-items:center;
                     "
                 >
 
-                    <div class="empleado-avatar">
-                        📦
-                    </div>
-
-
-                    <div class="empleado-info">
-
-                        <strong>
-                            ${producto.nombre}
-                        </strong>
-
-                        <span>
-                            ${producto.categoria}
-                            ·
-                            ${producto.unidad}
-                        </span>
-
-                        <small>
-
-                            Código:
-                            ${producto.codigo}
-
-                            ·
-
-                            Costo:
-                            $${Number(
-                                producto.costo
-                            ).toFixed(2)}
-
-                        </small>
-
-                    </div>
-
-
-                    <div class="empleado-estado">
-
-                        <span
-                            class="estado-activo"
-                            style="${
-                                stockBajo
-                                ? "background:rgba(239,68,68,.15);color:#ff8b8b;border-color:rgba(239,68,68,.4);"
-                                : ""
-                            }"
-                        >
-
-                            ${producto.existencia}
-                            ${producto.unidad}
-
-                        </span>
-
-                    </div>
-
-
-                    <div
+                    <button
+                        type="button"
+                        title="Movimientos"
+                        onclick="mostrarMovimientosProducto(${producto.id})"
                         style="
-                            display:flex;
-                            gap:8px;
-                            align-items:center;
+                            width:38px;
+                            height:38px;
+                            border-radius:10px;
+                            border:1px solid rgba(200,164,93,.45);
+                            background:#164d3a;
+                            color:#ffffff;
+                            font-size:17px;
+                            cursor:pointer;
                         "
                     >
+                        ↕️
+                    </button>
 
-                        <button
-                            type="button"
-                            title="Movimientos"
-                            onclick="mostrarMovimientosProducto(${producto.id})"
-                            style="
-                                width:38px;
-                                height:38px;
-                                border-radius:10px;
-                                border:1px solid rgba(200,164,93,.45);
-                                background:#164d3a;
-                                color:#ffffff;
-                                font-size:17px;
-                                cursor:pointer;
-                            "
-                        >
-                            ↕️
-                        </button>
+                    <button
+                        type="button"
+                        title="Editar producto"
+                        onclick="editarProducto(${producto.id})"
+                        style="
+                            width:38px;
+                            height:38px;
+                            border-radius:10px;
+                            border:1px solid rgba(200,164,93,.45);
+                            background:#123d67;
+                            color:#ffffff;
+                            font-size:17px;
+                            cursor:pointer;
+                        "
+                    >
+                        ✏️
+                    </button>
 
+                    <button
+                        class="empleado-eliminar"
+                        type="button"
+                        title="Eliminar producto"
+                        onclick="eliminarProducto(${producto.id})"
+                    >
+                        ×
+                    </button>
 
-                        <button
-                            type="button"
-                            title="Editar producto"
-                            onclick="editarProducto(${producto.id})"
-                            style="
-                                width:38px;
-                                height:38px;
-                                border-radius:10px;
-                                border:1px solid rgba(200,164,93,.45);
-                                background:#123d67;
-                                color:#ffffff;
-                                font-size:17px;
-                                cursor:pointer;
-                            "
-                        >
-                            ✏️
-                        </button>
+                </div>
 
+            </article>
 
-                        <button
-                            class="empleado-eliminar"
-                            type="button"
-                            title="Eliminar producto"
-                            onclick="eliminarProducto(${producto.id})"
-                        >
-                            ×
-                        </button>
+        `;
 
-                    </div>
+    }).join("");
 
-                </article>
-
-            `;
-        }
-    ).join("");
 }
-
 
 /* =========================================================
    FILTRAR INVENTARIO
