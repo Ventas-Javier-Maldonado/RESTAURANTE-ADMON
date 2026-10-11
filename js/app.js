@@ -4807,6 +4807,10 @@ const productosActivos = productosVenta.filter(
 
     `;
 
+       renderizarCarritoVenta();
+
+}
+
    function mostrarProductosVenta(){
 
     const app = document.getElementById("app");
@@ -4951,7 +4955,7 @@ const productosActivos = productosVenta.filter(
 
                                                     <button
                                                         type="button"
-                                                        onclick="eliminarProductoVenta('${producto.id}')"
+                                                        onclick="eliminarCatalogoProductoVenta('${producto.id}')"
                                                     >
                                                         Eliminar
                                                     </button>
@@ -5250,7 +5254,7 @@ function editarProductoVenta(id){
 }
 
 
-function eliminarProductoVenta(id){
+function eliminarCatalogoProductoVenta(id){
 
     const productos = obtenerProductosVenta();
 
@@ -5432,8 +5436,6 @@ function cambiarCantidadVenta(index, nuevaCantidad){
 
 
     item.cantidad = nuevaCantidad;
-
-    renderizarCarritoVenta();
 
 }
 
