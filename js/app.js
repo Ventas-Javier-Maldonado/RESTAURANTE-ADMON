@@ -5281,8 +5281,6 @@ function eliminarCatalogoProductoVenta(id){
     guardarProductosVenta(nuevosProductos);
 
     mostrarProductosVenta();
-}   
-
 
     renderizarCarritoVenta();
 
