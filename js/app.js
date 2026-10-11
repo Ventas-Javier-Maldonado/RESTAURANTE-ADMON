@@ -5940,312 +5940,232 @@ function renderizarCarritoVenta(){
 
 
 /* =========================================================
-   REGISTRAR VENTA
+   REGISTRAR VENTA CON DESCUENTO POR RECETA
    ========================================================= */
 
 function registrarVenta(){
 
     if(carritoVenta.length === 0){
-
-        alert(
-            "Agrega al menos un producto a la venta."
-        );
-
+        alert("Agrega al menos un producto a la venta.");
         return;
-
     }
 
-
-    const metodoPagoElement =
-        document.getElementById("metodoPagoVenta");
-
-
-    const metodoPago =
-        metodoPagoElement
-            ? metodoPagoElement.value
-            : "Efectivo";
-
-
+    const productosVenta = obtenerProductosVenta();
     const inventario = obtenerInventario();
+    const recetas = obtenerRecetas();
 
+    const consumos = new Map();
+
+    let subtotal = 0;
+    const itemsVenta = [];
 
     /*
-       PRIMERO VALIDAMOS TODA LA EXISTENCIA.
-       Así evitamos descontar algunos productos
-       y dejar otros sin descontar si existe un problema.
+       VALIDAR PLATILLOS, RECETAS Y CANTIDADES
     */
 
     for(const item of carritoVenta){
 
-        const producto = inventario.find(
-            producto =>
-                String(producto.id) ===
-                String(item.productoId)
+        const producto = productosVenta.find(
+            p => String(p.id) === String(item.productoId)
         );
 
+        if(!producto || producto.estado === "inactivo"){
+            alert("El platillo " + item.nombre + " ya no está disponible.");
+            return;
+        }
 
-        if(!producto){
+        const cantidad = Number(item.cantidad);
 
-            alert(
-                "El producto " +
-                item.nombre +
-                " ya no existe en el inventario."
+        if(!Number.isInteger(cantidad) || cantidad <= 0){
+            alert("Cantidad inválida para " + item.nombre);
+            return;
+        }
+
+        const receta = recetas.find(
+            r => String(r.productoId) === String(producto.id)
+        );
+
+        if(
+            !receta ||
+            !Array.isArray(receta.ingredientes) ||
+            receta.ingredientes.length === 0
+        ){
+            alert("El platillo " + producto.nombre + " no tiene receta registrada.");
+            return;
+        }
+
+        for(const ingrediente of receta.ingredientes){
+
+            const insumo = inventario.find(
+                p => String(p.id) === String(ingrediente.productoId)
             );
 
-            return;
+            if(!insumo){
+                alert(
+                    "Falta un ingrediente de la receta de " +
+                    producto.nombre +
+                    " en Inventario."
+                );
+                return;
+            }
+
+            const cantidadReceta = Number(ingrediente.cantidad);
+
+            if(
+                !Number.isFinite(cantidadReceta) ||
+                cantidadReceta <= 0
+            ){
+                alert("Cantidad inválida en la receta de " + producto.nombre);
+                return;
+            }
+
+            const consumo = cantidadReceta * cantidad;
+            const clave = String(insumo.id);
+
+            consumos.set(
+                clave,
+                (consumos.get(clave) || 0) + consumo
+            );
 
         }
 
+        const precio = Number(producto.precio);
 
-        const existencia =
-            Number(producto.existencia || 0);
-
-
-        const cantidad =
-            Number(item.cantidad || 0);
-
-
-        if(cantidad <= 0){
-
-            alert(
-                "La cantidad de " +
-                item.nombre +
-                " no es válida."
-            );
-
+        if(!Number.isFinite(precio) || precio < 0){
+            alert("Precio inválido para " + producto.nombre);
             return;
-
         }
 
-
-        if(cantidad > existencia){
-
-            alert(
-                "No hay suficiente existencia de " +
-                item.nombre +
-                "."
-            );
-
-            return;
-
-        }
-
-    }
-
-
-    /*
-       CALCULAR TOTALES
-    */
-
-    let subtotal = 0;
-
-
-    const itemsVenta = carritoVenta.map(item => {
-
-        const importe =
-            Number(item.precio) *
-            Number(item.cantidad);
-
+        const importe = Number((precio * cantidad).toFixed(2));
 
         subtotal += importe;
 
-
-        return {
-
-            productoId: item.productoId,
-
-            codigo: item.codigo,
-
-            nombre: item.nombre,
-
-            unidad: item.unidad,
-
-            cantidad: Number(item.cantidad),
-
-            precio: Number(item.precio),
-
-            importe: Number(importe.toFixed(2))
-
-        };
-
-    });
-
-
-    const total =
-        Number(subtotal.toFixed(2));
-
-
-    const folio =
-        generarFolioVenta();
-
-
-    const fecha =
-        new Date().toISOString();
-
-
-    /*
-       CREAR LA VENTA
-    */
-
-    const venta = {
-
-        id: Date.now(),
-
-        folio: folio,
-
-        fecha: fecha,
-
-        usuario:
-            typeof USUARIO_ACTUAL !== "undefined"
-                ? USUARIO_ACTUAL.nombre
-                : "Administrador",
-
-        items: itemsVenta,
-
-        subtotal:
-            Number(subtotal.toFixed(2)),
-
-        descuento: 0,
-
-        total: total,
-
-        metodoPago: metodoPago,
-
-        estado: "Completada"
-
-    };
-
-
-    /*
-       DESCONTAR INVENTARIO
-    */
-
-    const movimientos =
-        obtenerMovimientosInventario();
-
-
-    for(const item of carritoVenta){
-
-        const producto =
-            inventario.find(
-                producto =>
-                    String(producto.id) ===
-                    String(item.productoId)
-            );
-
-
-        const existenciaAnterior =
-            Number(producto.existencia || 0);
-
-
-        const cantidad =
-            Number(item.cantidad);
-
-
-        const existenciaNueva =
-            existenciaAnterior - cantidad;
-
-
-        producto.existencia =
-            existenciaNueva;
-
-
-        producto.fechaModificacion =
-            new Date().toISOString();
-
-
-        /*
-           REGISTRAMOS TAMBIÉN EL MOVIMIENTO
-           COMO SALIDA POR VENTA.
-        */
-
-        movimientos.push({
-
-            id:
-                Date.now() +
-                Math.floor(Math.random() * 100000),
-
-            productoId:
-                producto.id,
-
-            productoNombre:
-                producto.nombre,
-
-            tipo:
-                "Salida",
-
-            cantidad:
-                cantidad,
-
-            unidad:
-                producto.unidad || "",
-
-            existenciaAnterior:
-                existenciaAnterior,
-
-            existenciaNueva:
-                existenciaNueva,
-
-            motivo:
-                "Venta " + folio,
-
-            ventaId:
-                venta.id,
-
-            folioVenta:
-                folio,
-
-            usuario:
-                typeof USUARIO_ACTUAL !== "undefined"
-                    ? USUARIO_ACTUAL.nombre
-                    : "Administrador",
-
-            fecha:
-                fecha
-
+        itemsVenta.push({
+            productoId: producto.id,
+            codigo: producto.codigo || "",
+            nombre: producto.nombre,
+            unidad: "platillo",
+            cantidad: cantidad,
+            precio: precio,
+            importe: importe
         });
 
     }
 
-
     /*
-       GUARDAR INVENTARIO
+       VALIDAR TODAS LAS EXISTENCIAS ANTES DE DESCONTAR
     */
 
-    guardarInventario(inventario);
+    for(const [id, consumo] of consumos){
 
+        const insumo = inventario.find(
+            p => String(p.id) === id
+        );
+
+        const existencia = Number(insumo.existencia);
+
+        if(!Number.isFinite(existencia) || existencia < 0){
+            alert("Existencia inválida de " + insumo.nombre);
+            return;
+        }
+
+        if(existencia + 0.000000001 < consumo){
+            alert(
+                "Inventario insuficiente de " + insumo.nombre +
+                ". Disponible: " + existencia + " " +
+                (insumo.unidad || "") +
+                ". Necesario: " + Number(consumo.toFixed(6))
+            );
+            return;
+        }
+
+    }
 
     /*
-       GUARDAR MOVIMIENTOS
+       PREPARAR VENTA
     */
 
-    guardarMovimientosInventario(movimientos);
+    const metodoPagoElement =
+        document.getElementById("metodoPagoVenta");
 
+    const metodoPago = metodoPagoElement
+        ? metodoPagoElement.value
+        : "Efectivo";
+
+    const total = Number(subtotal.toFixed(2));
+    const folio = generarFolioVenta();
+    const fecha = new Date().toISOString();
+
+    const usuario =
+        typeof USUARIO_ACTUAL !== "undefined"
+            ? USUARIO_ACTUAL.nombre
+            : "Administrador";
+
+    const venta = {
+        id: Date.now(),
+        folio: folio,
+        fecha: fecha,
+        usuario: usuario,
+        items: itemsVenta,
+        subtotal: total,
+        descuento: 0,
+        total: total,
+        metodoPago: metodoPago,
+        estado: "Completada"
+    };
 
     /*
-       GUARDAR VENTA
+       DESCONTAR INGREDIENTES Y REGISTRAR MOVIMIENTOS
     */
 
-    const ventas =
-        obtenerVentas();
+    const movimientos = obtenerMovimientosInventario();
 
+    for(const [id, consumo] of consumos){
+
+        const insumo = inventario.find(
+            p => String(p.id) === id
+        );
+
+        const existenciaAnterior = Number(insumo.existencia);
+
+        const existenciaNueva = Number(
+            (existenciaAnterior - consumo).toFixed(6)
+        );
+
+        insumo.existencia = existenciaNueva;
+        insumo.fechaModificacion = fecha;
+
+        movimientos.push({
+            id: Date.now() + Math.floor(Math.random() * 100000),
+            productoId: insumo.id,
+            productoNombre: insumo.nombre,
+            tipo: "Salida",
+            cantidad: Number(consumo.toFixed(6)),
+            unidad: insumo.unidad || "",
+            existenciaAnterior: existenciaAnterior,
+            existenciaNueva: existenciaNueva,
+            motivo: "Consumo por venta " + folio,
+            ventaId: venta.id,
+            folioVenta: folio,
+            usuario: usuario,
+            fecha: fecha
+        });
+
+    }
+
+    /*
+       GUARDAR RESULTADOS
+    */
+
+    const ventas = obtenerVentas();
 
     ventas.push(venta);
 
-
+    guardarInventario(inventario);
+    guardarMovimientosInventario(movimientos);
     guardarVentas(ventas);
 
-
-    /*
-       LIMPIAR CARRITO
-    */
-
     carritoVenta = [];
-
-
-    /*
-       CONFIRMACIÓN
-    */
 
     alert(
         "Venta registrada correctamente.\n\n" +
@@ -6254,16 +6174,9 @@ function registrarVenta(){
         "Pago: " + metodoPago
     );
 
-
-    /*
-       VOLVER A VENTAS
-       PARA PODER CONTINUAR VENDIENDO
-    */
-
     mostrarVentas();
 
 }
-
 
 /* =========================================================
    VENTAS DEL DÍA
