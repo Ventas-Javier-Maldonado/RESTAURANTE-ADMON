@@ -4988,6 +4988,113 @@ const productosActivos = productosVenta.filter(
     `;
 }
 
+/* =========================================================
+   RECETAS DE PRODUCTOS DE VENTA
+   ========================================================= */
+
+function mostrarRecetas(){
+
+    const app = document.getElementById("app");
+
+    if(!app) return;
+
+    const productos = obtenerProductosVenta();
+    const recetas = obtenerRecetas();
+
+    app.innerHTML = `
+
+        <div class="pantalla">
+
+            <header class="topbar">
+
+                <div>
+                    <h1>Recetas</h1>
+                    <p>
+                        Administración de ingredientes por platillo.
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    onclick="mostrarProductosVenta()"
+                >
+                    ← Regresar
+                </button>
+
+            </header>
+
+            <main class="contenido">
+
+                <section class="card">
+
+                    <div class="card-header">
+
+                        <div>
+                            <h2>Recetas registradas</h2>
+                            <p>
+                                Selecciona un producto para administrar su receta.
+                            </p>
+                        </div>
+
+                    </div>
+
+                    <div>
+
+                        ${
+                            productos.length === 0
+
+                            ? `<p>No hay productos de venta registrados.</p>`
+
+                            : productos.map(producto => {
+
+                                const receta = recetas.find(
+                                    r => String(r.productoId) === String(producto.id)
+                                );
+
+                                return `
+
+                                    <div class="card">
+
+                                        <h3>${producto.nombre}</h3>
+
+                                        <p>
+                                            ${
+                                                receta
+                                                ? "Receta registrada"
+                                                : "Sin receta"
+                                            }
+                                        </p>
+
+                                        <button
+                                            type="button"
+                                            onclick="mostrarFormularioReceta('${producto.id}')"
+                                        >
+                                            ${
+                                                receta
+                                                ? "Editar receta"
+                                                : "Crear receta"
+                                            }
+                                        </button>
+
+                                    </div>
+
+                                `;
+
+                            }).join("")
+                        }
+
+                    </div>
+
+                </section>
+
+            </main>
+
+        </div>
+
+    `;
+
+}
+
 function mostrarFormularioProductoVenta(id = null){
 
     const productos = obtenerProductosVenta();
