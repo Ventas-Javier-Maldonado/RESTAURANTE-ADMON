@@ -6397,3 +6397,251 @@ function obtenerTotalVentasDelDia(){
     );
 
 }
+
+/* =========================================================
+   CORTE DE CAJA
+   ========================================================= */
+
+function mostrarCorteCaja(){
+
+    const app = document.getElementById("app");
+
+    const ventas = obtenerVentas().filter(venta => {
+
+        if(!venta.fecha || venta.estado !== "Completada"){
+            return false;
+        }
+
+        const fechaVenta = new Date(venta.fecha);
+        const hoy = new Date();
+
+        return (
+            fechaVenta.getFullYear() === hoy.getFullYear() &&
+            fechaVenta.getMonth() === hoy.getMonth() &&
+            fechaVenta.getDate() === hoy.getDate()
+        );
+
+    });
+
+    let efectivo = 0;
+    let tarjeta = 0;
+    let transferencia = 0;
+    let total = 0;
+    let platillos = 0;
+
+    ventas.forEach(venta => {
+
+        const importe = Number(venta.total || 0);
+
+        total += importe;
+
+        if(venta.metodoPago === "Efectivo"){
+            efectivo += importe;
+        }
+
+        if(venta.metodoPago === "Tarjeta"){
+            tarjeta += importe;
+        }
+
+        if(venta.metodoPago === "Transferencia"){
+            transferencia += importe;
+        }
+
+        (venta.items || []).forEach(item => {
+            platillos += Number(item.cantidad || 0);
+        });
+
+    });
+
+    const dinero = cantidad =>
+        "$" + cantidad.toLocaleString("es-MX", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+
+    const filas = ventas.map(venta => `
+
+        <tr>
+            <td>${venta.folio}</td>
+
+            <td>
+                ${new Date(venta.fecha).toLocaleTimeString(
+                    "es-MX",
+                    {hour:"2-digit",minute:"2-digit"}
+                )}
+            </td>
+
+            <td>
+                ${(venta.items || []).map(item =>
+                    `${item.cantidad} × ${item.nombre}`
+                ).join(", ")}
+            </td>
+
+            <td>${venta.metodoPago}</td>
+
+            <td>
+                <strong>${dinero(Number(venta.total || 0))}</strong>
+            </td>
+        </tr>
+
+    `).join("");
+
+    app.innerHTML = `
+
+        <div class="pantalla">
+
+            <header class="topbar">
+
+                <div>
+                    <h1>Corte de caja</h1>
+                    <p>Resumen de ventas del día</p>
+                </div>
+
+                <button
+                    type="button"
+                    onclick="mostrarVentas()"
+                >
+                    ← Ventas
+                </button>
+
+            </header>
+
+            <main class="contenido">
+
+                <section class="bienvenida">
+
+                    <div>
+                        <div class="etiqueta">
+                            CONTROL DE CAJA
+                        </div>
+
+                        <h1>
+                            Resumen de ingresos
+                        </h1>
+
+                        <p>
+                            ${new Date().toLocaleDateString("es-MX", {
+                                day:"2-digit",
+                                month:"long",
+                                year:"numeric"
+                            })}
+                        </p>
+                    </div>
+
+                </section>
+
+                <section class="indicadores">
+
+                    <article class="indicador">
+                        <div>
+                            <span>VENTAS REGISTRADAS</span>
+                            <strong>${ventas.length}</strong>
+                            <small>Operaciones del día</small>
+                        </div>
+                    </article>
+
+                    <article class="indicador">
+                        <div>
+                            <span>PLATILLOS VENDIDOS</span>
+                            <strong>${platillos}</strong>
+                            <small>Unidades vendidas</small>
+                        </div>
+                    </article>
+
+                    <article class="indicador">
+                        <div>
+                            <span>TOTAL VENDIDO</span>
+                            <strong>${dinero(total)}</strong>
+                            <small>Ingresos por ventas</small>
+                        </div>
+                    </article>
+
+                </section>
+
+                <section class="panel">
+
+                    <div class="panel-cabecera">
+                        <div>
+                            <span>FORMAS DE PAGO</span>
+                            <h2>Distribución de ingresos</h2>
+                        </div>
+                    </div>
+
+                    <div style="
+                        display:grid;
+                        grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+                        gap:16px;
+                        padding:15px 0;
+                    ">
+
+                        <div>
+                            <small>EFECTIVO</small>
+                            <h2>${dinero(efectivo)}</h2>
+                        </div>
+
+                        <div>
+                            <small>TARJETA</small>
+                            <h2>${dinero(tarjeta)}</h2>
+                        </div>
+
+                        <div>
+                            <small>TRANSFERENCIA</small>
+                            <h2>${dinero(transferencia)}</h2>
+                        </div>
+
+                    </div>
+
+                </section>
+
+                <section class="panel">
+
+                    <div class="panel-cabecera">
+                        <div>
+                            <span>MOVIMIENTOS</span>
+                            <h2>Detalle de ventas</h2>
+                        </div>
+                    </div>
+
+                    <div style="overflow-x:auto;">
+
+                        <table style="
+                            width:100%;
+                            min-width:650px;
+                            border-collapse:collapse;
+                            text-align:left;
+                        ">
+
+                            <thead>
+                                <tr>
+                                    <th style="padding:12px;">Folio</th>
+                                    <th style="padding:12px;">Hora</th>
+                                    <th style="padding:12px;">Platillos</th>
+                                    <th style="padding:12px;">Pago</th>
+                                    <th style="padding:12px;">Total</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+
+                                ${filas || `
+                                    <tr>
+                                        <td colspan="5" style="padding:16px;">
+                                            No hay ventas registradas hoy.
+                                        </td>
+                                    </tr>
+                                `}
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </section>
+
+            </main>
+
+        </div>
+    `;
+
+}
