@@ -6646,3 +6646,59 @@ function mostrarCorteCaja(){
     `;
 
 }
+
+/* =========================================================
+   APERTURA DE CAJA
+   ========================================================= */
+
+function abrirCaja() {
+
+    const fecha = obtenerFechaActual();
+
+    const clave = "apertura_caja_restaurante_" + fecha;
+
+    const aperturaExistente = localStorage.getItem(clave);
+
+    if (aperturaExistente) {
+        alert("La caja ya fue abierta el día de hoy.");
+        return;
+    }
+
+    const entrada = prompt(
+        "Ingresa el fondo inicial de caja (dinero para cambio):",
+        "0"
+    );
+
+    if (entrada === null) {
+        return;
+    }
+
+    const texto = entrada.trim().replace(",", ".");
+
+    if (texto === "" || !/^\d+(\.\d{1,2})?$/.test(texto)) {
+        alert("Ingresa una cantidad válida, sin valores negativos.");
+        return;
+    }
+
+    const fondoInicial = Number(texto);
+
+    const apertura = {
+        fecha: fecha,
+        hora: new Date().toISOString(),
+        fondoInicial: fondoInicial,
+        usuario: USUARIO_ACTUAL.nombre,
+        estado: "Abierta"
+    };
+
+    localStorage.setItem(
+        clave,
+        JSON.stringify(apertura)
+    );
+
+    alert(
+        "Caja abierta correctamente.\n" +
+        "Fondo inicial: $" + fondoInicial.toFixed(2)
+    );
+
+    mostrarCorteCaja();
+}
