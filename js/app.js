@@ -4774,26 +4774,42 @@ const productosActivos = productosVenta.filter(
 
         <div class="pantalla">
 
-            <header class="topbar">
+          <header class="topbar">
 
-                <div>
+    <div>
 
-                    <h1>Ventas</h1>
+        <h1>Ventas</h1>
 
-                    <p>
-                        Registrar venta
-                    </p>
+        <p>
+            Registrar venta
+        </p>
 
-                </div>
+    </div>
 
-                <button
-                    type="button"
-                    onclick="mostrarDashboard(obtenerJornadaActual())"
-                >
-                    ← Regresar
-                </button>
+    <div style="
+        display:flex;
+        gap:10px;
+        align-items:center;
+        flex-wrap:wrap;
+    ">
 
-            </header>
+        <button
+            type="button"
+            onclick="mostrarCorteCaja()"
+        >
+            CORTE DE CAJA
+        </button>
+
+        <button
+            type="button"
+            onclick="mostrarDashboard(obtenerJornadaActual())"
+        >
+            ← Regresar
+        </button>
+
+    </div>
+
+</header>
 
 
             <main class="contenido">
