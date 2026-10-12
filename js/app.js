@@ -2014,7 +2014,7 @@ function mostrarInventario() {
         class="indicador"
         role="button"
         tabindex="0"
-        onclick="document.getElementById('lista-inventario').scrollIntoView({behavior:'smooth',block:'start'})"
+        onclick="mostrarTablaExistencias()"
         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}"
         style="cursor:pointer;"
     >
@@ -2177,6 +2177,137 @@ function mostrarInventario() {
         </div>
 
     `;
+}
+
+/* =========================================================
+   TABLA GENERAL DE EXISTENCIAS
+   ========================================================= */
+
+function mostrarTablaExistencias(){
+
+    const app = document.getElementById("app");
+
+    const productos = obtenerInventario();
+
+    const movimientos = obtenerMovimientosInventario();
+
+    const filas = productos.map(producto => {
+
+        const actual = Number(producto.existencia || 0);
+
+        const salidasVenta = movimientos
+            .filter(m =>
+                String(m.productoId) === String(producto.id) &&
+                m.tipo === "Salida" &&
+                String(m.motivo || "").includes("venta")
+            )
+            .reduce(
+                (total, m) => total + Number(m.cantidad || 0),
+                0
+            );
+
+        const antesDeVentas = actual + salidasVenta;
+
+        const unidad = producto.unidad || "";
+
+        return `
+            <tr>
+                <td>${producto.nombre}</td>
+                <td>${antesDeVentas.toFixed(3)} ${unidad}</td>
+                <td>${salidasVenta.toFixed(3)} ${unidad}</td>
+                <td>
+                    <strong>${actual.toFixed(3)} ${unidad}</strong>
+                </td>
+            </tr>
+        `;
+
+    }).join("");
+
+    app.innerHTML = `
+
+        <div class="sistema">
+
+            <header class="topbar">
+
+                <div class="marca">
+
+                    <button
+                        class="texto-boton"
+                        type="button"
+                        onclick="mostrarInventario()"
+                    >
+                        ← Inventario
+                    </button>
+
+                    <div class="marca-icono">CR</div>
+
+                    <div>
+                        <strong>Existencias</strong>
+                        <small>Administración</small>
+                    </div>
+
+                </div>
+
+            </header>
+
+            <main class="contenido">
+
+                <section class="bienvenida">
+
+                    <div>
+                        <div class="etiqueta">INVENTARIO</div>
+
+                        <h1>Existencias de productos</h1>
+
+                        <p>
+                            Consulta el consumo por ventas
+                            y las cantidades disponibles.
+                        </p>
+                    </div>
+
+                </section>
+
+                <section class="panel">
+
+                    <div style="overflow-x:auto;">
+
+                        <table style="
+                            width:100%;
+                            border-collapse:collapse;
+                            text-align:left;
+                            min-width:560px;
+                        ">
+
+                            <thead>
+                                <tr>
+                                    <th style="padding:12px;">Producto</th>
+                                    <th style="padding:12px;">Antes de ventas</th>
+                                    <th style="padding:12px;">Utilizado</th>
+                                    <th style="padding:12px;">Disponible</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                ${filas || `
+                                    <tr>
+                                        <td colspan="4" style="padding:15px;">
+                                            No hay productos registrados.
+                                        </td>
+                                    </tr>
+                                `}
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </section>
+
+            </main>
+
+        </div>
+    `;
+
 }
 
 
