@@ -1676,20 +1676,21 @@ img {
         color: #17202b;
     }
 
-    .topbar {
-        height: 64px;
+  .topbar {
+    min-height: 64px;
+    height: auto;
 
-        padding: 0 14px;
+    padding: 12px 14px;
 
-        background:
-            linear-gradient(
-                90deg,
-                #102e50,
-                #174f86
-            );
+    background:
+        linear-gradient(
+            90deg,
+            #102e50,
+            #174f86
+        );
 
-        border-bottom: 0;
-    }
+    border-bottom: 0;
+}
 
     .marca {
         gap: 9px;
