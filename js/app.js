@@ -6604,12 +6604,13 @@ function mostrarCorteCaja(){
 
                     <div style="overflow-x:auto;">
 
-                        <table style="
-                            width:100%;
-                            min-width:650px;
-                            border-collapse:collapse;
-                            text-align:left;
-                        ">
+                      <table style="
+                        width:100%;
+                         min-width:560px;
+                         border-collapse:collapse;
+                         text-align:left;
+                        font-size:13px;
+                  ">
 
                             <thead>
                                 <tr>
