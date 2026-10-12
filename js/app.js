@@ -6508,6 +6508,28 @@ function mostrarCorteCaja(){
 
             <main class="contenido">
 
+            <div style="
+    display:flex;
+    justify-content:flex-end;
+    margin-bottom:16px;
+">
+    <button
+        type="button"
+        onclick="abrirCaja()"
+        style="
+            background:#174f86;
+            color:white;
+            border:none;
+            border-radius:10px;
+            padding:12px 18px;
+            font-weight:600;
+            cursor:pointer;
+        "
+    >
+        ABRIR CAJA
+    </button>
+</div>
+
                 <section class="bienvenida">
 
                     <div>
