@@ -666,18 +666,21 @@ function mostrarDashboard(jornada) {
 </button>
 
 
-                        <button
-                            type="button">
+                      
+<button
+    type="button"
+    onclick="mostrarCorteCaja()">
 
-                            <span>
-                                💵
-                            </span>
+    <span>
+        💵
+    </span>
 
-                            <span>
-                                Caja
-                            </span>
+    <span>
+        Caja
+    </span>
 
-                        </button>
+</button>
+
 
                         <button
     type="button"
