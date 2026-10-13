@@ -6738,20 +6738,17 @@ function obtenerVentasDeCaja(caja) {
 
 }
 
+
 /* =========================================================
    APERTURA DE CAJA
    ========================================================= */
 
 function abrirCaja() {
 
-    const fecha = obtenerFechaActual();
+    const cajaActual = obtenerCajaActual();
 
-    const clave = "apertura_caja_restaurante_" + fecha;
-
-    const aperturaExistente = localStorage.getItem(clave);
-
-    if (aperturaExistente) {
-        alert("La caja ya fue abierta el día de hoy.");
+    if (cajaActual && cajaActual.estado === "Abierta") {
+        alert("Ya existe una caja abierta. Debes cerrarla antes de iniciar otra jornada.");
         return;
     }
 
@@ -6774,17 +6771,16 @@ function abrirCaja() {
     const fondoInicial = Number(texto);
 
     const apertura = {
-        fecha: fecha,
+        id: Date.now(),
+        fecha: obtenerFechaActual(),
         hora: new Date().toISOString(),
         fondoInicial: fondoInicial,
         usuario: USUARIO_ACTUAL.nombre,
-        estado: "Abierta"
+        estado: "Abierta",
+        horaCierre: null
     };
 
-    localStorage.setItem(
-        clave,
-        JSON.stringify(apertura)
-    );
+    guardarCajaActual(apertura);
 
     alert(
         "Caja abierta correctamente.\n" +
