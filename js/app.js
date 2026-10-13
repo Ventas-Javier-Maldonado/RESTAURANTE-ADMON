@@ -6670,6 +6670,75 @@ function mostrarCorteCaja(){
 }
 
 /* =========================================================
+   CONTROL DE JORNADA DE CAJA
+   ========================================================= */
+
+const CLAVE_CAJA_ACTUAL = "control_restaurante_caja_actual";
+
+const CLAVE_HISTORIAL_CAJAS = "control_restaurante_historial_cajas";
+
+function obtenerCajaActual() {
+
+    try {
+
+        const datos = localStorage.getItem(CLAVE_CAJA_ACTUAL);
+
+        return datos ? JSON.parse(datos) : null;
+
+    } catch (error) {
+
+        console.error("Error al consultar la caja:", error);
+
+        return null;
+
+    }
+
+}
+
+function guardarCajaActual(caja) {
+
+    localStorage.setItem(
+        CLAVE_CAJA_ACTUAL,
+        JSON.stringify(caja)
+    );
+
+}
+
+function cajaEstaAbierta() {
+
+    const caja = obtenerCajaActual();
+
+    return caja !== null && caja.estado === "Abierta";
+
+}
+
+function obtenerVentasDeCaja(caja) {
+
+    if (!caja || !caja.hora) {
+        return [];
+    }
+
+    const inicio = new Date(caja.hora).getTime();
+
+    const fin = caja.horaCierre
+        ? new Date(caja.horaCierre).getTime()
+        : Infinity;
+
+    return obtenerVentas().filter(venta => {
+
+        if (!venta.fecha || venta.estado !== "Completada") {
+            return false;
+        }
+
+        const momento = new Date(venta.fecha).getTime();
+
+        return momento >= inicio && momento <= fin;
+
+    });
+
+}
+
+/* =========================================================
    APERTURA DE CAJA
    ========================================================= */
 
