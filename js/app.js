@@ -6513,22 +6513,42 @@ function mostrarCorteCaja(){
     justify-content:flex-end;
     margin-bottom:16px;
 ">
-    <button
-        type="button"
-        onclick="abrirCaja()"
-        style="
-            background:#174f86;
-            color:white;
-            border:none;
-            border-radius:10px;
-            padding:12px 18px;
-            font-weight:600;
-            cursor:pointer;
-        "
-    >
-        ABRIR CAJA
-    </button>
+   
+<button
+    type="button"
+    onclick="abrirCaja()"
+    style="
+        background:#174f86;
+        color:white;
+        border:none;
+        border-radius:10px;
+        padding:12px 18px;
+        font-weight:600;
+        cursor:pointer;
+    "
+>
+    ABRIR CAJA
+</button>
+
+<button
+    type="button"
+    onclick="cerrarCaja()"
+    style="
+        background:#174f86;
+        color:white;
+        border:none;
+        border-radius:10px;
+        padding:12px 18px;
+        font-weight:600;
+        cursor:pointer;
+        margin-left:10px;
+    "
+>
+    CERRAR CAJA
+</button>
+
 </div>
+
 
                 <section class="bienvenida">
 
@@ -6789,3 +6809,123 @@ function abrirCaja() {
 
     mostrarCorteCaja();
 }
+
+
+/* =========================================================
+   CIERRE Y ARQUEO DE CAJA
+   ========================================================= */
+
+function cerrarCaja() {
+
+    const caja = obtenerCajaActual();
+
+    if (!caja || caja.estado !== "Abierta") {
+        alert("No existe una caja abierta para cerrar.");
+        return;
+    }
+
+    if (USUARIO_ACTUAL.rol !== "Administrador") {
+        alert("Solamente un administrador puede cerrar la caja.");
+        return;
+    }
+
+    const ventas = obtenerVentasDeCaja(caja);
+
+    const ventasEfectivo = ventas.reduce((total, venta) => {
+        return total + (
+            venta.metodoPago === "Efectivo"
+                ? Number(venta.total || 0)
+                : 0
+        );
+    }, 0);
+
+    const fondoInicial = Number(caja.fondoInicial || 0);
+
+    // Los movimientos adicionales de caja se integrarán
+    // cuando conectemos el módulo correspondiente.
+    const entradasEfectivo = 0;
+    const salidasEfectivo = 0;
+
+    const efectivoEsperado =
+        fondoInicial +
+        ventasEfectivo +
+        entradasEfectivo -
+        salidasEfectivo;
+
+    const entrada = prompt(
+        "ARQUEO DE CAJA\n\n" +
+        "Fondo inicial: $" + fondoInicial.toFixed(2) + "\n" +
+        "Ventas en efectivo: $" + ventasEfectivo.toFixed(2) + "\n" +
+        "Efectivo esperado: $" + efectivoEsperado.toFixed(2) + "\n\n" +
+        "¿Cuánto efectivo contaste físicamente?",
+        efectivoEsperado.toFixed(2)
+    );
+
+    if (entrada === null) return;
+
+    const texto = entrada.trim().replace(",", ".");
+
+    if (texto === "" || !/^\d+(\.\d{1,2})?$/.test(texto)) {
+        alert("Ingresa una cantidad válida.");
+        return;
+    }
+
+    const efectivoContado = Number(texto);
+
+    const diferencia = Number(
+        (efectivoContado - efectivoEsperado).toFixed(2)
+    );
+
+    const confirmar = confirm(
+        "CONFIRMAR CIERRE DE CAJA\n\n" +
+        "Efectivo esperado: $" + efectivoEsperado.toFixed(2) + "\n" +
+        "Efectivo contado: $" + efectivoContado.toFixed(2) + "\n" +
+        "Diferencia: $" + diferencia.toFixed(2) + "\n\n" +
+        "¿Deseas cerrar definitivamente esta jornada?"
+    );
+
+    if (!confirmar) return;
+
+    const cierre = {
+        ...caja,
+        estado: "Cerrada",
+        horaCierre: new Date().toISOString(),
+        fondoInicial,
+        ventasEfectivo,
+        entradasEfectivo,
+        salidasEfectivo,
+        efectivoEsperado,
+        efectivoContado,
+        diferencia,
+        usuarioCierre: USUARIO_ACTUAL.nombre
+    };
+
+    let historial = [];
+
+    try {
+        historial = JSON.parse(
+            localStorage.getItem(CLAVE_HISTORIAL_CAJAS) || "[]"
+        );
+
+        if (!Array.isArray(historial)) historial = [];
+    } catch (error) {
+        historial = [];
+    }
+
+    historial.push(cierre);
+
+    localStorage.setItem(
+        CLAVE_HISTORIAL_CAJAS,
+        JSON.stringify(historial)
+    );
+
+    guardarCajaActual(cierre);
+
+    alert(
+        "Caja cerrada correctamente.\n" +
+        "Diferencia: $" + diferencia.toFixed(2)
+    );
+
+    mostrarCorteCaja();
+}
+
