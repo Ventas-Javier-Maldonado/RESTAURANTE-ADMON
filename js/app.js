@@ -13,7 +13,6 @@ document.addEventListener("DOMContentLoaded", () => {
    ========================================================= */
 
 const CLAVE_JORNADA = "jornada_restaurante";
-const CLAVE_HISTORIAL_JORNADAS = "historial_jornadas_restaurante";
 const CLAVE_EMPLEADOS = "empleados_restaurante";
 const CLAVE_INVENTARIO = "inventario_restaurante";
 const CLAVE_MOVIMIENTOS = "movimientos_inventario_restaurante";
@@ -32,7 +31,7 @@ function iniciarAplicacion() {
 
     const jornada = obtenerJornadaActual();
 
-    if (!jornada || jornada.estado !== "Activa") {
+    if (!jornada) {
         mostrarPantallaJornada();
         return;
     }
@@ -186,25 +185,6 @@ function mostrarPantallaJornada() {
    ========================================================= */
 
 function iniciarJornada() {
-
-    // Conservar la jornada anterior antes de iniciar una nueva.
-    const anteriorGuardada = localStorage.getItem(CLAVE_JORNADA);
-    if (anteriorGuardada) {
-        try {
-            const anterior = JSON.parse(anteriorGuardada);
-            if (anterior && anterior.entrada) {
-                const historial = JSON.parse(localStorage.getItem(CLAVE_HISTORIAL_JORNADAS) || "[]");
-                if (!historial.some(j => j.entrada === anterior.entrada)) {
-                    historial.push(anterior);
-                    localStorage.setItem(CLAVE_HISTORIAL_JORNADAS, JSON.stringify(historial));
-                }
-            }
-        } catch (error) {
-            console.error("No se pudo respaldar la jornada anterior:", error);
-            alert("No se pudo conservar la jornada anterior. No se iniciará una nueva hasta resolverlo.");
-            return;
-        }
-    }
 
     const jornada = {
         fecha: obtenerFechaActual(),
@@ -6146,12 +6126,6 @@ function registrarVenta(){
         return;
     }
 
-    if(!obtenerJornadaActual() || obtenerJornadaActual().estado !== "Activa"){
-        alert("Debes iniciar una jornada activa antes de registrar ventas.");
-        mostrarPantallaJornada();
-        return;
-    }
-
     if(!cajaEstaAbierta()){
         alert("Debes abrir la caja antes de registrar ventas.");
         return;
@@ -7109,3 +7083,29 @@ function crEscVenta(valor) {
             return resultado;
         };
     }
+    window.addEventListener('popstate', function(event) {
+        const estado = event.state;
+        restaurando = true;
+        try {
+            if (estado && originales[estado.crPantalla]) {
+                originales[estado.crPantalla](...(estado.crArgs || []));
+            } else if (typeof originales.mostrarDashboard === 'function') {
+                originales.mostrarDashboard(obtenerJornadaActual());
+            }
+        } finally { restaurando = false; }
+    });
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!history.state || !history.state.crPantalla) {
+            history.replaceState({crPantalla:'mostrarDashboard',crArgs:[null]}, '', location.href);
+        }
+        const estilos = document.createElement('style');
+        estilos.id = 'cr-contraste-titulos';
+        estilos.textContent = `
+            .pantalla > .topbar h1, .pantalla .card-header h2,
+            .pantalla .card > h3, .pantalla .mensaje-vacio h3 {
+                color: #fff !important;
+            }
+        `;
+        if (!document.getElementById(estilos.id)) document.head.appendChild(estilos);
+    });
+})();
