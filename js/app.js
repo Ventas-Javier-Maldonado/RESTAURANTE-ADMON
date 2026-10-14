@@ -4,27 +4,8 @@
    ========================================================= */
 
 document.addEventListener("DOMContentLoaded", () => {
-    crEstilosVentasLegibles();
     iniciarAplicacion();
 });
-
-function crEstilosVentasLegibles(){
-    if(document.getElementById('cr-estilos-ventas')) return;
-    const estilo=document.createElement('style');
-    estilo.id='cr-estilos-ventas';
-    estilo.textContent=`
-      .pantalla-ventas-cr > .topbar p {color:#fff !important;opacity:1 !important;}
-      .pantalla-ventas-cr .card h2,
-      .pantalla-ventas-cr .card .card-header h2 {color:#172c43 !important;}
-      .pantalla-ventas-cr .grid-productos-venta {display:grid !important;grid-template-columns:minmax(0,1fr) !important;gap:10px !important;width:100% !important;}
-      .pantalla-ventas-cr .producto-venta {display:flex !important;flex-direction:column !important;align-items:flex-start !important;justify-content:flex-start !important;text-align:left !important;gap:5px !important;width:100% !important;max-width:100% !important;min-width:0 !important;padding:12px 14px !important;box-sizing:border-box !important;white-space:normal !important;color:#172c43 !important;}
-      .pantalla-ventas-cr .producto-venta > div {display:block !important;text-align:left !important;width:100% !important;min-width:0 !important;}
-      .pantalla-ventas-cr .producto-venta strong,
-      .pantalla-ventas-cr .producto-venta small {display:block !important;text-align:left !important;white-space:normal !important;overflow-wrap:anywhere !important;color:#172c43 !important;}
-      .pantalla-ventas-cr .producto-venta small {font-size:13px !important;opacity:.8 !important;}
-    `;
-    document.head.appendChild(estilo);
-}
 
 
 /* =========================================================
@@ -4797,7 +4778,7 @@ const productosActivos = productosVenta.filter(
 
     app.innerHTML = `
 
-        <div class="pantalla pantalla-ventas-cr">
+        <div class="pantalla">
 
           <header class="topbar">
 
@@ -5004,7 +4985,7 @@ const productosActivos = productosVenta.filter(
 
     app.innerHTML = `
 
-        <div class="pantalla">
+        <div class="pantalla cr-catalogo">
 
             <header class="topbar">
 
@@ -5060,6 +5041,32 @@ const productosActivos = productosVenta.filter(
                     </div>
 
 
+                    <style>
+                    .cr-menu-cards{display:none}
+                    .cr-catalogo .topbar p{color:#fff!important}
+                    .cr-catalogo .card-header h2{color:#17324b!important}
+                    @media(max-width:760px){
+                      .cr-catalogo .tabla-contenedor{display:none!important}
+                      .cr-menu-cards{display:flex;flex-direction:column;gap:12px;margin-top:16px}
+                      .cr-menu-card{background:#f0f0f0;color:#19354e;border:1px solid #a6a6a6;border-radius:3px;padding:16px;text-align:left;min-width:0;overflow-wrap:anywhere}
+                      .cr-menu-card strong{display:block;font-size:17px;margin-bottom:6px}
+                      .cr-menu-card span{display:block;margin:5px 0}
+                      .cr-menu-card .cr-precio{font-weight:700;font-size:18px}
+                      .cr-menu-acciones{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+                      .cr-menu-acciones button{padding:9px 14px;min-width:95px}
+                      .cr-catalogo .card-header{display:flex;flex-wrap:wrap;gap:10px}
+                    }
+                    </style>
+                    <div class="cr-menu-cards">
+                      ${productos.length ? productos.map(producto=>`<article class="cr-menu-card">
+                         <strong>${crEsc(producto.nombre)}</strong>
+                         <span>Código: ${crEsc(producto.codigo||'Sin código')}</span>
+                         <span>Categoría: ${crEsc(producto.categoria||'-')}</span>
+                         <span class="cr-precio">${crDinero(producto.precio)}</span>
+                         <span>${producto.estado==='inactivo'?'Inactivo':'Activo'}</span>
+                         <div class="cr-menu-acciones"><button type="button" onclick="editarProductoVenta('${producto.id}')">Editar</button><button type="button" onclick="eliminarCatalogoProductoVenta('${producto.id}')">Eliminar</button></div>
+                      </article>`).join('') : '<p>No hay productos de venta.</p>'}
+                    </div>
                     <div class="tabla-contenedor">
 
                         ${
@@ -5338,7 +5345,7 @@ function mostrarFormularioReceta(productoId){
                             <h2>Ingredientes del platillo</h2>
                             <p>
                                 Indica la cantidad utilizada
-                                para preparar una porción. Usa la misma unidad que en Inventario: por ejemplo, 180 g son 0.180 kg.
+                                para preparar una porción.
                             </p>
                         </div>
 
@@ -7035,59 +7042,95 @@ function crDb(){return new Promise((resolve,reject)=>{const req=indexedDB.open('
 async function crGuardarFoto(id,blob){const db=await crDb();return new Promise((resolve,reject)=>{const tx=db.transaction('fotos','readwrite');tx.objectStore('fotos').put(blob,id);tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>{db.close();reject(tx.error);};});}
 async function crLeerFoto(id){const db=await crDb();return new Promise((resolve,reject)=>{const tx=db.transaction('fotos');const req=tx.objectStore('fotos').get(id);req.onsuccess=()=>{db.close();resolve(req.result||null);};req.onerror=()=>{db.close();reject(req.error);};});}
 function crLayout(titulo,contenido){document.getElementById('app').innerHTML=`<div class="sistema"><header class="topbar"><div class="marca"><button class="texto-boton" type="button" onclick="regresarDashboard()">← Inicio</button><div class="marca-icono">CR</div><div><strong>${crEsc(titulo)}</strong><small>Administración</small></div></div></header><main class="contenido"><section class="bienvenida"><div><div class="etiqueta">CONTROL RESTAURANTE</div><h1>${crEsc(titulo)}</h1></div></section>${contenido}</main></div>`;}
-function mostrarTickets(){const a=crAlertas(),tickets=crTickets().slice().reverse();crLayout('Tickets',`<section class="indicadores"><article class="indicador"><div><span>PENDIENTES</span><strong>${a.pendientes.length}</strong></div></article><article class="indicador"><div><span>ATRASADOS</span><strong>${a.atrasados.length}</strong></div></article><article class="indicador"><div><span>PAGOS VENCIDOS</span><strong>${a.vencidos.length}</strong></div></article></section><section class="panel"><button class="btn-principal" onclick="crFormulario()">+ Capturar ticket</button> <button class="btn-secundario" onclick="crCuentas()">Cuentas por pagar</button></section><section class="panel"><div class="panel-cabecera"><h2>Comprobantes</h2></div>${tickets.length?tickets.map(t=>`<article class="empleado-item" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><div class="empleado-info"><strong>${crEsc(t.folio)} · ${crEsc(t.tipo)}</strong><span>${crEsc(t.proveedor)} · ${crEsc(t.fecha)}</span><small>${crDinero(t.total)} · ${crEsc(t.estado)}${t.estado==='Pendiente'&&t.fecha<obtenerFechaActual()?' · ⚠️ ATRASADO':''}</small></div><button class="btn-secundario" onclick="crDetalle('${t.id}')">Revisar</button></article>`).join(''):'<p>No hay tickets registrados.</p>'}</section>`);}
+function mostrarTickets(){
+ const a=crAlertas(),tickets=crTickets().slice().reverse();
+ crLayout('Tickets',`<section class="panel">
+ <h2>Captura rápida de comprobantes</h2>
+ <p>Fotografía varios tickets seguidos. Se guardan como pendientes inmediatamente; el lector procesa uno a la vez y completa los datos que pueda reconocer.</p>
+ <label class="btn-principal" style="display:inline-block;cursor:pointer;padding:12px;margin:8px 0">📷 Fotografiar / seleccionar tickets
+ <input type="file" accept="image/*" multiple onchange="crCapturarRapido(event)" style="position:absolute;opacity:0;width:1px;height:1px"></label>
+ <button class="btn-secundario" type="button" onclick="crFormulario()">Captura manual</button>
+ <button class="btn-secundario" type="button" onclick="crCuentas()">Cuentas por pagar</button>
+ <p id="crColaEstado" role="status">${crColaOCR.length ? crColaOCR.length+' ticket(s) en cola' : 'Listo para capturar'}</p>
+ </section><section class="indicadores"><article class="indicador"><div><span>PENDIENTES</span><strong>${a.pendientes.length}</strong></div></article><article class="indicador"><div><span>ATRASADOS</span><strong>${a.atrasados.length}</strong></div></article><article class="indicador"><div><span>PAGOS VENCIDOS</span><strong>${a.vencidos.length}</strong></div></article></section>
+ <section class="panel"><div class="panel-cabecera"><h2>Comprobantes</h2></div><div id="crListaRapida">${crTicketsHTML()}</div></section>`);
+}
+function crTicketsHTML(){return crTickets().slice().reverse().map(t=>`<article class="empleado-item" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><div class="empleado-info"><strong>${crEsc(t.folio)} · ${crEsc(t.tipo)}</strong><span>${crEsc(t.proveedor||'Proveedor por identificar')} · ${crEsc(t.fecha||'Fecha por identificar')}</span><small>${Number(t.total)>0?crDinero(t.total):'Importe por identificar'} · ${crEsc(t.estado)} · ${crEsc(t.ocrEstado||'Pendiente de revisión')}</small></div><button class="btn-secundario" onclick="crDetalle('${t.id}')">Revisar</button></article>`).join('')||'<p>No hay tickets registrados.</p>';}
 function crFormulario(id){const t=id?crTickets().find(x=>x.id===id):null;if(t&&t.estado!=='Pendiente'){alert('Solo se pueden editar tickets pendientes.');return;}const inv=obtenerInventario();crTicketFotoTemporal=null;crLayout(t?'Revisar ticket':'Capturar ticket',`<section class="panel"><form id="crForm" onsubmit="crGuardarTicket(event,'${id||''}')"><div class="formulario-grid"><div class="campo"><label>Tipo de documento</label><select id="crTipo" onchange="crActualizarTipo()"><option value="Compra" ${t?.tipo==='Compra'?'selected':''}>Compra a proveedor</option><option value="NotaVenta" ${t?.tipo==='NotaVenta'?'selected':''}>Nota de venta externa (solo evidencia)</option></select></div><div class="campo"><label>Proveedor / referencia</label><input id="crProveedor" required value="${crEsc(t?.proveedor||'')}"></div><div class="campo"><label>Fecha del documento</label><input id="crFecha" type="date" required value="${crEsc(t?.fecha||obtenerFechaActual())}"></div><div class="campo"><label>Importe total</label><input id="crTotal" type="number" min="0.01" step="0.01" required value="${t?.total??''}"></div><div class="campo"><label>Condición de pago</label><select id="crCondicion" onchange="crActualizarTipo()"><option value="Contado" ${t?.condicion==='Contado'?'selected':''}>Pagado de contado</option><option value="Credito" ${t?.condicion==='Credito'?'selected':''}>A crédito / por pagar</option></select></div><div class="campo"><label>Medio de pago (si es contado)</label><select id="crMetodo"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option></select></div><div class="campo"><label>Vencimiento (si es crédito)</label><input id="crVence" type="date" value="${crEsc(t?.vencimiento||'')}"></div><div class="campo"><label>Foto del comprobante (cámara o galería)</label><input id="crFoto" type="file" accept="image/*" capture="environment" onchange="crFotoSeleccionada(event)"></div></div><p id="crFotoEstado">${t?.foto?'Fotografía guardada anteriormente':'Sin fotografía'}</p><button type="button" class="btn-secundario" onclick="crOCR()">Leer foto (OCR, requiere internet)</button><div class="campo"><label>Texto leído / notas del comprobante</label><textarea id="crNotas" rows="4">${crEsc(t?.notas||'')}</textarea></div><div id="crLineasCompra"><h3>Ingredientes comprados (se suman SOLO al confirmar)</h3><div id="crLineas">${(t?.lineas?.length?t.lineas:[{}]).map(x=>crFilaInsumo(inv,x)).join('')}</div><button type="button" class="btn-secundario" onclick="crAgregarLinea()">+ Agregar ingrediente</button></div><div class="formulario-acciones"><button class="btn-secundario" type="button" onclick="mostrarTickets()">Cancelar</button><button class="btn-principal" type="submit">Guardar pendiente</button></div></form></section>`);crActualizarTipo();}
 function crFilaInsumo(inv,x={}){return `<div class="cr-linea" style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0"><select class="cr-insumo" style="flex:2;min-width:150px"><option value="">Sin ingrediente / no aplica</option>${inv.map(p=>`<option value="${p.id}" ${String(x.productoId)===String(p.id)?'selected':''}>${crEsc(p.nombre)} (${crEsc(p.unidad)})</option>`).join('')}</select><input class="cr-cantidad" type="number" min="0.001" step="any" placeholder="Cantidad" style="flex:1;min-width:85px" value="${x.cantidad??''}"><input class="cr-costo" type="number" min="0" step="0.01" placeholder="Costo unitario" style="flex:1;min-width:85px" value="${x.costo??''}"><button type="button" onclick="this.closest('.cr-linea').remove()">×</button></div>`;}
 function crAgregarLinea(){document.getElementById('crLineas').insertAdjacentHTML('beforeend',crFilaInsumo(obtenerInventario()));}
 function crActualizarTipo(){const compra=document.getElementById('crTipo').value==='Compra';document.getElementById('crLineasCompra').style.display=compra?'':'none';document.getElementById('crVence').disabled=!compra||document.getElementById('crCondicion').value!=='Credito';}
 function crFotoSeleccionada(e){crTicketFotoTemporal=e.target.files[0]||null;document.getElementById('crFotoEstado').textContent=crTicketFotoTemporal?'Foto seleccionada: '+crTicketFotoTemporal.name:'Sin fotografía';}
-async function crOCR(){
-    const archivo=crTicketFotoTemporal;
-    if(!archivo){alert('Selecciona primero una fotografía nueva.');return;}
-    const estado=document.getElementById('crFotoEstado');
-    estado.textContent='Preparando lectura de imagen...';
-    let worker=null;
-    try{
-        if(!window.Tesseract){
-            if(!navigator.onLine) throw new Error('El lector OCR necesita descargar sus componentes la primera vez. Conéctate a internet y vuelve a intentar.');
-            const fuentes=[
-                'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',
-                'https://unpkg.com/tesseract.js@5/dist/tesseract.min.js'
-            ];
-            let cargado=false;
-            for(const fuente of fuentes){
-                try{
-                    await new Promise((resolve,reject)=>{
-                        const script=document.createElement('script');
-                        script.src=fuente;
-                        script.onload=resolve;
-                        script.onerror=()=>reject(new Error('No se pudo descargar el lector desde '+fuente));
-                        document.head.appendChild(script);
-                    });
-                    if(window.Tesseract){cargado=true;break;}
-                }catch(error){console.warn('OCR: fuente no disponible',error);}
-            }
-            if(!cargado) throw new Error('No se pudo descargar el lector OCR. Revisa la conexión a internet o inténtalo más tarde.');
-        }
-        estado.textContent='Reconociendo texto del ticket. Puede tardar un poco...';
-        worker=await window.Tesseract.createWorker('spa+eng');
-        const resultado=await worker.recognize(archivo);
-        const texto=resultado?.data?.text||'';
-        if(!texto.trim()) throw new Error('No se reconoció texto. Intenta una fotografía más nítida o captura los datos manualmente.');
-        document.getElementById('crNotas').value=texto;
-        estado.textContent='Lectura completada. Revisa y corrige los datos antes de guardar.';
-    }catch(error){
-        console.error('Error de lectura OCR:',error);
-        estado.textContent=error.message||'No se pudo leer la fotografía automáticamente.';
-    }finally{
-        if(worker){try{await worker.terminate();}catch(error){console.warn(error);}}
-    }
+let crOCRWorker=null;
+let crOCRWorkerPromise=null;
+let crColaOCR=[];
+let crProcesandoOCR=false;
+async function crMotorOCR(){
+ if(crOCRWorker)return crOCRWorker;
+ if(!crOCRWorkerPromise)crOCRWorkerPromise=(async()=>{
+  if(!window.Tesseract){await new Promise((ok,fail)=>{const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';script.onload=ok;script.onerror=()=>fail(new Error('No se pudo descargar el lector OCR. Revisa internet.'));document.head.appendChild(script);});}
+  return Tesseract.createWorker('spa+eng',1,{logger:()=>{}});
+ })().catch(e=>{crOCRWorkerPromise=null;throw e});
+ crOCRWorker=await crOCRWorkerPromise;
+ return crOCRWorker;
 }
+async function crImagenOptimizada(blob){
+ try{
+  const bitmap=await createImageBitmap(blob);
+  const anchoMax=1500,escala=Math.min(1,anchoMax/bitmap.width);
+  const canvas=document.createElement('canvas');canvas.width=Math.round(bitmap.width*escala);canvas.height=Math.round(bitmap.height*escala);
+  const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();
+  const imagen=ctx.getImageData(0,0,canvas.width,canvas.height),d=imagen.data;
+  for(let i=0;i<d.length;i+=4){let g=Math.min(255,Math.max(0,(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]-115)*1.35+135));d[i]=d[i+1]=d[i+2]=g;}
+  ctx.putImageData(imagen,0,0);
+  return await new Promise(resolve=>canvas.toBlob(b=>resolve(b||blob),'image/jpeg',0.86));
+ }catch(e){console.warn('No se pudo optimizar foto',e);return blob;}
+}
+function crExtraerDatosOCR(texto){
+ const lineas=String(texto||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+ let fecha='';
+ const m=texto.match(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/);
+ if(m){let a=+m[1],b=+m[2],y=+m[3];if(y<100)y+=2000;if(a>=1&&a<=31&&b>=1&&b<=12&&y>=2020&&y<=2100){const d=new Date(y,b-1,a);if(d.getFullYear()===y&&d.getMonth()===b-1&&d.getDate()===a)fecha=`${y}-${String(b).padStart(2,'0')}-${String(a).padStart(2,'0')}`;}}
+ const cantidades=[];
+ for(const l of lineas){if(/\b(total|importe\s+total|a\s+pagar|neto\s+a\s+pagar)\b/i.test(l)&&!/subtotal|sub.total|total\s+art/i.test(l)){const matches=[...l.matchAll(/\$?\s*(\d{1,6}(?:[,.]\d{3})*[,.]\d{2})\b/g)];for(const x of matches){const z=x[1].replace(/,/g,'');const n=Number(z);if(Number.isFinite(n)&&n>0)cantidades.push(n);}}}
+ const total=cantidades.length?cantidades[cantidades.length-1]:null;
+ const proveedor=lineas.find(x=>/[a-záéíóúñ]{3,}/i.test(x)&&!/ticket|fecha|total|rfc|folio|cliente|factura|gracias/i.test(x))?.slice(0,100)||'';
+ return {proveedor,fecha,total};
+}
+async function crLeerTexto(blob){const motor=await crMotorOCR();const foto=await crImagenOptimizada(blob);const r=await motor.recognize(foto);return r.data.text||'';}
+async function crOCR(){const archivo=crTicketFotoTemporal;if(!archivo){alert('Selecciona primero una fotografía nueva.');return;}const estado=document.getElementById('crFotoEstado');estado.textContent='Leyendo fotografía...';try{const texto=await crLeerTexto(archivo);const datos=crExtraerDatosOCR(texto);document.getElementById('crNotas').value=texto;if(datos.proveedor)document.getElementById('crProveedor').value=datos.proveedor;if(datos.fecha)document.getElementById('crFecha').value=datos.fecha;if(datos.total)document.getElementById('crTotal').value=datos.total;estado.textContent='Lectura terminada. Los datos detectados son aproximados: revisa antes de confirmar.';}catch(e){console.error(e);estado.textContent='No se pudo leer: '+e.message+'. Puedes guardar la fotografía pendiente.';}}
+async function crCapturarRapido(event){
+ const archivos=[...(event.target.files||[])];event.target.value='';if(!archivos.length)return;
+ const lista=crTickets();let guardados=0;
+ for(const foto of archivos){
+  if(!foto.type.startsWith('image/'))continue;
+  const id='CR'+Date.now()+'-'+Math.random().toString(36).slice(2,9);
+  try{
+   await crGuardarFoto(id,foto);
+   lista.push({id,folio:'COM-'+id.slice(-9),tipo:'Compra',proveedor:'',fecha:'',total:null,condicion:'Contado',metodo:'Efectivo',vencimiento:'',notas:'',lineas:[],estado:'Pendiente',ocrEstado:'En cola de lectura',foto:true,creado:new Date().toISOString(),usuario:USUARIO_ACTUAL.nombre});
+   crGuardarLista(CR_TICKETS_KEY,lista);
+   crColaOCR.push(id);guardados++;
+  }catch(e){console.error(e);alert('No se pudo guardar una fotografía. Revisa el espacio disponible.');}
+ }
+ if(guardados){mostrarTickets();crProcesarColaOCR();}
+}
+async function crProcesarColaOCR(){
+ if(crProcesandoOCR)return;crProcesandoOCR=true;
+ try{while(crColaOCR.length){
+  const id=crColaOCR.shift();const lista=crTickets();const t=lista.find(x=>x.id===id);if(!t||t.estado!=='Pendiente')continue;
+  t.ocrEstado='Leyendo...';crGuardarLista(CR_TICKETS_KEY,lista);crRefrescarListaOCR();
+  try{const foto=await crLeerFoto(id);if(!foto)throw Error('No se encontró la fotografía');const texto=await crLeerTexto(foto);const datos=crExtraerDatosOCR(texto);const nueva=crTickets();const actual=nueva.find(x=>x.id===id);if(actual&&actual.estado==='Pendiente'){
+   actual.notas=texto;actual.proveedor=datos.proveedor;actual.fecha=datos.fecha;actual.total=datos.total;actual.ocrEstado=texto.trim()?'Leído, revisar datos':'No se reconoció texto';actual.ocrProcesadoEn=new Date().toISOString();crGuardarLista(CR_TICKETS_KEY,nueva);
+  }}catch(e){console.error(e);const nueva=crTickets();const actual=nueva.find(x=>x.id===id);if(actual){actual.ocrEstado='Lectura pendiente: '+String(e.message||e).slice(0,100);crGuardarLista(CR_TICKETS_KEY,nueva);}}
+  crRefrescarListaOCR();
+ }}finally{crProcesandoOCR=false;crRefrescarListaOCR();}
+}
+function crRefrescarListaOCR(){const lista=document.getElementById('crListaRapida');if(lista)lista.innerHTML=crTicketsHTML();const estado=document.getElementById('crColaEstado');if(estado)estado.textContent=crProcesandoOCR?`Procesando tickets. En cola: ${crColaOCR.length}`:'Listo para capturar';}
 async function crGuardarTicket(event,id){event.preventDefault();const form=document.getElementById('crForm'),tipo=document.getElementById('crTipo').value,condicion=document.getElementById('crCondicion').value,total=Number(document.getElementById('crTotal').value),vencimiento=document.getElementById('crVence').value;const lineas=tipo==='Compra'?[...form.querySelectorAll('.cr-linea')].map(el=>({productoId:el.querySelector('.cr-insumo').value,cantidad:Number(el.querySelector('.cr-cantidad').value),costo:Number(el.querySelector('.cr-costo').value)})).filter(x=>x.productoId):[];if(tipo==='Compra'&&condicion==='Credito'&&!vencimiento){alert('Indica la fecha de vencimiento del crédito.');return;}if(lineas.some(x=>!Number.isFinite(x.cantidad)||x.cantidad<=0)){alert('Revisa las cantidades de los ingredientes.');return;}const lista=crTickets(),actual=id?lista.find(x=>x.id===id):null;if(id&&!actual)return;const ticket={...(actual||{}),id:id||'CR'+Date.now()+'-'+Math.floor(Math.random()*10000),folio:actual?.folio||'COM-'+String(Date.now()).slice(-9),tipo,proveedor:document.getElementById('crProveedor').value.trim(),fecha:document.getElementById('crFecha').value,total,condicion,metodo:document.getElementById('crMetodo').value,vencimiento:tipo==='Compra'&&condicion==='Credito'?vencimiento:'',notas:document.getElementById('crNotas').value,lineas,estado:'Pendiente',foto:Boolean(actual?.foto||crTicketFotoTemporal),creado:actual?.creado||new Date().toISOString(),usuario:actual?.usuario||USUARIO_ACTUAL.nombre};try{if(crTicketFotoTemporal)await crGuardarFoto(ticket.id,crTicketFotoTemporal);if(actual)lista[lista.indexOf(actual)]=ticket;else lista.push(ticket);crGuardarLista(CR_TICKETS_KEY,lista);mostrarTickets();}catch(e){console.error(e);alert('No se guardó el ticket. Revisa el espacio disponible y vuelve a intentar.');}}
 async function crVerFoto(id){try{const blob=await crLeerFoto(id);if(!blob){alert('Este ticket no tiene fotografía almacenada en este dispositivo.');return;}const url=URL.createObjectURL(blob);const w=window.open(url,'_blank');if(!w){alert('Permite ventanas emergentes para visualizar la foto.');URL.revokeObjectURL(url);}else setTimeout(()=>URL.revokeObjectURL(url),120000);}catch(e){alert('No se pudo abrir la fotografía.');}}
 function crDetalle(id){const t=crTickets().find(x=>x.id===id);if(!t)return mostrarTickets();const pagos=crPagos().filter(p=>p.ticketId===id);crLayout('Ticket '+t.folio,`<section class="panel"><p><strong>Tipo:</strong> ${crEsc(t.tipo)} · <strong>Estado:</strong> ${crEsc(t.estado)}</p><p><strong>Proveedor:</strong> ${crEsc(t.proveedor)}</p><p><strong>Fecha:</strong> ${crEsc(t.fecha)} · <strong>Total:</strong> ${crDinero(t.total)}</p><p><strong>Pago:</strong> ${crEsc(t.condicion)} · ${crEsc(t.metodo)} · <strong>Saldo:</strong> ${crDinero(crSaldo(t))}</p>${t.vencimiento?`<p><strong>Vence:</strong> ${crEsc(t.vencimiento)}</p>`:''}<p><strong>Notas:</strong> ${crEsc(t.notas)}</p>${t.lineas?.length?`<h3>Insumos</h3>${t.lineas.map(l=>{const p=obtenerInventario().find(x=>String(x.id)===String(l.productoId));return `<p>${crEsc(p?.nombre||'Producto no encontrado')}: ${l.cantidad} ${crEsc(p?.unidad||'')} × ${crDinero(l.costo)}</p>`;}).join('')}`:''}${t.foto?`<button class="btn-secundario" onclick="crVerFoto('${t.id}')">Ver fotografía</button>`:''}<p>${t.estado==='Pendiente'?`<button class="btn-secundario" onclick="crFormulario('${t.id}')">Editar</button> <button class="btn-principal" onclick="crConfirmar('${t.id}')">Confirmar y aplicar</button> <button class="btn-secundario" onclick="crRechazar('${t.id}')">Rechazar</button>`:''}</p>${t.estado==='Confirmado'&&t.tipo==='Compra'&&crSaldo(t)>0?`<button class="btn-principal" onclick="crRegistrarPago('${t.id}')">Registrar pago / abono</button>`:''}<h3>Pagos registrados</h3>${pagos.map(p=>`<p>${crEsc(p.fecha.slice(0,10))} · ${crDinero(p.importe)} · ${crEsc(p.metodo)}</p>`).join('')||'<p>Sin pagos.</p>'}<button class="btn-secundario" onclick="mostrarTickets()">Volver</button></section>`);}
 function crRechazar(id){if(!['Administrador','Encargada'].includes(USUARIO_ACTUAL.rol))return alert('No autorizado.');if(!confirm('¿Rechazar este comprobante?'))return;const a=crTickets(),t=a.find(x=>x.id===id);if(!t||t.estado!=='Pendiente')return;t.estado='Rechazado';t.autorizadoPor=USUARIO_ACTUAL.nombre;t.autorizadoEn=new Date().toISOString();crGuardarLista(CR_TICKETS_KEY,a);mostrarTickets();}
-function crConfirmar(id){if(!['Administrador','Encargada'].includes(USUARIO_ACTUAL.rol))return alert('Solo encargada o administrador pueden autorizar.');const lista=crTickets(),t=lista.find(x=>x.id===id);if(!t||t.estado!=='Pendiente')return;const inv=obtenerInventario(),mov=obtenerMovimientosInventario();if(t.tipo==='Compra'){for(const l of t.lineas){const p=inv.find(x=>String(x.id)===String(l.productoId));if(!p)return alert('Un ingrediente ya no existe. Edita el ticket antes de confirmar.');}if(t.condicion==='Contado'&&t.metodo==='Efectivo'&&!cajaEstaAbierta())return alert('Abre caja antes de confirmar una compra pagada en efectivo.');}if(!confirm('¿Confirmar '+t.folio+'?\n\nLa compra ingresará ingredientes al inventario y registrará su pago o deuda.\nLas notas de venta externa solo se archivan: no duplican ventas.'))return;try{if(t.tipo==='Compra'){for(const l of t.lineas){const p=inv.find(x=>String(x.id)===String(l.productoId)),antes=Number(p.existencia||0),despues=Number((antes+Number(l.cantidad)).toFixed(6));p.existencia=despues;mov.push({id:Date.now()+Math.random(),productoId:p.id,productoNombre:p.nombre,tipo:'Entrada',cantidad:Number(l.cantidad),unidad:p.unidad||'',existenciaAnterior:antes,existenciaNueva:despues,motivo:'Compra ticket '+t.folio,ticketId:t.id,usuario:USUARIO_ACTUAL.nombre,fecha:new Date().toISOString()});}if(t.condicion==='Contado'){const pago={id:'P'+Date.now(),ticketId:t.id,importe:Number(t.total),metodo:t.metodo,fecha:new Date().toISOString(),usuario:USUARIO_ACTUAL.nombre};const pagos=crPagos();pagos.push(pago);crGuardarLista(CR_TICKET_PAGOS_KEY,pagos);if(t.metodo==='Efectivo')crAgregarMovimientoCaja(pago);}}t.estado='Confirmado';t.autorizadoPor=USUARIO_ACTUAL.nombre;t.autorizadoEn=new Date().toISOString();crGuardarLista(CR_TICKETS_KEY,lista);if(t.tipo==='Compra'){guardarInventario(inv);guardarMovimientosInventario(mov);}crDetalle(id);}catch(e){console.error(e);alert('Ocurrió un error guardando la confirmación. No repitas la operación sin revisar el historial.');}}
+function crConfirmar(id){if(!['Administrador','Encargada'].includes(USUARIO_ACTUAL.rol))return alert('Solo encargada o administrador pueden autorizar.');const lista=crTickets(),t=lista.find(x=>x.id===id);if(!t||t.estado!=='Pendiente')return;if(!t.proveedor||!t.fecha||!Number.isFinite(Number(t.total))||Number(t.total)<=0){alert('Antes de confirmar, revisa proveedor, fecha y total en Editar.');return;}const inv=obtenerInventario(),mov=obtenerMovimientosInventario();if(t.tipo==='Compra'){for(const l of t.lineas){const p=inv.find(x=>String(x.id)===String(l.productoId));if(!p)return alert('Un ingrediente ya no existe. Edita el ticket antes de confirmar.');}if(t.condicion==='Contado'&&t.metodo==='Efectivo'&&!cajaEstaAbierta())return alert('Abre caja antes de confirmar una compra pagada en efectivo.');}if(!confirm('¿Confirmar '+t.folio+'?\n\nLa compra ingresará ingredientes al inventario y registrará su pago o deuda.\nLas notas de venta externa solo se archivan: no duplican ventas.'))return;try{if(t.tipo==='Compra'){for(const l of t.lineas){const p=inv.find(x=>String(x.id)===String(l.productoId)),antes=Number(p.existencia||0),despues=Number((antes+Number(l.cantidad)).toFixed(6));p.existencia=despues;mov.push({id:Date.now()+Math.random(),productoId:p.id,productoNombre:p.nombre,tipo:'Entrada',cantidad:Number(l.cantidad),unidad:p.unidad||'',existenciaAnterior:antes,existenciaNueva:despues,motivo:'Compra ticket '+t.folio,ticketId:t.id,usuario:USUARIO_ACTUAL.nombre,fecha:new Date().toISOString()});}if(t.condicion==='Contado'){const pago={id:'P'+Date.now(),ticketId:t.id,importe:Number(t.total),metodo:t.metodo,fecha:new Date().toISOString(),usuario:USUARIO_ACTUAL.nombre};const pagos=crPagos();pagos.push(pago);crGuardarLista(CR_TICKET_PAGOS_KEY,pagos);if(t.metodo==='Efectivo')crAgregarMovimientoCaja(pago);}}t.estado='Confirmado';t.autorizadoPor=USUARIO_ACTUAL.nombre;t.autorizadoEn=new Date().toISOString();crGuardarLista(CR_TICKETS_KEY,lista);if(t.tipo==='Compra'){guardarInventario(inv);guardarMovimientosInventario(mov);}crDetalle(id);}catch(e){console.error(e);alert('Ocurrió un error guardando la confirmación. No repitas la operación sin revisar el historial.');}}
 function crAgregarMovimientoCaja(pago){const caja=obtenerCajaActual();if(!caja||caja.estado!=='Abierta')throw Error('Caja cerrada');const a=crLeerLista(CR_TICKET_MOV_CAJA);if(a.some(x=>x.pagoId===pago.id))return;a.push({pagoId:pago.id,cajaId:caja.id,importe:pago.importe,fecha:pago.fecha,ticketId:pago.ticketId});crGuardarLista(CR_TICKET_MOV_CAJA,a);}
 function crEgresosCaja(caja){return crLeerLista(CR_TICKET_MOV_CAJA).filter(m=>String(m.cajaId)===String(caja?.id)).reduce((a,m)=>a+Number(m.importe||0),0);}
 function crRegistrarPago(id){if(!['Administrador','Encargada'].includes(USUARIO_ACTUAL.rol))return alert('No autorizado.');const t=crTickets().find(x=>x.id===id);if(!t||t.estado!=='Confirmado'||t.tipo!=='Compra')return;const saldo=crSaldo(t);if(saldo<=0)return alert('Ya está liquidado.');const s=prompt('Saldo: '+crDinero(saldo)+'\n¿Cuánto deseas abonar?',saldo.toFixed(2));if(s===null)return;const importe=Number(s.replace(',','.'));if(!Number.isFinite(importe)||importe<=0||importe>saldo)return alert('Abono inválido.');const metodo=prompt('Método: Efectivo, Transferencia o Tarjeta','Transferencia');if(metodo===null)return;const m=metodo.trim().toLowerCase(),normalizado=m==='efectivo'?'Efectivo':m==='transferencia'?'Transferencia':m==='tarjeta'?'Tarjeta':null;if(!normalizado)return alert('Método no válido.');if(normalizado==='Efectivo'&&!cajaEstaAbierta())return alert('Abre caja antes de registrar el pago en efectivo.');if(!confirm('Registrar abono de '+crDinero(importe)+' por '+normalizado+' a '+t.folio+'?'))return;const pago={id:'P'+Date.now()+'-'+Math.random(),ticketId:id,importe,metodo:normalizado,fecha:new Date().toISOString(),usuario:USUARIO_ACTUAL.nombre};try{const a=crPagos();a.push(pago);crGuardarLista(CR_TICKET_PAGOS_KEY,a);if(normalizado==='Efectivo')crAgregarMovimientoCaja(pago);crDetalle(id);}catch(e){console.error(e);alert('No se pudo registrar el pago. Revisa el historial antes de reintentar.');}}
