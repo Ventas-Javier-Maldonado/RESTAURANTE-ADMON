@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
    ========================================================= */
 
 const CLAVE_JORNADA = "jornada_restaurante";
+const CLAVE_HISTORIAL_JORNADAS = "historial_jornadas_restaurante";
 const CLAVE_EMPLEADOS = "empleados_restaurante";
 const CLAVE_INVENTARIO = "inventario_restaurante";
 const CLAVE_MOVIMIENTOS = "movimientos_inventario_restaurante";
@@ -31,7 +32,7 @@ function iniciarAplicacion() {
 
     const jornada = obtenerJornadaActual();
 
-    if (!jornada) {
+    if (!jornada || jornada.estado !== "Activa") {
         mostrarPantallaJornada();
         return;
     }
@@ -185,6 +186,25 @@ function mostrarPantallaJornada() {
    ========================================================= */
 
 function iniciarJornada() {
+
+    // Conservar la jornada anterior antes de iniciar una nueva.
+    const anteriorGuardada = localStorage.getItem(CLAVE_JORNADA);
+    if (anteriorGuardada) {
+        try {
+            const anterior = JSON.parse(anteriorGuardada);
+            if (anterior && anterior.entrada) {
+                const historial = JSON.parse(localStorage.getItem(CLAVE_HISTORIAL_JORNADAS) || "[]");
+                if (!historial.some(j => j.entrada === anterior.entrada)) {
+                    historial.push(anterior);
+                    localStorage.setItem(CLAVE_HISTORIAL_JORNADAS, JSON.stringify(historial));
+                }
+            }
+        } catch (error) {
+            console.error("No se pudo respaldar la jornada anterior:", error);
+            alert("No se pudo conservar la jornada anterior. No se iniciará una nueva hasta resolverlo.");
+            return;
+        }
+    }
 
     const jornada = {
         fecha: obtenerFechaActual(),
@@ -585,6 +605,8 @@ function mostrarDashboard(jornada) {
                 }
 
 
+                ${(() => { const a=crAlertas(); const n=a.pendientes.length+a.vencidos.length; return n?`<section class="alerta-inventario"><div class="alerta-icono">⚠️</div><div><strong>Tickets y pagos pendientes</strong><span>${a.pendientes.length} ticket(s) por confirmar, ${a.atrasados.length} atrasado(s), ${a.vencidos.length} pago(s) vencido(s).</span></div><button type="button" onclick="mostrarTickets()">Revisar</button></section>`:''; })()}
+
                 <section class="panel">
 
                     <div class="panel-cabecera">
@@ -653,7 +675,8 @@ function mostrarDashboard(jornada) {
 
 
 <button
-    type="button">
+    type="button"
+    onclick="mostrarTickets()">
 
     <span>
         🧾
@@ -4891,7 +4914,7 @@ const productosActivos = productosVenta.filter(
                                         </strong>
 
                                         <small>
-                                            Stock: ${producto.existencia} ${producto.unidad || ""}
+                                            Ingredientes según receta
                                         </small>
 
                                     </div>
@@ -4954,6 +4977,11 @@ const productosActivos = productosVenta.filter(
 
                 </section>
 
+
+                <section class="card" id="historialVentasRegistradas">
+                    <div class="card-header"><div><h2>Ventas registradas</h2><p>Operaciones guardadas en este dispositivo.</p></div></div>
+                    ${crHistorialVentasHTML()}
+                </section>
 
             </main>
 
@@ -5329,7 +5357,11 @@ function mostrarFormularioReceta(productoId){
                                 No hay ingredientes en Inventario.
                                </p>`
 
-                            : inventario.map(item => {
+                            : [...inventario].sort((a,b) => {
+                                const aUsado = ingredientes.some(i => String(i.productoId) === String(a.id));
+                                const bUsado = ingredientes.some(i => String(i.productoId) === String(b.id));
+                                return Number(bUsado) - Number(aUsado) || String(a.nombre).localeCompare(String(b.nombre), 'es');
+                            }).map(item => {
 
                                 const ingrediente = ingredientes.find(
                                     i => String(i.productoId) === String(item.id)
@@ -5469,7 +5501,17 @@ function guardarFormularioReceta(event, productoId){
 
     }
 
-    guardarRecetas(recetas);
+    try {
+        guardarRecetas(recetas);
+        const comprobacion = obtenerRecetas().find(r => String(r.productoId) === String(productoId));
+        if (!comprobacion || comprobacion.ingredientes.length !== ingredientes.length) {
+            throw new Error("No se pudo verificar el guardado de la receta.");
+        }
+    } catch (error) {
+        console.error("Error guardando receta:", error);
+        alert("No se pudo guardar la receta. Revisa el espacio del dispositivo.");
+        return;
+    }
 
     alert("Receta guardada correctamente.");
 
@@ -6104,6 +6146,17 @@ function registrarVenta(){
         return;
     }
 
+    if(!obtenerJornadaActual() || obtenerJornadaActual().estado !== "Activa"){
+        alert("Debes iniciar una jornada activa antes de registrar ventas.");
+        mostrarPantallaJornada();
+        return;
+    }
+
+    if(!cajaEstaAbierta()){
+        alert("Debes abrir la caja antes de registrar ventas.");
+        return;
+    }
+
     const productosVenta = obtenerProductosVenta();
     const inventario = obtenerInventario();
     const recetas = obtenerRecetas();
@@ -6315,9 +6368,38 @@ function registrarVenta(){
 
     ventas.push(venta);
 
-    guardarInventario(inventario);
-    guardarMovimientosInventario(movimientos);
-    guardarVentas(ventas);
+    // Guardado local verificado: si falla un paso, restaurar el estado anterior.
+    const claves = [CLAVE_INVENTARIO, CLAVE_MOVIMIENTOS, CLAVE_VENTAS];
+    const respaldo = claves.map(clave => localStorage.getItem(clave));
+    try {
+        guardarInventario(inventario);
+        guardarMovimientosInventario(movimientos);
+        guardarVentas(ventas);
+
+        const comprobacion = obtenerVentas().find(v => String(v.id) === String(venta.id));
+        const inventarioGuardado = obtenerInventario();
+        const movimientosGuardados = obtenerMovimientosInventario();
+        if (!comprobacion || ![...consumos.keys()].every(id => {
+            const esperado = inventario.find(p => String(p.id) === id);
+            const guardado = inventarioGuardado.find(p => String(p.id) === id);
+            return esperado && guardado && Math.abs(Number(guardado.existencia) - Number(esperado.existencia)) < 0.000001;
+        }) || !movimientosGuardados.some(m => String(m.ventaId) === String(venta.id))) {
+            throw new Error("La venta o sus movimientos no se pudieron verificar.");
+        }
+    } catch (error) {
+        console.error("Error registrando venta:", error);
+        try {
+            claves.forEach((clave, i) => respaldo[i] === null
+                ? localStorage.removeItem(clave)
+                : localStorage.setItem(clave, respaldo[i]));
+        } catch (errorRestauracion) {
+            console.error("No se pudo restaurar completamente la operación:", errorRestauracion);
+            alert("ERROR CRÍTICO: revisa el historial y el inventario antes de repetir la venta.");
+            return;
+        }
+        alert("La venta NO se registró. No se realizó el cobro en el sistema. Revisa el almacenamiento del dispositivo.");
+        return;
+    }
 
     carritoVenta = [];
 
@@ -6847,13 +6929,19 @@ function cerrarCaja() {
     // Los movimientos adicionales de caja se integrarán
     // cuando conectemos el módulo correspondiente.
     const entradasEfectivo = 0;
-    const salidasEfectivo = 0;
+    const salidasEfectivo = crEgresosCaja(caja);
 
     const efectivoEsperado =
         fondoInicial +
         ventasEfectivo +
         entradasEfectivo -
         salidasEfectivo;
+
+    const alertasTickets = crAlertas();
+    if (alertasTickets.pendientes.length && !confirm(
+        'Hay '+alertasTickets.pendientes.length+' ticket(s) pendientes de autorización, '+
+        alertasTickets.atrasados.length+' de días anteriores.\n¿Continuar con el arqueo sin confirmarlos?'
+    )) { mostrarTickets(); return; }
 
     const entrada = prompt(
         "ARQUEO DE CAJA\n\n" +
@@ -6931,3 +7019,93 @@ function cerrarCaja() {
 
     mostrarCorteCaja();
 }
+
+
+/* =========================================================
+   TICKETS | CONTROL RESTAURANTE
+   Documentos, OCR opcional, compras, créditos y alertas
+   ========================================================= */
+const CR_TICKETS_KEY = 'cr_tickets_v1';
+const CR_TICKET_PAGOS_KEY = 'cr_ticket_pagos_v1';
+const CR_TICKET_MOV_CAJA = 'cr_ticket_mov_caja_v1';
+let crTicketFotoTemporal = null;
+function crLeerLista(clave) { try { const a=JSON.parse(localStorage.getItem(clave)||'[]'); return Array.isArray(a)?a:[]; } catch(e){console.error(e);return [];} }
+function crGuardarLista(clave,lista){localStorage.setItem(clave,JSON.stringify(lista));}
+function crDinero(n){return '$'+Number(n||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function crEsc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function crTickets(){return crLeerLista(CR_TICKETS_KEY);}
+function crPagos(){return crLeerLista(CR_TICKET_PAGOS_KEY);}
+function crSaldo(t){return Math.max(0,Math.round((Number(t.total||0)-crPagos().filter(p=>p.ticketId===t.id).reduce((a,p)=>a+Number(p.importe),0))*100)/100);}
+function crFechaLocal(d){const x=new Date(d);return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;}
+function crAlertas(){const hoy=obtenerFechaActual(),lista=crTickets();return {pendientes:lista.filter(t=>t.estado==='Pendiente'),atrasados:lista.filter(t=>t.estado==='Pendiente'&&t.fecha<hoy),vencidos:lista.filter(t=>t.estado==='Confirmado'&&t.tipo==='Compra'&&crSaldo(t)>0&&t.vencimiento&&t.vencimiento<hoy),proximos:lista.filter(t=>t.estado==='Confirmado'&&t.tipo==='Compra'&&crSaldo(t)>0&&t.vencimiento&&t.vencimiento>=hoy&&t.vencimiento<=crFechaLocal(Date.now()+3*86400000))};}
+function crDb(){return new Promise((resolve,reject)=>{const req=indexedDB.open('cr_comprobantes',1);req.onupgradeneeded=()=>req.result.createObjectStore('fotos');req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});}
+async function crGuardarFoto(id,blob){const db=await crDb();return new Promise((resolve,reject)=>{const tx=db.transaction('fotos','readwrite');tx.objectStore('fotos').put(blob,id);tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>{db.close();reject(tx.error);};});}
+async function crLeerFoto(id){const db=await crDb();return new Promise((resolve,reject)=>{const tx=db.transaction('fotos');const req=tx.objectStore('fotos').get(id);req.onsuccess=()=>{db.close();resolve(req.result||null);};req.onerror=()=>{db.close();reject(req.error);};});}
+function crLayout(titulo,contenido){document.getElementById('app').innerHTML=`<div class="sistema"><header class="topbar"><div class="marca"><button class="texto-boton" type="button" onclick="regresarDashboard()">← Inicio</button><div class="marca-icono">CR</div><div><strong>${crEsc(titulo)}</strong><small>Administración</small></div></div></header><main class="contenido"><section class="bienvenida"><div><div class="etiqueta">CONTROL RESTAURANTE</div><h1>${crEsc(titulo)}</h1></div></section>${contenido}</main></div>`;}
+function mostrarTickets(){const a=crAlertas(),tickets=crTickets().slice().reverse();crLayout('Tickets',`<section class="indicadores"><article class="indicador"><div><span>PENDIENTES</span><strong>${a.pendientes.length}</strong></div></article><article class="indicador"><div><span>ATRASADOS</span><strong>${a.atrasados.length}</strong></div></article><article class="indicador"><div><span>PAGOS VENCIDOS</span><strong>${a.vencidos.length}</strong></div></article></section><section class="panel"><button class="btn-principal" onclick="crFormulario()">+ Capturar ticket</button> <button class="btn-secundario" onclick="crCuentas()">Cuentas por pagar</button></section><section class="panel"><div class="panel-cabecera"><h2>Comprobantes</h2></div>${tickets.length?tickets.map(t=>`<article class="empleado-item" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><div class="empleado-info"><strong>${crEsc(t.folio)} · ${crEsc(t.tipo)}</strong><span>${crEsc(t.proveedor)} · ${crEsc(t.fecha)}</span><small>${crDinero(t.total)} · ${crEsc(t.estado)}${t.estado==='Pendiente'&&t.fecha<obtenerFechaActual()?' · ⚠️ ATRASADO':''}</small></div><button class="btn-secundario" onclick="crDetalle('${t.id}')">Revisar</button></article>`).join(''):'<p>No hay tickets registrados.</p>'}</section>`);}
+function crFormulario(id){const t=id?crTickets().find(x=>x.id===id):null;if(t&&t.estado!=='Pendiente'){alert('Solo se pueden editar tickets pendientes.');return;}const inv=obtenerInventario();crTicketFotoTemporal=null;crLayout(t?'Revisar ticket':'Capturar ticket',`<section class="panel"><form id="crForm" onsubmit="crGuardarTicket(event,'${id||''}')"><div class="formulario-grid"><div class="campo"><label>Tipo de documento</label><select id="crTipo" onchange="crActualizarTipo()"><option value="Compra" ${t?.tipo==='Compra'?'selected':''}>Compra a proveedor</option><option value="NotaVenta" ${t?.tipo==='NotaVenta'?'selected':''}>Nota de venta externa (solo evidencia)</option></select></div><div class="campo"><label>Proveedor / referencia</label><input id="crProveedor" required value="${crEsc(t?.proveedor||'')}"></div><div class="campo"><label>Fecha del documento</label><input id="crFecha" type="date" required value="${crEsc(t?.fecha||obtenerFechaActual())}"></div><div class="campo"><label>Importe total</label><input id="crTotal" type="number" min="0.01" step="0.01" required value="${t?.total??''}"></div><div class="campo"><label>Condición de pago</label><select id="crCondicion" onchange="crActualizarTipo()"><option value="Contado" ${t?.condicion==='Contado'?'selected':''}>Pagado de contado</option><option value="Credito" ${t?.condicion==='Credito'?'selected':''}>A crédito / por pagar</option></select></div><div class="campo"><label>Medio de pago (si es contado)</label><select id="crMetodo"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option></select></div><div class="campo"><label>Vencimiento (si es crédito)</label><input id="crVence" type="date" value="${crEsc(t?.vencimiento||'')}"></div><div class="campo"><label>Foto del comprobante (cámara o galería)</label><input id="crFoto" type="file" accept="image/*" capture="environment" onchange="crFotoSeleccionada(event)"></div></div><p id="crFotoEstado">${t?.foto?'Fotografía guardada anteriormente':'Sin fotografía'}</p><button type="button" class="btn-secundario" onclick="crOCR()">Leer foto (OCR, requiere internet)</button><div class="campo"><label>Texto leído / notas del comprobante</label><textarea id="crNotas" rows="4">${crEsc(t?.notas||'')}</textarea></div><div id="crLineasCompra"><h3>Ingredientes comprados (se suman SOLO al confirmar)</h3><div id="crLineas">${(t?.lineas?.length?t.lineas:[{}]).map(x=>crFilaInsumo(inv,x)).join('')}</div><button type="button" class="btn-secundario" onclick="crAgregarLinea()">+ Agregar ingrediente</button></div><div class="formulario-acciones"><button class="btn-secundario" type="button" onclick="mostrarTickets()">Cancelar</button><button class="btn-principal" type="submit">Guardar pendiente</button></div></form></section>`);crActualizarTipo();}
+function crFilaInsumo(inv,x={}){return `<div class="cr-linea" style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0"><select class="cr-insumo" style="flex:2;min-width:150px"><option value="">Sin ingrediente / no aplica</option>${inv.map(p=>`<option value="${p.id}" ${String(x.productoId)===String(p.id)?'selected':''}>${crEsc(p.nombre)} (${crEsc(p.unidad)})</option>`).join('')}</select><input class="cr-cantidad" type="number" min="0.001" step="any" placeholder="Cantidad" style="flex:1;min-width:85px" value="${x.cantidad??''}"><input class="cr-costo" type="number" min="0" step="0.01" placeholder="Costo unitario" style="flex:1;min-width:85px" value="${x.costo??''}"><button type="button" onclick="this.closest('.cr-linea').remove()">×</button></div>`;}
+function crAgregarLinea(){document.getElementById('crLineas').insertAdjacentHTML('beforeend',crFilaInsumo(obtenerInventario()));}
+function crActualizarTipo(){const compra=document.getElementById('crTipo').value==='Compra';document.getElementById('crLineasCompra').style.display=compra?'':'none';document.getElementById('crVence').disabled=!compra||document.getElementById('crCondicion').value!=='Credito';}
+function crFotoSeleccionada(e){crTicketFotoTemporal=e.target.files[0]||null;document.getElementById('crFotoEstado').textContent=crTicketFotoTemporal?'Foto seleccionada: '+crTicketFotoTemporal.name:'Sin fotografía';}
+async function crOCR(){const archivo=crTicketFotoTemporal;if(!archivo){alert('Selecciona primero una fotografía nueva.');return;}const estado=document.getElementById('crFotoEstado');estado.textContent='Leyendo imagen, espera...';try{if(!window.Tesseract){await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';s.onload=resolve;s.onerror=reject;document.head.appendChild(s);});}const worker=await Tesseract.createWorker('spa+eng');const r=await worker.recognize(archivo);await worker.terminate();document.getElementById('crNotas').value=r.data.text;estado.textContent='Lectura completada. Revisa y corrige el texto antes de guardar.';}catch(e){console.error(e);estado.textContent='No se pudo leer automáticamente. Puedes capturar los datos manualmente.';}}
+async function crGuardarTicket(event,id){event.preventDefault();const form=document.getElementById('crForm'),tipo=document.getElementById('crTipo').value,condicion=document.getElementById('crCondicion').value,total=Number(document.getElementById('crTotal').value),vencimiento=document.getElementById('crVence').value;const lineas=tipo==='Compra'?[...form.querySelectorAll('.cr-linea')].map(el=>({productoId:el.querySelector('.cr-insumo').value,cantidad:Number(el.querySelector('.cr-cantidad').value),costo:Number(el.querySelector('.cr-costo').value)})).filter(x=>x.productoId):[];if(tipo==='Compra'&&condicion==='Credito'&&!vencimiento){alert('Indica la fecha de vencimiento del crédito.');return;}if(lineas.some(x=>!Number.isFinite(x.cantidad)||x.cantidad<=0)){alert('Revisa las cantidades de los ingredientes.');return;}const lista=crTickets(),actual=id?lista.find(x=>x.id===id):null;if(id&&!actual)return;const ticket={...(actual||{}),id:id||'CR'+Date.now()+'-'+Math.floor(Math.random()*10000),folio:actual?.folio||'COM-'+String(Date.now()).slice(-9),tipo,proveedor:document.getElementById('crProveedor').value.trim(),fecha:document.getElementById('crFecha').value,total,condicion,metodo:document.getElementById('crMetodo').value,vencimiento:tipo==='Compra'&&condicion==='Credito'?vencimiento:'',notas:document.getElementById('crNotas').value,lineas,estado:'Pendiente',foto:Boolean(actual?.foto||crTicketFotoTemporal),creado:actual?.creado||new Date().toISOString(),usuario:actual?.usuario||USUARIO_ACTUAL.nombre};try{if(crTicketFotoTemporal)await crGuardarFoto(ticket.id,crTicketFotoTemporal);if(actual)lista[lista.indexOf(actual)]=ticket;else lista.push(ticket);crGuardarLista(CR_TICKETS_KEY,lista);mostrarTickets();}catch(e){console.error(e);alert('No se guardó el ticket. Revisa el espacio disponible y vuelve a intentar.');}}
+async function crVerFoto(id){try{const blob=await crLeerFoto(id);if(!blob){alert('Este ticket no tiene fotografía almacenada en este dispositivo.');return;}const url=URL.createObjectURL(blob);const w=window.open(url,'_blank');if(!w){alert('Permite ventanas emergentes para visualizar la foto.');URL.revokeObjectURL(url);}else setTimeout(()=>URL.revokeObjectURL(url),120000);}catch(e){alert('No se pudo abrir la fotografía.');}}
+function crDetalle(id){const t=crTickets().find(x=>x.id===id);if(!t)return mostrarTickets();const pagos=crPagos().filter(p=>p.ticketId===id);crLayout('Ticket '+t.folio,`<section class="panel"><p><strong>Tipo:</strong> ${crEsc(t.tipo)} · <strong>Estado:</strong> ${crEsc(t.estado)}</p><p><strong>Proveedor:</strong> ${crEsc(t.proveedor)}</p><p><strong>Fecha:</strong> ${crEsc(t.fecha)} · <strong>Total:</strong> ${crDinero(t.total)}</p><p><strong>Pago:</strong> ${crEsc(t.condicion)} · ${crEsc(t.metodo)} · <strong>Saldo:</strong> ${crDinero(crSaldo(t))}</p>${t.vencimiento?`<p><strong>Vence:</strong> ${crEsc(t.vencimiento)}</p>`:''}<p><strong>Notas:</strong> ${crEsc(t.notas)}</p>${t.lineas?.length?`<h3>Insumos</h3>${t.lineas.map(l=>{const p=obtenerInventario().find(x=>String(x.id)===String(l.productoId));return `<p>${crEsc(p?.nombre||'Producto no encontrado')}: ${l.cantidad} ${crEsc(p?.unidad||'')} × ${crDinero(l.costo)}</p>`;}).join('')}`:''}${t.foto?`<button class="btn-secundario" onclick="crVerFoto('${t.id}')">Ver fotografía</button>`:''}<p>${t.estado==='Pendiente'?`<button class="btn-secundario" onclick="crFormulario('${t.id}')">Editar</button> <button class="btn-principal" onclick="crConfirmar('${t.id}')">Confirmar y aplicar</button> <button class="btn-secundario" onclick="crRechazar('${t.id}')">Rechazar</button>`:''}</p>${t.estado==='Confirmado'&&t.tipo==='Compra'&&crSaldo(t)>0?`<button class="btn-principal" onclick="crRegistrarPago('${t.id}')">Registrar pago / abono</button>`:''}<h3>Pagos registrados</h3>${pagos.map(p=>`<p>${crEsc(p.fecha.slice(0,10))} · ${crDinero(p.importe)} · ${crEsc(p.metodo)}</p>`).join('')||'<p>Sin pagos.</p>'}<button class="btn-secundario" onclick="mostrarTickets()">Volver</button></section>`);}
+function crRechazar(id){if(!['Administrador','Encargada'].includes(USUARIO_ACTUAL.rol))return alert('No autorizado.');if(!confirm('¿Rechazar este comprobante?'))return;const a=crTickets(),t=a.find(x=>x.id===id);if(!t||t.estado!=='Pendiente')return;t.estado='Rechazado';t.autorizadoPor=USUARIO_ACTUAL.nombre;t.autorizadoEn=new Date().toISOString();crGuardarLista(CR_TICKETS_KEY,a);mostrarTickets();}
+function crConfirmar(id){if(!['Administrador','Encargada'].includes(USUARIO_ACTUAL.rol))return alert('Solo encargada o administrador pueden autorizar.');const lista=crTickets(),t=lista.find(x=>x.id===id);if(!t||t.estado!=='Pendiente')return;const inv=obtenerInventario(),mov=obtenerMovimientosInventario();if(t.tipo==='Compra'){for(const l of t.lineas){const p=inv.find(x=>String(x.id)===String(l.productoId));if(!p)return alert('Un ingrediente ya no existe. Edita el ticket antes de confirmar.');}if(t.condicion==='Contado'&&t.metodo==='Efectivo'&&!cajaEstaAbierta())return alert('Abre caja antes de confirmar una compra pagada en efectivo.');}if(!confirm('¿Confirmar '+t.folio+'?\n\nLa compra ingresará ingredientes al inventario y registrará su pago o deuda.\nLas notas de venta externa solo se archivan: no duplican ventas.'))return;try{if(t.tipo==='Compra'){for(const l of t.lineas){const p=inv.find(x=>String(x.id)===String(l.productoId)),antes=Number(p.existencia||0),despues=Number((antes+Number(l.cantidad)).toFixed(6));p.existencia=despues;mov.push({id:Date.now()+Math.random(),productoId:p.id,productoNombre:p.nombre,tipo:'Entrada',cantidad:Number(l.cantidad),unidad:p.unidad||'',existenciaAnterior:antes,existenciaNueva:despues,motivo:'Compra ticket '+t.folio,ticketId:t.id,usuario:USUARIO_ACTUAL.nombre,fecha:new Date().toISOString()});}if(t.condicion==='Contado'){const pago={id:'P'+Date.now(),ticketId:t.id,importe:Number(t.total),metodo:t.metodo,fecha:new Date().toISOString(),usuario:USUARIO_ACTUAL.nombre};const pagos=crPagos();pagos.push(pago);crGuardarLista(CR_TICKET_PAGOS_KEY,pagos);if(t.metodo==='Efectivo')crAgregarMovimientoCaja(pago);}}t.estado='Confirmado';t.autorizadoPor=USUARIO_ACTUAL.nombre;t.autorizadoEn=new Date().toISOString();crGuardarLista(CR_TICKETS_KEY,lista);if(t.tipo==='Compra'){guardarInventario(inv);guardarMovimientosInventario(mov);}crDetalle(id);}catch(e){console.error(e);alert('Ocurrió un error guardando la confirmación. No repitas la operación sin revisar el historial.');}}
+function crAgregarMovimientoCaja(pago){const caja=obtenerCajaActual();if(!caja||caja.estado!=='Abierta')throw Error('Caja cerrada');const a=crLeerLista(CR_TICKET_MOV_CAJA);if(a.some(x=>x.pagoId===pago.id))return;a.push({pagoId:pago.id,cajaId:caja.id,importe:pago.importe,fecha:pago.fecha,ticketId:pago.ticketId});crGuardarLista(CR_TICKET_MOV_CAJA,a);}
+function crEgresosCaja(caja){return crLeerLista(CR_TICKET_MOV_CAJA).filter(m=>String(m.cajaId)===String(caja?.id)).reduce((a,m)=>a+Number(m.importe||0),0);}
+function crRegistrarPago(id){if(!['Administrador','Encargada'].includes(USUARIO_ACTUAL.rol))return alert('No autorizado.');const t=crTickets().find(x=>x.id===id);if(!t||t.estado!=='Confirmado'||t.tipo!=='Compra')return;const saldo=crSaldo(t);if(saldo<=0)return alert('Ya está liquidado.');const s=prompt('Saldo: '+crDinero(saldo)+'\n¿Cuánto deseas abonar?',saldo.toFixed(2));if(s===null)return;const importe=Number(s.replace(',','.'));if(!Number.isFinite(importe)||importe<=0||importe>saldo)return alert('Abono inválido.');const metodo=prompt('Método: Efectivo, Transferencia o Tarjeta','Transferencia');if(metodo===null)return;const m=metodo.trim().toLowerCase(),normalizado=m==='efectivo'?'Efectivo':m==='transferencia'?'Transferencia':m==='tarjeta'?'Tarjeta':null;if(!normalizado)return alert('Método no válido.');if(normalizado==='Efectivo'&&!cajaEstaAbierta())return alert('Abre caja antes de registrar el pago en efectivo.');if(!confirm('Registrar abono de '+crDinero(importe)+' por '+normalizado+' a '+t.folio+'?'))return;const pago={id:'P'+Date.now()+'-'+Math.random(),ticketId:id,importe,metodo:normalizado,fecha:new Date().toISOString(),usuario:USUARIO_ACTUAL.nombre};try{const a=crPagos();a.push(pago);crGuardarLista(CR_TICKET_PAGOS_KEY,a);if(normalizado==='Efectivo')crAgregarMovimientoCaja(pago);crDetalle(id);}catch(e){console.error(e);alert('No se pudo registrar el pago. Revisa el historial antes de reintentar.');}}
+function crCuentas(){const t=crTickets().filter(x=>x.estado==='Confirmado'&&x.tipo==='Compra'&&crSaldo(x)>0),total=t.reduce((a,x)=>a+crSaldo(x),0);crLayout('Cuentas por pagar',`<section class="panel"><h2>Saldo total: ${crDinero(total)}</h2><p>Compras confirmadas aún no liquidadas.</p>${t.map(x=>`<article class="empleado-item"><div class="empleado-info"><strong>${crEsc(x.proveedor)} · ${crEsc(x.folio)}</strong><span>Saldo ${crDinero(crSaldo(x))} · Vence ${crEsc(x.vencimiento||'Sin fecha')}</span></div><button class="btn-secundario" onclick="crDetalle('${x.id}')">Ver / abonar</button></article>`).join('')||'<p>No hay cuentas pendientes.</p>'}<button class="btn-secundario" onclick="mostrarTickets()">Volver</button></section>`);}
+
+/* =========================================================
+   AJUSTES DE PRUEBA: HISTORIAL, CONTRASTE Y ATRÁS EN MÓVIL
+   No altera la estructura ni el diseño general.
+   ========================================================= */
+
+function crHistorialVentasHTML() {
+    const ventas = obtenerVentas().filter(v => v.estado === "Completada")
+        .sort((a,b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, 30);
+    if (!ventas.length) return '<p>Aún no hay ventas registradas.</p>';
+    return `<div style="overflow-x:auto"><table style="width:100%;min-width:460px;text-align:left;border-collapse:collapse">
+        <thead><tr><th>Folio</th><th>Fecha</th><th>Platillos</th><th>Pago</th><th>Total</th></tr></thead>
+        <tbody>${ventas.map(v => `<tr>
+            <td style="padding:9px 5px">${crEscVenta(v.folio)}</td>
+            <td style="padding:9px 5px">${new Date(v.fecha).toLocaleString('es-MX')}</td>
+            <td style="padding:9px 5px">${(v.items||[]).map(i => `${crEscVenta(i.nombre)} × ${Number(i.cantidad)||0}`).join(', ')}</td>
+            <td style="padding:9px 5px">${crEscVenta(v.metodoPago)}</td>
+            <td style="padding:9px 5px">$${Number(v.total||0).toFixed(2)}</td>
+        </tr>`).join('')}</tbody></table></div>`;
+}
+function crEscVenta(valor) {
+    return String(valor ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+(function crPrepararNavegacion() {
+    // Historial de pantallas de esta SPA: el botón Atrás vuelve a la pantalla previa.
+    const pantallas = [
+        'mostrarDashboard', 'mostrarPersonal', 'mostrarFormularioEmpleado',
+        'mostrarInventario', 'mostrarTablaExistencias', 'mostrarFormularioProducto',
+        'mostrarProductosVenta', 'mostrarFormularioProductoVenta',
+        'mostrarRecetas', 'mostrarFormularioReceta', 'mostrarVentas',
+        'mostrarCorteCaja', 'mostrarTickets', 'mostrarPantallaJornada'
+    ];
+    const originales = {};
+    let restaurando = false;
+    for (const nombre of pantallas) {
+        if (typeof window[nombre] !== 'function') continue;
+        originales[nombre] = window[nombre];
+        window[nombre] = function(...args) {
+            const resultado = originales[nombre].apply(this, args);
+            if (!restaurando && document.getElementById('app')) {
+                const estado = {crPantalla:nombre, crArgs:args.map(a =>
+                    a && typeof a === 'object' ? null : a)};
+                if (!history.state || history.state.crPantalla !== nombre ||
+                    JSON.stringify(history.state.crArgs) !== JSON.stringify(estado.crArgs)) {
+                    history.pushState(estado, '', location.href);
+                }
+            }
+            return resultado;
+        };
+    }
