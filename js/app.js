@@ -74,6 +74,22 @@ async function iniciarAplicacion() {
 
     }
 
+   /* =========================================================
+   CARGAR RECETAS DESDE SUPABASE
+========================================================= */
+
+try {
+
+    await cargarRecetasSupabase();
+
+} catch (error) {
+
+    console.error("Error al cargar recetas:", error);
+
+    window.recetasSupabase = null;
+
+}
+
     const jornada = obtenerJornadaActual();
 
     if (!jornada) {
