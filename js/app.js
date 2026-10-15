@@ -35,7 +35,30 @@ const USUARIO_ACTUAL = {
    INICIO DE LA APLICACIÓN
    ========================================================= */
 
-function iniciarAplicacion() {
+async function iniciarAplicacion() {
+
+    const app = document.getElementById("app");
+
+    app.innerHTML = "<p style='padding:30px'>Cargando inventario...</p>";
+
+    const { data, error } = await supabaseClient
+        .from("cr_inventario")
+        .select("*")
+        .order("codigo", { ascending: true });
+
+    if (error) {
+
+        console.error("Error Supabase:", error);
+
+        alert("No se pudo cargar el inventario de Supabase.");
+
+    } else {
+
+        window.inventarioSupabase = data;
+
+        console.log("Inventario Supabase cargado:", data.length);
+
+    }
 
     const jornada = obtenerJornadaActual();
 
@@ -46,7 +69,6 @@ function iniciarAplicacion() {
 
     mostrarDashboard(jornada);
 }
-
 
 /* =========================================================
    FECHA ACTUAL
