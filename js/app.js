@@ -4820,9 +4820,13 @@ function guardarProductosVenta(productos){
 }
 
 function obtenerRecetas(){
-    return JSON.parse(
-        localStorage.getItem(CLAVE_RECETAS)
-    ) || [];
+
+    return Array.isArray(window.recetasSupabase)
+        ? window.recetasSupabase
+        : JSON.parse(
+            localStorage.getItem(CLAVE_RECETAS) || "[]"
+        );
+
 }
 
 function guardarRecetas(recetas){
