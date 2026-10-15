@@ -1897,6 +1897,40 @@ function obtenerProductosBajoMinimo(
     );
 }
 
+/* =========================================================
+   EXPORTAR RESPALDO DE INVENTARIO
+========================================================= */
+
+function exportarInventario() {
+
+    const productos = obtenerInventario();
+
+    if (!productos.length) {
+        alert("No hay productos para exportar.");
+        return;
+    }
+
+    const contenido = JSON.stringify(productos, null, 2);
+
+    const archivo = new Blob(
+        [contenido],
+        { type: "application/json" }
+    );
+
+    const enlace = document.createElement("a");
+
+    enlace.href = URL.createObjectURL(archivo);
+    enlace.download = "respaldo-inventario.json";
+
+    document.body.appendChild(enlace);
+    enlace.click();
+    enlace.remove();
+
+    setTimeout(() => {
+        URL.revokeObjectURL(enlace.href);
+    }, 1000);
+}
+
 
 /* =========================================================
    MOSTRAR INVENTARIO
@@ -2010,6 +2044,13 @@ function mostrarInventario() {
                         + Agregar producto
 
                     </button>
+
+                    <button
+    class="btn-agregar-personal"
+    type="button"
+    onclick="exportarInventario()">
+    EXPORTAR INVENTARIO
+</button>
 
                 </section>
 
