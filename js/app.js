@@ -1917,6 +1917,39 @@ function guardarInventario(
 }
 
 
+/* =========================================================
+   GUARDAR PRODUCTO EN SUPABASE
+   ========================================================= */
+
+async function guardarProductoSupabase(producto) {
+
+    const { error } = await supabaseClient
+        .from("cr_inventario")
+        .upsert({
+            id: producto.id,
+            codigo: producto.codigo,
+            nombre: producto.nombre,
+            categoria: producto.categoria,
+            unidad: producto.unidad,
+            existencia: Number(producto.existencia || 0),
+            stockMinimo: Number(producto.stockMinimo || 0),
+            costo: Number(producto.costo || 0),
+            precio: Number(producto.precio || 0),
+            estado: producto.estado || "Activo",
+            fechaRegistro: producto.fechaRegistro || new Date().toISOString(),
+            fechaModificacion: new Date().toISOString()
+        }, { onConflict: "id" });
+
+    if (error) {
+        console.error("Error guardando producto:", error);
+        throw error;
+    }
+
+    console.log("Producto guardado en Supabase:", producto.codigo);
+}
+
+
+
 function obtenerProductosBajoMinimo(
     productos
 ) {
