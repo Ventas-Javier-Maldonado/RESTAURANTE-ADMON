@@ -3117,16 +3117,17 @@ async function guardarProducto(
 
         mostrarInventario();
 
-    } catch (error) {
+   } catch (error) {
 
-        alert(
-            "No se pudo guardar el producto en Supabase. " +
-            "Intenta nuevamente."
-        );
+    console.error("ERROR REAL AL GUARDAR:", error);
 
-    }
+    alert(
+        "Error al guardar: " +
+        (error.message || JSON.stringify(error))
+    );
+
 }
-
+}
 
 /* =========================================================
    EDITAR PRODUCTO
