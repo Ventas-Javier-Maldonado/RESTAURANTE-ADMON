@@ -5868,7 +5868,11 @@ function mostrarFormularioProductoVenta(id = null){
     `;
 }
 
-function guardarProductoVenta(event, id = null){
+/* =========================================================
+   GUARDAR PRODUCTO DE VENTA EN SUPABASE
+========================================================= */
+
+async function guardarProductoVenta(event, id = null){
 
     event.preventDefault();
 
@@ -5876,18 +5880,15 @@ function guardarProductoVenta(event, id = null){
 
     const nombre = document
         .getElementById("nombreProductoVenta")
-        .value
-        .trim();
+        .value.trim();
 
     const codigo = document
         .getElementById("codigoProductoVenta")
-        .value
-        .trim();
+        .value.trim();
 
     const categoria = document
         .getElementById("categoriaProductoVenta")
-        .value
-        .trim();
+        .value.trim();
 
     const precio = Number(
         document.getElementById("precioProductoVenta").value
@@ -5902,10 +5903,14 @@ function guardarProductoVenta(event, id = null){
         return;
     }
 
-    if(isNaN(precio) || precio < 0){
+    if(!Number.isFinite(precio) || precio < 0){
         alert("Ingresa un precio válido.");
         return;
     }
+
+    const fechaActual = new Date().toISOString();
+
+    let productoGuardar;
 
     if(id){
 
@@ -5918,42 +5923,93 @@ function guardarProductoVenta(event, id = null){
             return;
         }
 
-        producto.codigo = codigo;
-        producto.nombre = nombre;
-        producto.categoria = categoria;
-        producto.precio = precio;
-        producto.estado = estado;
-        producto.fechaModificacion = new Date().toISOString();
-
-    }else{
-
-        productos.push({
-
-            id: Date.now(),
-
+        productoGuardar = {
+            ...producto,
             codigo,
             nombre,
             categoria,
             precio,
             estado,
+            fechaModificacion: fechaActual
+        };
 
-            fechaRegistro: new Date().toISOString(),
+    }else{
 
-            fechaModificacion: new Date().toISOString()
-
-        });
+        productoGuardar = {
+            id: Date.now(),
+            codigo,
+            nombre,
+            categoria,
+            precio,
+            estado,
+            fechaRegistro: fechaActual,
+            fechaModificacion: fechaActual
+        };
 
     }
 
-    guardarProductosVenta(productos);
+    const boton = event.submitter;
 
-    alert(
-        id
-        ? "Producto actualizado correctamente."
-        : "Producto registrado correctamente."
-    );
+    if(boton){
+        boton.disabled = true;
+    }
 
-    mostrarProductosVenta();
+    try {
+
+        const { error } = await supabaseClient
+            .from("cr_productos_venta")
+            .upsert(productoGuardar, {
+                onConflict: "id"
+            });
+
+        if(error){
+            throw error;
+        }
+
+        const indice = productos.findIndex(
+            p => String(p.id) === String(productoGuardar.id)
+        );
+
+        if(indice >= 0){
+
+            productos[indice] = productoGuardar;
+
+        }else{
+
+            productos.push(productoGuardar);
+
+        }
+
+        guardarProductosVenta(productos);
+
+        alert(
+            id
+            ? "Producto actualizado correctamente."
+            : "Producto registrado correctamente."
+        );
+
+        mostrarProductosVenta();
+
+    }catch(error){
+
+        console.error(
+            "Error guardando producto de venta:",
+            error
+        );
+
+        alert(
+            "No se pudo guardar en Supabase: " +
+            (error.message || "Error desconocido")
+        );
+
+    }finally{
+
+        if(boton){
+            boton.disabled = false;
+        }
+
+    }
+
 }
 
 function editarProductoVenta(id){
