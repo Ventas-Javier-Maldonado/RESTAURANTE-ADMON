@@ -2949,7 +2949,7 @@ function mostrarFormularioProducto() {
    GUARDAR PRODUCTO
    ========================================================= */
 
-function guardarProducto(
+async function guardarProducto(
     event
 ) {
 
@@ -3107,17 +3107,24 @@ function guardarProducto(
     };
 
 
-    productos.push(
-        nuevoProducto
-    );
+       try {
 
+        await guardarProductoSupabase(nuevoProducto);
 
-    guardarInventario(
-        productos
-    );
+        productos.push(nuevoProducto);
 
+        guardarInventario(productos);
 
-    mostrarInventario();
+        mostrarInventario();
+
+    } catch (error) {
+
+        alert(
+            "No se pudo guardar el producto en Supabase. " +
+            "Intenta nuevamente."
+        );
+
+    }
 }
 
 
