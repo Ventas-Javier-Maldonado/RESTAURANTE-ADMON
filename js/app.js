@@ -6018,7 +6018,11 @@ function editarProductoVenta(id){
 }
 
 
-function eliminarCatalogoProductoVenta(id){
+/* =========================================================
+   ELIMINAR PRODUCTO DE VENTA EN SUPABASE
+========================================================= */
+
+async function eliminarCatalogoProductoVenta(id){
 
     const productos = obtenerProductosVenta();
 
@@ -6038,18 +6042,53 @@ function eliminarCatalogoProductoVenta(id){
         return;
     }
 
-    const nuevosProductos = productos.filter(
-        p => String(p.id) !== String(id)
-    );
+    try {
 
-    guardarProductosVenta(nuevosProductos);
+        const { data, error } = await supabaseClient
+            .from("cr_productos_venta")
+            .delete()
+            .eq("id", producto.id)
+            .select("id");
 
-    mostrarProductosVenta();
+        if(error){
+            throw error;
+        }
 
-    renderizarCarritoVenta();
+        if(!data || data.length !== 1){
+            throw new Error(
+                "No se confirmó la eliminación en Supabase."
+            );
+        }
+
+        const nuevosProductos = productos.filter(
+            p => String(p.id) !== String(id)
+        );
+
+        window.productosVentaSupabase = nuevosProductos;
+
+        guardarProductosVenta(nuevosProductos);
+
+        mostrarProductosVenta();
+
+        renderizarCarritoVenta();
+
+        alert("Producto eliminado correctamente.");
+
+    }catch(error){
+
+        console.error(
+            "Error eliminando producto de venta:",
+            error
+        );
+
+        alert(
+            "No se pudo eliminar el producto: " +
+            (error.message || "Error desconocido")
+        );
+
+    }
 
 }
-
 
 /* =========================================================
    AGREGAR PRODUCTO A LA VENTA
