@@ -12,6 +12,14 @@ document.addEventListener("DOMContentLoaded", () => {
    CONFIGURACIÓN GENERAL
    ========================================================= */
 
+const SUPABASE_URL = "https://drpdwccyjtetakcgbulf.supabase.co";
+
+const SUPABASE_ANON_KEY = "sb_publishable_mf390v5SbXC_xI9h95Q_hg_ElR7ngvZ";
+
+const supabaseClient = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY
+);
 const CLAVE_JORNADA = "jornada_restaurante";
 const CLAVE_EMPLEADOS = "empleados_restaurante";
 const CLAVE_INVENTARIO = "inventario_restaurante";
