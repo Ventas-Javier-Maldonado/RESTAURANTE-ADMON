@@ -39,7 +39,7 @@ async function iniciarAplicacion() {
 
     const app = document.getElementById("app");
 
-    app.innerHTML = "<p style='padding:30px'>Cargando inventario...</p>";
+    app.innerHTML = "<p style='padding:30px'>Cargando información...</p>";
 
     const { data, error } = await supabaseClient
         .from("cr_inventario")
@@ -57,6 +57,20 @@ async function iniciarAplicacion() {
         window.inventarioSupabase = data;
 
         console.log("Inventario Supabase cargado:", data.length);
+
+    }
+
+    /* CARGAR PLATILLOS DESDE SUPABASE */
+
+    try {
+
+        await cargarProductosVentaSupabase();
+
+    } catch (error) {
+
+        console.error("Error al cargar platillos:", error);
+
+        window.productosVentaSupabase = null;
 
     }
 
@@ -4789,12 +4803,15 @@ let carritoVenta = [];
 const CLAVE_PRODUCTOS_VENTA = "productos_venta_restaurante";
 const CLAVE_RECETAS = "recetas_restaurante";
 
-function obtenerProductosVenta(){
-    return JSON.parse(
-        localStorage.getItem(CLAVE_PRODUCTOS_VENTA)
-    ) || [];
-}
+function obtenerProductosVenta() {
 
+    return Array.isArray(window.productosVentaSupabase)
+        ? window.productosVentaSupabase
+        : JSON.parse(
+            localStorage.getItem(CLAVE_PRODUCTOS_VENTA) || "[]"
+        );
+
+}
 function guardarProductosVenta(productos){
     localStorage.setItem(
         CLAVE_PRODUCTOS_VENTA,
@@ -4812,6 +4829,30 @@ function guardarRecetas(recetas){
     localStorage.setItem(
         CLAVE_RECETAS,
         JSON.stringify(recetas)
+    );
+}
+
+/* =========================================================
+   CARGAR PLATILLOS DESDE SUPABASE
+========================================================= */
+
+async function cargarProductosVentaSupabase() {
+
+    const { data, error } = await supabaseClient
+        .from("cr_productos_venta")
+        .select("*")
+        .order("nombre", { ascending: true });
+
+    if (error) {
+        console.error("Error cargando platillos:", error);
+        throw error;
+    }
+
+    window.productosVentaSupabase = data;
+
+    console.log(
+        "Platillos cargados desde Supabase:",
+        data.length
     );
 }
 
