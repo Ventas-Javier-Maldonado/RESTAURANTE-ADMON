@@ -5632,12 +5632,11 @@ function mostrarFormularioReceta(productoId){
 
 }
 
-
 /* =========================================================
-   GUARDAR RECETA
-   ========================================================= */
+   GUARDAR RECETA EN SUPABASE
+========================================================= */
 
-function guardarFormularioReceta(event, productoId){
+async function guardarFormularioReceta(event, productoId){
 
     event.preventDefault();
 
@@ -5690,48 +5689,79 @@ function guardarFormularioReceta(event, productoId){
         return;
     }
 
-    const indice = recetas.findIndex(
+    const recetaExistente = recetas.find(
         r => String(r.productoId) === String(productoId)
     );
 
+    const fechaActual = new Date().toISOString();
+
     const nuevaReceta = {
-        productoId: productoId,
+
+        id: recetaExistente
+            ? String(recetaExistente.id)
+            : String(Date.now()),
+
+        productoId: Number(productoId),
+
         ingredientes: ingredientes,
-        fechaModificacion: new Date().toISOString()
+
+        fechaRegistro: recetaExistente?.fechaRegistro || fechaActual,
+
+        fechaModificacion: fechaActual
+
     };
 
-    if(indice >= 0){
+    const boton = event.submitter;
 
-        recetas[indice] = {
-            ...recetas[indice],
-            ...nuevaReceta
-        };
-
-    } else {
-
-        recetas.push({
-            id: Date.now().toString(),
-            ...nuevaReceta,
-            fechaRegistro: new Date().toISOString()
-        });
-
+    if(boton){
+        boton.disabled = true;
     }
 
     try {
-        guardarRecetas(recetas);
-        const comprobacion = obtenerRecetas().find(r => String(r.productoId) === String(productoId));
-        if (!comprobacion || comprobacion.ingredientes.length !== ingredientes.length) {
-            throw new Error("No se pudo verificar el guardado de la receta.");
+
+        const { error } = await supabaseClient
+            .from("cr_recetas")
+            .upsert(nuevaReceta, {
+                onConflict: "id"
+            });
+
+        if(error){
+            throw error;
         }
-    } catch (error) {
-        console.error("Error guardando receta:", error);
-        alert("No se pudo guardar la receta. Revisa el espacio del dispositivo.");
-        return;
+
+        const nuevasRecetas = recetas.filter(
+            r => String(r.productoId) !== String(productoId)
+        );
+
+        nuevasRecetas.push(nuevaReceta);
+
+        window.recetasSupabase = nuevasRecetas;
+
+        guardarRecetas(nuevasRecetas);
+
+        alert("Receta guardada correctamente.");
+
+        mostrarRecetas();
+
+    }catch(error){
+
+        console.error(
+            "Error guardando receta en Supabase:",
+            error
+        );
+
+        alert(
+            "No se pudo guardar la receta: " +
+            (error.message || "Error desconocido")
+        );
+
+    }finally{
+
+        if(boton){
+            boton.disabled = false;
+        }
+
     }
-
-    alert("Receta guardada correctamente.");
-
-    mostrarRecetas();
 
 }
 
