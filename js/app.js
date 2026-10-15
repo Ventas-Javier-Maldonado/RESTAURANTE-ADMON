@@ -4837,6 +4837,29 @@ function guardarRecetas(recetas){
 }
 
 /* =========================================================
+   CARGAR RECETAS DESDE SUPABASE
+========================================================= */
+
+async function cargarRecetasSupabase() {
+
+    const { data, error } = await supabaseClient
+        .from("cr_recetas")
+        .select("*");
+
+    if (error) {
+        console.error("Error cargando recetas:", error);
+        throw error;
+    }
+
+    window.recetasSupabase = data;
+
+    console.log(
+        "Recetas cargadas desde Supabase:",
+        data.length
+    );
+}
+
+/* =========================================================
    CARGAR PLATILLOS DESDE SUPABASE
 ========================================================= */
 
