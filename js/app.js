@@ -1868,11 +1868,16 @@ function eliminarEmpleado(
 }
 
 
+
 /* =========================================================
    INVENTARIO
    ========================================================= */
 
 function obtenerInventario() {
+
+    if (Array.isArray(window.inventarioSupabase)) {
+        return window.inventarioSupabase;
+    }
 
     const datos =
         localStorage.getItem(
