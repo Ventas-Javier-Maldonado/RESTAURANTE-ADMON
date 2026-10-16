@@ -90,6 +90,22 @@ try {
 
 }
 
+/* =========================================================
+   CARGAR VENTAS DESDE SUPABASE
+========================================================= */
+
+try {
+
+    await cargarVentasSupabase();
+
+} catch (error) {
+
+    console.error("Error al cargar ventas:", error);
+
+    window.ventasSupabase = null;
+
+}   
+
     const jornada = obtenerJornadaActual();
 
     if (!jornada) {
@@ -4901,31 +4917,48 @@ async function cargarProductosVentaSupabase() {
 
 
 /* =========================================================
-   OBTENER VENTAS
-   ========================================================= */
+   OBTENER VENTAS LOCALES Y DE SUPABASE
+========================================================= */
 
 function obtenerVentas(){
 
-    const ventas = localStorage.getItem(CLAVE_VENTAS);
+    let ventasLocales = [];
 
-    if(!ventas){
-        return [];
+    try {
+
+        ventasLocales = JSON.parse(
+            localStorage.getItem(CLAVE_VENTAS) || "[]"
+        );
+
+        if(!Array.isArray(ventasLocales)){
+            ventasLocales = [];
+        }
+
+    } catch(error) {
+
+        console.error("Error leyendo ventas locales:", error);
+
     }
 
-    try{
-
-        return JSON.parse(ventas);
-
-    }catch(error){
-
-        console.error("Error leyendo ventas:", error);
-
-        return [];
-
+    if(!Array.isArray(window.ventasSupabase)){
+        return ventasLocales;
     }
+
+    const ventasUnificadas = new Map();
+
+    for(const venta of ventasLocales){
+        ventasUnificadas.set(String(venta.id), venta);
+    }
+
+    for(const venta of window.ventasSupabase){
+        ventasUnificadas.set(String(venta.id), venta);
+    }
+
+    return [...ventasUnificadas.values()].sort(
+        (a, b) => new Date(b.fecha) - new Date(a.fecha)
+    );
 
 }
-
 
 /* =========================================================
    GUARDAR VENTAS
@@ -4936,6 +4969,34 @@ function guardarVentas(ventas){
     localStorage.setItem(
         CLAVE_VENTAS,
         JSON.stringify(ventas)
+    );
+
+}
+
+/* =========================================================
+   CARGAR VENTAS DESDE SUPABASE
+========================================================= */
+
+async function cargarVentasSupabase(){
+
+    const { data, error } = await supabaseClient
+        .from("cr_ventas")
+        .select("*")
+        .order("fecha", { ascending: false });
+
+    if(error){
+        console.error("Error cargando ventas:", error);
+        throw error;
+    }
+
+    window.ventasSupabase = data.map(venta => ({
+        ...venta,
+        metodoPago: venta.metodopago
+    }));
+
+    console.log(
+        "Ventas cargadas desde Supabase:",
+        window.ventasSupabase.length
     );
 
 }
