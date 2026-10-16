@@ -6476,11 +6476,12 @@ function renderizarCarritoVenta(){
 }
 
 
-/* =========================================================
-   REGISTRAR VENTA CON DESCUENTO POR RECETA
-   ========================================================= */
 
-function registrarVenta(){
+/* =========================================================
+   REGISTRAR VENTA CON DESCUENTO POR RECETA EN SUPABASE
+========================================================= */
+
+async function registrarVenta(){
 
     if(carritoVenta.length === 0){
         alert("Agrega al menos un producto a la venta.");
@@ -6493,17 +6494,20 @@ function registrarVenta(){
     }
 
     const productosVenta = obtenerProductosVenta();
-    const inventario = obtenerInventario();
     const recetas = obtenerRecetas();
 
-    const consumos = new Map();
+    // Copia independiente para no modificar el inventario
+    // mostrado antes de que Supabase confirme la venta.
+    const inventario = obtenerInventario().map(
+        producto => ({ ...producto })
+    );
 
-    let subtotal = 0;
+    const consumos = new Map();
     const itemsVenta = [];
 
-    /*
-       VALIDAR PLATILLOS, RECETAS Y CANTIDADES
-    */
+    let subtotal = 0;
+
+    /* VALIDAR PLATILLOS Y RECETAS */
 
     for(const item of carritoVenta){
 
@@ -6545,8 +6549,7 @@ function registrarVenta(){
             if(!insumo){
                 alert(
                     "Falta un ingrediente de la receta de " +
-                    producto.nombre +
-                    " en Inventario."
+                    producto.nombre + " en Inventario."
                 );
                 return;
             }
@@ -6568,7 +6571,6 @@ function registrarVenta(){
                 clave,
                 (consumos.get(clave) || 0) + consumo
             );
-
         }
 
         const precio = Number(producto.precio);
@@ -6591,12 +6593,9 @@ function registrarVenta(){
             precio: precio,
             importe: importe
         });
-
     }
 
-    /*
-       VALIDAR TODAS LAS EXISTENCIAS ANTES DE DESCONTAR
-    */
+    /* VALIDAR EXISTENCIAS */
 
     for(const [id, consumo] of consumos){
 
@@ -6620,12 +6619,9 @@ function registrarVenta(){
             );
             return;
         }
-
     }
 
-    /*
-       PREPARAR VENTA
-    */
+    /* PREPARAR VENTA */
 
     const metodoPagoElement =
         document.getElementById("metodoPagoVenta");
@@ -6639,7 +6635,7 @@ function registrarVenta(){
     const fecha = new Date().toISOString();
 
     const usuario =
-        typeof USUARIO_ACTUAL !== "undefined"
+        typeof USUARIO_ACTUAL !== "undefined" && USUARIO_ACTUAL
             ? USUARIO_ACTUAL.nombre
             : "Administrador";
 
@@ -6656,97 +6652,103 @@ function registrarVenta(){
         estado: "Completada"
     };
 
-    /*
-       DESCONTAR INGREDIENTES Y REGISTRAR MOVIMIENTOS
-    */
+    const consumosSupabase = [...consumos].map(
+        ([productoId, cantidad]) => ({
+            productoId: Number(productoId),
+            cantidad: Number(cantidad.toFixed(6))
+        })
+    );
 
-    const movimientos = obtenerMovimientosInventario();
+    /* REGISTRAR EN SUPABASE */
 
-    for(const [id, consumo] of consumos){
+    let resultado;
 
-        const insumo = inventario.find(
-            p => String(p.id) === id
+    try{
+
+        const { data, error } = await supabaseClient.rpc(
+            "cr_registrar_venta",
+            {
+                p_venta: venta,
+                p_consumos: consumosSupabase
+            }
         );
 
-        const existenciaAnterior = Number(insumo.existencia);
+        if(error){
+            throw error;
+        }
 
-        const existenciaNueva = Number(
-            (existenciaAnterior - consumo).toFixed(6)
+        if(!data || data.success !== true){
+            throw new Error("Supabase no confirmó la venta.");
+        }
+
+        resultado = data;
+
+    }catch(error){
+
+        console.error("Error registrando venta en Supabase:", error);
+
+        alert(
+            "No se pudo confirmar la venta.\n\n" +
+            (error.message || "Error desconocido") +
+            "\n\nRevisa el historial antes de volver a intentarlo."
         );
 
-        insumo.existencia = existenciaNueva;
-        insumo.fechaModificacion = fecha;
-
-        movimientos.push({
-            id: Date.now() + Math.floor(Math.random() * 100000),
-            productoId: insumo.id,
-            productoNombre: insumo.nombre,
-            tipo: "Salida",
-            cantidad: Number(consumo.toFixed(6)),
-            unidad: insumo.unidad || "",
-            existenciaAnterior: existenciaAnterior,
-            existenciaNueva: existenciaNueva,
-            motivo: "Consumo por venta " + folio,
-            ventaId: venta.id,
-            folioVenta: folio,
-            usuario: usuario,
-            fecha: fecha
-        });
-
+        return;
     }
 
-    /*
-       GUARDAR RESULTADOS
-    */
+    /* SUPABASE CONFIRMÓ LA VENTA */
 
-    const ventas = obtenerVentas();
+    // Conservar también una copia local, sin duplicar
+    // las ventas anteriores de este dispositivo.
+    try{
 
-    ventas.push(venta);
+        const ventasLocales = obtenerVentas();
 
-    // Guardado local verificado: si falla un paso, restaurar el estado anterior.
-    const claves = [CLAVE_INVENTARIO, CLAVE_MOVIMIENTOS, CLAVE_VENTAS];
-    const respaldo = claves.map(clave => localStorage.getItem(clave));
-    try {
-        guardarInventario(inventario);
-        guardarMovimientosInventario(movimientos);
-        guardarVentas(ventas);
-
-        const comprobacion = obtenerVentas().find(v => String(v.id) === String(venta.id));
-        const inventarioGuardado = obtenerInventario();
-        const movimientosGuardados = obtenerMovimientosInventario();
-        if (!comprobacion || ![...consumos.keys()].every(id => {
-            const esperado = inventario.find(p => String(p.id) === id);
-            const guardado = inventarioGuardado.find(p => String(p.id) === id);
-            return esperado && guardado && Math.abs(Number(guardado.existencia) - Number(esperado.existencia)) < 0.000001;
-        }) || !movimientosGuardados.some(m => String(m.ventaId) === String(venta.id))) {
-            throw new Error("La venta o sus movimientos no se pudieron verificar.");
+        if(!ventasLocales.some(
+            v => String(v.id) === String(venta.id)
+        )){
+            ventasLocales.push(venta);
+            guardarVentas(ventasLocales);
         }
-    } catch (error) {
-        console.error("Error registrando venta:", error);
-        try {
-            claves.forEach((clave, i) => respaldo[i] === null
-                ? localStorage.removeItem(clave)
-                : localStorage.setItem(clave, respaldo[i]));
-        } catch (errorRestauracion) {
-            console.error("No se pudo restaurar completamente la operación:", errorRestauracion);
-            alert("ERROR CRÍTICO: revisa el historial y el inventario antes de repetir la venta.");
-            return;
+
+    }catch(error){
+        console.warn(
+            "La venta se registró en Supabase, pero falló la copia local:",
+            error
+        );
+    }
+
+    // Recargar existencias reales desde Supabase.
+    try{
+
+        const { data, error } = await supabaseClient
+            .from("cr_inventario")
+            .select("*")
+            .order("codigo", { ascending: true });
+
+        if(error){
+            throw error;
         }
-        alert("La venta NO se registró. No se realizó el cobro en el sistema. Revisa el almacenamiento del dispositivo.");
-        return;
+
+        window.inventarioSupabase = data;
+
+    }catch(error){
+        console.error(
+            "La venta se registró, pero no se pudo actualizar el inventario en pantalla:",
+            error
+        );
     }
 
     carritoVenta = [];
 
     alert(
         "Venta registrada correctamente.\n\n" +
-        "Folio: " + folio + "\n" +
+        "Folio: " + resultado.folio + "\n" +
         "Total: $" + total.toFixed(2) + "\n" +
         "Pago: " + metodoPago
     );
 
     mostrarVentas();
-
 }
 
 /* =========================================================
