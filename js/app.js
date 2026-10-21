@@ -210,8 +210,9 @@ async function iniciarSesionRestaurante(event) {
 
         console.error("Error de acceso:", error);
 
-        mensaje.textContent =
-            "No se pudo iniciar sesión. Revisa tus datos y permisos.";
+               mensaje.textContent =
+            error.message ||
+            "No se pudo iniciar sesión.";
 
         boton.disabled = false;
         boton.textContent = "ENTRAR AL SISTEMA";
