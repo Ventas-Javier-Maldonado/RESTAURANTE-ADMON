@@ -1695,26 +1695,49 @@ function renderizarEmpleados(
    FORMULARIO EMPLEADO
    ========================================================= */
 
-function mostrarFormularioEmpleado(
+async function mostrarFormularioEmpleado(
     id = null
 ) {
 
     const app =
         document.getElementById("app");
 
-    const empleados =
-        obtenerEmpleados();
-
-    const empleado =
-        id !== null
-            ? empleados.find(
-                item =>
-                    item.id === id
-            )
-            : null;
+    let empleado = null;
 
     const editando =
-        Boolean(empleado);
+        id !== null;
+
+    if (editando) {
+
+        try {
+
+            const { data, error } =
+                await supabaseClient
+                    .from("cr_empleados")
+                    .select("*")
+                    .eq("id", id)
+                    .single();
+
+            if (error) {
+                throw error;
+            }
+
+            empleado = data;
+
+        } catch (error) {
+
+            console.error(
+                "Error al consultar empleado:",
+                error
+            );
+
+            alert(
+                "No se pudieron cargar los datos del empleado."
+            );
+
+            return;
+        }
+    }
 
 
     app.innerHTML = `
