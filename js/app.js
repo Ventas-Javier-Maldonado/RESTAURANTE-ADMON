@@ -219,6 +219,48 @@ async function iniciarSesionRestaurante(event) {
 }
 
 /* =========================================================
+   CERRAR SESIÓN - SUPABASE AUTH
+========================================================= */
+
+async function cerrarSesionRestaurante() {
+
+    const confirmar = confirm(
+        "¿Deseas cerrar tu sesión?"
+    );
+
+    if (!confirmar) {
+        return;
+    }
+
+    const { error } =
+        await supabaseClient.auth.signOut();
+
+    if (error) {
+
+        console.error(
+            "Error al cerrar sesión:",
+            error
+        );
+
+        alert(
+            "No se pudo cerrar la sesión. Intenta nuevamente."
+        );
+
+        return;
+    }
+
+    USUARIO_ACTUAL = {
+        id: null,
+        nombre: "",
+        rol: "",
+        permisos: {},
+        autenticado: false
+    };
+
+    mostrarPantallaLogin();
+}
+
+/* =========================================================
    INICIO DE LA APLICACIÓN
    ========================================================= */
 
@@ -601,9 +643,11 @@ function mostrarDashboard(jornada) {
                 </div>
 
 
-                <button
-                    class="usuario-boton"
-                    type="button">
+              <button
+    class="usuario-boton"
+    type="button"
+    title="Cerrar sesión"
+    onclick="cerrarSesionRestaurante()"> 
 
                     <span class="usuario-avatar">
                         ${obtenerIniciales(
