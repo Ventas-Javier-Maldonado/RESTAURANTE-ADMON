@@ -7931,3 +7931,381 @@ function crEscVenta(valor) {
         if (!document.getElementById(estilos.id)) document.head.appendChild(estilos);
     });
 })();
+
+/* =========================================================
+   PERMISOS DE EMPLEADOS — SOLO PROPIETARIO
+========================================================= */
+
+const CR_OPCIONES_PERMISOS = [
+    ["menu_ver", "Consultar menú"],
+    ["menu_agregar", "Agregar platillos"],
+    ["menu_editar", "Editar platillos, precios y fotos"],
+    ["menu_eliminar", "Eliminar platillos"],
+    ["recetas_ver", "Consultar recetas"],
+    ["recetas_editar", "Modificar recetas"],
+    ["inventario_ver", "Consultar inventario"],
+    ["inventario_movimientos", "Registrar movimientos de inventario"],
+    ["tickets_capturar", "Capturar tickets"],
+    ["tickets_revisar", "Revisar tickets"],
+    ["tickets_autorizar", "Autorizar tickets"],
+    ["ventas_ver", "Consultar ventas"],
+    ["ventas_cobrar", "Registrar y cobrar ventas"],
+    ["caja_ver", "Consultar caja"],
+    ["caja_abrir", "Abrir caja"],
+    ["caja_cortar", "Realizar cortes de caja"],
+    ["personal_ver", "Consultar personal"],
+    ["personal_editar", "Agregar y editar empleados"],
+    ["reportes_ver", "Consultar reportes"],
+    ["reportes_exportar", "Exportar reportes"]
+];
+
+(function agregarPermisosAlFormulario() {
+
+    const formularioOriginal =
+        window.mostrarFormularioEmpleado;
+
+    window.mostrarFormularioEmpleado =
+        async function (...argumentos) {
+
+            await formularioOriginal.apply(
+                this,
+                argumentos
+            );
+
+            const rolActual =
+                String(USUARIO_ACTUAL.rol || "")
+                    .trim()
+                    .toLowerCase();
+
+            if (rolActual !== "propietario") return;
+
+            const formulario =
+                document.querySelector(
+                    "#app .formulario-personal"
+                );
+
+            if (!formulario) return;
+
+            if (
+                document.getElementById(
+                    "crPanelPermisosEmpleado"
+                )
+            ) return;
+
+            const empleadoId =
+                argumentos[0] ?? null;
+
+            const panel =
+                document.createElement("section");
+
+            panel.id = "crPanelPermisosEmpleado";
+            panel.className = "panel";
+
+            const titulo =
+                document.createElement("h3");
+
+            titulo.textContent =
+                "Cuenta y permisos de acceso";
+
+            panel.appendChild(titulo);
+
+            const mensaje =
+                document.createElement("p");
+
+            mensaje.setAttribute("role", "status");
+            panel.appendChild(mensaje);
+
+            const acciones =
+                formulario.querySelector(
+                    ".formulario-acciones"
+                );
+
+            formulario.insertBefore(
+                panel,
+                acciones
+            );
+
+            if (empleadoId === null) {
+
+                mensaje.textContent =
+                    "Primero guarda al empleado. Después abre " +
+                    "Editar para vincular su cuenta y asignar permisos.";
+
+                return;
+            }
+
+            mensaje.textContent =
+                "Consultando cuentas...";
+
+            try {
+
+                const [
+                    resultadoCuentas,
+                    resultadoEmpleado
+                ] = await Promise.all([
+
+                    supabaseClient.rpc(
+                        "cr_listar_cuentas_personal"
+                    ),
+
+                    supabaseClient
+                        .from("cr_empleados")
+                        .select("usuario_id")
+                        .eq("id", empleadoId)
+                        .single()
+
+                ]);
+
+                if (resultadoCuentas.error) {
+                    throw resultadoCuentas.error;
+                }
+
+                if (resultadoEmpleado.error) {
+                    throw resultadoEmpleado.error;
+                }
+
+                if (!panel.isConnected) return;
+
+                const cuentas =
+                    resultadoCuentas.data || [];
+
+                const etiquetaCuenta =
+                    document.createElement("label");
+
+                etiquetaCuenta.className = "campo";
+
+                const textoCuenta =
+                    document.createElement("span");
+
+                textoCuenta.textContent =
+                    "Cuenta del empleado";
+
+                const selector =
+                    document.createElement("select");
+
+                const opcionInicial =
+                    document.createElement("option");
+
+                opcionInicial.value = "";
+                opcionInicial.textContent =
+                    "Selecciona una cuenta existente";
+
+                selector.appendChild(opcionInicial);
+
+                cuentas.forEach(cuenta => {
+
+                    const opcion =
+                        document.createElement("option");
+
+                    opcion.value = cuenta.id;
+
+                    opcion.textContent =
+                        `${cuenta.nombre || "Sin nombre"} — ` +
+                        `${cuenta.correo || ""}` +
+                        (cuenta.activo ? "" : " — Inactiva");
+
+                    selector.appendChild(opcion);
+
+                });
+
+                selector.value =
+                    resultadoEmpleado.data.usuario_id || "";
+
+                etiquetaCuenta.append(
+                    textoCuenta,
+                    selector
+                );
+
+                panel.appendChild(etiquetaCuenta);
+
+                const lista =
+                    document.createElement("div");
+
+                lista.className = "formulario-grid";
+
+                const casillas = [];
+
+                CR_OPCIONES_PERMISOS.forEach(
+                    ([clave, descripcion]) => {
+
+                        const etiqueta =
+                            document.createElement("label");
+
+                        const casilla =
+                            document.createElement("input");
+
+                        casilla.type = "checkbox";
+
+                        etiqueta.append(
+                            casilla,
+                            document.createTextNode(
+                                " " + descripcion
+                            )
+                        );
+
+                        lista.appendChild(etiqueta);
+
+                        casillas.push({
+                            clave,
+                            casilla
+                        });
+
+                    }
+                );
+
+                panel.appendChild(lista);
+
+                const boton =
+                    document.createElement("button");
+
+                boton.type = "button";
+                boton.className = "btn-principal";
+                boton.textContent =
+                    "Guardar cuenta y permisos";
+
+                panel.appendChild(boton);
+
+                function cargarPermisosSeleccionados() {
+
+                    const cuenta =
+                        cuentas.find(
+                            item => item.id === selector.value
+                        );
+
+                    const esPropietario =
+                        String(cuenta?.rol || "")
+                            .trim()
+                            .toLowerCase() === "propietario";
+
+                    casillas.forEach(
+                        ({ clave, casilla }) => {
+
+                            casilla.checked =
+                                esPropietario ||
+                                cuenta?.permisos?.[clave] === true;
+
+                            casilla.disabled =
+                                !cuenta || esPropietario;
+
+                        }
+                    );
+
+                    boton.disabled = !cuenta;
+
+                    mensaje.textContent =
+                        esPropietario
+                            ? "El propietario tiene acceso total."
+                            : cuenta
+                                ? "Selecciona los permisos y pulsa " +
+                                  "Guardar cuenta y permisos. " +
+                                  "Esto no cambia el estado de la cuenta."
+                                : "Selecciona la cuenta que usará " +
+                                  "este empleado para iniciar sesión.";
+
+                }
+
+                selector.addEventListener(
+                    "change",
+                    cargarPermisosSeleccionados
+                );
+
+                boton.addEventListener(
+                    "click",
+                    async () => {
+
+                        const usuarioId =
+                            selector.value;
+
+                        const cuenta =
+                            cuentas.find(
+                                item => item.id === usuarioId
+                            );
+
+                        if (!cuenta) return;
+
+                        const permisos =
+                            Object.fromEntries(
+                                casillas.map(
+                                    ({ clave, casilla }) => [
+                                        clave,
+                                        casilla.checked
+                                    ]
+                                )
+                            );
+
+                        boton.disabled = true;
+                        selector.disabled = true;
+
+                        mensaje.textContent =
+                            "Guardando cuenta y permisos...";
+
+                        try {
+
+                            const { error } =
+                                await supabaseClient.rpc(
+                                    "cr_guardar_permisos_empleado",
+                                    {
+                                        p_empleado_id: empleadoId,
+                                        p_usuario_id: usuarioId,
+                                        p_permisos: permisos
+                                    }
+                                );
+
+                            if (error) throw error;
+
+                            if (
+                                String(cuenta.rol || "")
+                                    .trim()
+                                    .toLowerCase() !== "propietario"
+                            ) {
+                                cuenta.permisos = permisos;
+                            }
+
+                            mensaje.textContent =
+                                "Cuenta y permisos guardados correctamente.";
+
+                        } catch (error) {
+
+                            console.error(
+                                "Error al guardar permisos:",
+                                error
+                            );
+
+                            mensaje.textContent =
+                                "No se pudo guardar: " +
+                                (
+                                    error.message ||
+                                    "Error de conexión."
+                                );
+
+                        } finally {
+
+                            boton.disabled = false;
+                            selector.disabled = false;
+
+                        }
+
+                    }
+                );
+
+                cargarPermisosSeleccionados();
+
+            } catch (error) {
+
+                console.error(
+                    "Error al cargar permisos:",
+                    error
+                );
+
+                mensaje.textContent =
+                    "No se pudieron cargar las cuentas: " +
+                    (
+                        error.message ||
+                        "Error de conexión."
+                    );
+
+            }
+
+        };
+
+})();
