@@ -2021,65 +2021,47 @@ function mostrarFormularioEmpleado(
 }
 
 
-/* =========================================================
-   GUARDAR EMPLEADO
-   ========================================================= */
 
-function guardarEmpleado(
+/* =========================================================
+   GUARDAR EMPLEADO EN SUPABASE
+========================================================= */
+
+async function guardarEmpleado(
     event,
     id = null
 ) {
 
     event.preventDefault();
 
-    const empleados =
-        obtenerEmpleados();
-
     const nombre =
-        document
-            .getElementById(
-                "nombreEmpleado"
-            )
-            .value
-            .trim();
+        document.getElementById(
+            "nombreEmpleado"
+        ).value.trim();
 
     const puesto =
-        document
-            .getElementById(
-                "puestoEmpleado"
-            )
-            .value
-            .trim();
+        document.getElementById(
+            "puestoEmpleado"
+        ).value.trim();
 
     const telefono =
-        document
-            .getElementById(
-                "telefonoEmpleado"
-            )
-            .value
-            .trim();
+        document.getElementById(
+            "telefonoEmpleado"
+        ).value.trim();
 
     const estado =
-        document
-            .getElementById(
-                "estadoEmpleado"
-            )
-            .value;
+        document.getElementById(
+            "estadoEmpleado"
+        ).value;
 
     const fechaIngreso =
-        document
-            .getElementById(
-                "fechaIngresoEmpleado"
-            )
-            .value;
+        document.getElementById(
+            "fechaIngresoEmpleado"
+        ).value;
 
     const tipoJornada =
-        document
-            .getElementById(
-                "tipoJornadaEmpleado"
-            )
-            .value;
-
+        document.getElementById(
+            "tipoJornadaEmpleado"
+        ).value;
 
     if (!nombre) {
 
@@ -2090,116 +2072,140 @@ function guardarEmpleado(
         return;
     }
 
+    const datosEmpleado = {
 
-    if (id !== null) {
+        nombre,
+        puesto,
+        telefono,
+        estado,
 
-        const empleado =
-            empleados.find(
-                item =>
-                    item.id === id
-            );
+        fechaIngreso:
+            fechaIngreso || null,
 
-        if (empleado) {
+        tipoJornada
 
-            empleado.nombre =
-                nombre;
+    };
 
-            empleado.puesto =
-                puesto;
+    try {
 
-            empleado.telefono =
-                telefono;
+        let error;
 
-            empleado.estado =
-                estado;
+        if (id !== null) {
 
-            empleado.fechaIngreso =
-                fechaIngreso;
+            const resultado =
+                await supabaseClient
+                    .from("cr_empleados")
+                    .update({
 
-            empleado.tipoJornada =
-                tipoJornada;
+                        ...datosEmpleado,
 
-            empleado.fechaModificacion =
-                new Date().toISOString();
+                        fechaModificacion:
+                            new Date().toISOString()
+
+                    })
+                    .eq("id", id)
+                    .select("id")
+                    .single();
+
+            error = resultado.error;
+
+        } else {
+
+            const resultado =
+                await supabaseClient
+                    .from("cr_empleados")
+                    .insert(datosEmpleado)
+                    .select("id")
+                    .single();
+
+            error = resultado.error;
         }
 
-    } else {
+        if (error) {
+            throw error;
+        }
 
-        empleados.push({
+        alert(
+            id !== null
+                ? "Empleado actualizado correctamente."
+                : "Empleado registrado correctamente."
+        );
 
-            id: Date.now(),
+        await mostrarPersonal();
 
-            nombre,
+    } catch (error) {
 
-            puesto,
+        console.error(
+            "Error al guardar empleado:",
+            error
+        );
 
-            telefono,
-
-            estado,
-
-            fechaIngreso,
-
-            tipoJornada,
-
-            fechaRegistro:
-                new Date().toISOString()
-
-        });
+        alert(
+            "No se pudo guardar el empleado en Supabase."
+        );
     }
-
-
-    guardarEmpleados(
-        empleados
-    );
-
-    mostrarPersonal();
 }
 
 
-/* =========================================================
-   ELIMINAR EMPLEADO
-   ========================================================= */
 
-function eliminarEmpleado(
+/* =========================================================
+   ELIMINAR EMPLEADO DESDE SUPABASE
+========================================================= */
+
+async function eliminarEmpleado(
     id
 ) {
 
-    const empleados =
-        obtenerEmpleados();
+    try {
 
-    const empleado =
-        empleados.find(
-            item =>
-                item.id === id
+        const { data, error } =
+            await supabaseClient
+                .from("cr_empleados")
+                .select("id, nombre")
+                .eq("id", id)
+                .single();
+
+        if (error) {
+            throw error;
+        }
+
+        const confirmar = confirm(
+            `¿Deseas eliminar a ${data.nombre}?`
         );
 
-    if (!empleado) {
-        return;
+        if (!confirmar) {
+            return;
+        }
+
+        const resultado =
+            await supabaseClient
+                .from("cr_empleados")
+                .delete()
+                .eq("id", id)
+                .select("id")
+                .single();
+
+        if (resultado.error) {
+            throw resultado.error;
+        }
+
+        alert(
+            "Empleado eliminado correctamente."
+        );
+
+        await mostrarPersonal();
+
+    } catch (error) {
+
+        console.error(
+            "Error al eliminar empleado:",
+            error
+        );
+
+        alert(
+            "No se pudo eliminar el empleado de Supabase."
+        );
     }
-
-
-    const confirmar =
-        confirm(
-            `¿Deseas eliminar a ${empleado.nombre}?`
-        );
-
-    if (!confirmar) {
-        return;
-    }
-
-
-    const restantes =
-        empleados.filter(
-            item =>
-                item.id !== id
-        );
-
-
-    guardarEmpleados(
-        restantes
-    );
-
-    mostrarPersonal();
 }
 
 
