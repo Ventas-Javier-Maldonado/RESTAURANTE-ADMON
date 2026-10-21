@@ -25,11 +25,198 @@ const CLAVE_EMPLEADOS = "empleados_restaurante";
 const CLAVE_INVENTARIO = "inventario_restaurante";
 const CLAVE_MOVIMIENTOS = "movimientos_inventario_restaurante";
 
-const USUARIO_ACTUAL = {
-    nombre: "Administrador",
-    rol: "Administrador"
+/* =========================================================
+   USUARIO ACTUAL - SUPABASE AUTH
+========================================================= */
+
+let USUARIO_ACTUAL = {
+    id: null,
+    nombre: "",
+    rol: "",
+    permisos: {},
+    autenticado: false
 };
 
+/* =========================================================
+   CONSULTAR USUARIO AUTENTICADO
+========================================================= */
+
+async function obtenerUsuarioAutenticado() {
+
+    const { data: authData, error: authError } =
+        await supabaseClient.auth.getUser();
+
+    if (authError || !authData?.user) {
+        return null;
+    }
+
+    const { data: perfil, error: perfilError } =
+        await supabaseClient
+            .from("cr_usuarios")
+            .select("id, nombre, rol, activo, permisos")
+            .eq("id", authData.user.id)
+            .single();
+
+    if (perfilError || !perfil || !perfil.activo) {
+
+        console.error(
+            "No se pudo validar el perfil:",
+            perfilError
+        );
+
+        return null;
+    }
+
+    return {
+        id: perfil.id,
+        nombre: perfil.nombre,
+        rol: perfil.rol,
+        permisos: perfil.permisos || {},
+        autenticado: true
+    };
+}
+
+/* =========================================================
+   PANTALLA DE INICIO DE SESIÓN
+   SUPABASE AUTH
+========================================================= */
+
+function mostrarPantallaLogin() {
+
+    const app = document.getElementById("app");
+
+    app.innerHTML = `
+
+        <main class="pantalla-jornada">
+
+            <section class="jornada-card">
+
+                <div class="jornada-icono">
+                    🔐
+                </div>
+
+                <div class="jornada-etiqueta">
+                    CONTROL RESTAURANTE
+                </div>
+
+                <h1>
+                    Iniciar sesión
+                </h1>
+
+                <p class="jornada-info">
+                    Ingresa con tu cuenta autorizada.
+                </p>
+
+                <form
+                    id="formularioLogin"
+                    onsubmit="iniciarSesionRestaurante(event)"
+                    style="display:flex;flex-direction:column;gap:15px;margin-top:25px;"
+                >
+
+                    <input
+                        type="email"
+                        id="correoLogin"
+                        placeholder="Correo electrónico"
+                        autocomplete="username"
+                        required
+                        style="padding:14px;border-radius:10px;"
+                    >
+
+                    <input
+                        type="password"
+                        id="passwordLogin"
+                        placeholder="Contraseña"
+                        autocomplete="current-password"
+                        required
+                        style="padding:14px;border-radius:10px;"
+                    >
+
+                    <p
+                        id="mensajeLogin"
+                        role="alert"
+                        style="color:#ff8b8b;font-size:13px;"
+                    ></p>
+
+                    <button
+                        class="btn-jornada"
+                        id="botonLogin"
+                        type="submit"
+                    >
+                        ENTRAR AL SISTEMA
+                    </button>
+
+                </form>
+
+            </section>
+
+        </main>
+    `;
+}
+
+
+/* =========================================================
+   INICIAR SESIÓN CON SUPABASE
+========================================================= */
+
+async function iniciarSesionRestaurante(event) {
+
+    event.preventDefault();
+
+    const correo = document
+        .getElementById("correoLogin")
+        .value
+        .trim();
+
+    const password = document
+        .getElementById("passwordLogin")
+        .value;
+
+    const mensaje = document.getElementById("mensajeLogin");
+    const boton = document.getElementById("botonLogin");
+
+    boton.disabled = true;
+    boton.textContent = "VERIFICANDO...";
+
+    mensaje.textContent = "";
+
+    try {
+
+        const { error } =
+            await supabaseClient.auth.signInWithPassword({
+                email: correo,
+                password: password
+            });
+
+        if (error) {
+            throw error;
+        }
+
+        const usuario = await obtenerUsuarioAutenticado();
+
+        if (!usuario) {
+
+            await supabaseClient.auth.signOut();
+
+            throw new Error(
+                "Tu cuenta no tiene autorización para acceder."
+            );
+        }
+
+        USUARIO_ACTUAL = usuario;
+
+        await iniciarAplicacion();
+
+    } catch (error) {
+
+        console.error("Error de acceso:", error);
+
+        mensaje.textContent =
+            "No se pudo iniciar sesión. Revisa tus datos y permisos.";
+
+        boton.disabled = false;
+        boton.textContent = "ENTRAR AL SISTEMA";
+    }
+}
 
 /* =========================================================
    INICIO DE LA APLICACIÓN
@@ -40,6 +227,21 @@ async function iniciarAplicacion() {
     const app = document.getElementById("app");
 
     app.innerHTML = "<p style='padding:30px'>Cargando información...</p>";
+
+       /* =========================================================
+       VERIFICAR SESIÓN DE SUPABASE
+    ========================================================= */
+
+    const usuario = await obtenerUsuarioAutenticado();
+
+    if (!usuario) {
+
+        mostrarPantallaLogin();
+
+        return;
+    }
+
+    USUARIO_ACTUAL = usuario;
 
     const { data, error } = await supabaseClient
         .from("cr_inventario")
