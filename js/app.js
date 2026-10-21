@@ -8309,3 +8309,364 @@ const CR_OPCIONES_PERMISOS = [
         };
 
 })();
+
+/* =========================================================
+   CREAR CUENTA DE ACCESO PARA UN EMPLEADO REGISTRADO
+========================================================= */
+
+(function agregarCreacionDeCuentaEmpleado() {
+
+    const formularioAnterior =
+        window.mostrarFormularioEmpleado;
+
+    window.mostrarFormularioEmpleado =
+        async function (...argumentos) {
+
+            await formularioAnterior.apply(
+                this,
+                argumentos
+            );
+
+            const rol =
+                String(USUARIO_ACTUAL.rol || "")
+                    .trim()
+                    .toLowerCase();
+
+            if (rol !== "propietario") return;
+
+            const empleadoId =
+                argumentos[0] ?? null;
+
+            if (empleadoId === null) return;
+
+            const formulario =
+                document.querySelector(
+                    "#app .formulario-personal"
+                );
+
+            if (!formulario) return;
+
+            if (
+                document.getElementById(
+                    "crCrearCuentaEmpleado"
+                )
+            ) return;
+
+            const panel =
+                document.createElement("section");
+
+            panel.id = "crCrearCuentaEmpleado";
+            panel.className = "panel";
+
+            const mensaje =
+                document.createElement("p");
+
+            mensaje.setAttribute("role", "status");
+            mensaje.textContent =
+                "Comprobando la cuenta del empleado...";
+
+            panel.appendChild(mensaje);
+
+            formulario.insertBefore(
+                panel,
+                document.getElementById(
+                    "crPanelPermisosEmpleado"
+                ) ||
+                formulario.querySelector(
+                    ".formulario-acciones"
+                )
+            );
+
+            try {
+
+                const {
+                    data: empleado,
+                    error
+                } = await supabaseClient
+                    .from("cr_empleados")
+                    .select("usuario_id")
+                    .eq("id", empleadoId)
+                    .single();
+
+                if (error) throw error;
+
+                if (!panel.isConnected) return;
+
+                if (empleado.usuario_id) {
+
+                    mensaje.textContent =
+                        "Este empleado ya tiene una cuenta. " +
+                        "Puedes revisar sus permisos abajo.";
+
+                    return;
+                }
+
+                const titulo =
+                    document.createElement("h3");
+
+                titulo.textContent =
+                    "Crear cuenta de acceso";
+
+                panel.prepend(titulo);
+
+                mensaje.textContent =
+                    "Captura el correo y la contraseña inicial. " +
+                    "Después podrás asignar los permisos.";
+
+                const campos =
+                    document.createElement("div");
+
+                campos.className = "formulario-grid";
+
+                function agregarCampo(
+                    texto,
+                    tipo,
+                    autocomplete
+                ) {
+
+                    const contenedor =
+                        document.createElement("div");
+
+                    contenedor.className = "campo";
+
+                    const etiqueta =
+                        document.createElement("label");
+
+                    etiqueta.textContent = texto;
+
+                    const input =
+                        document.createElement("input");
+
+                    input.type = tipo;
+                    input.autocomplete = autocomplete;
+
+                    etiqueta.appendChild(input);
+                    contenedor.appendChild(etiqueta);
+                    campos.appendChild(contenedor);
+
+                    return input;
+                }
+
+                const correo =
+                    agregarCampo(
+                        "Correo para iniciar sesión",
+                        "email",
+                        "off"
+                    );
+
+                correo.autocapitalize = "none";
+                correo.spellcheck = false;
+
+                const password =
+                    agregarCampo(
+                        "Contraseña inicial: mínimo 8 caracteres",
+                        "password",
+                        "new-password"
+                    );
+
+                const repetir =
+                    agregarCampo(
+                        "Repetir contraseña",
+                        "password",
+                        "new-password"
+                    );
+
+                panel.appendChild(campos);
+
+                const boton =
+                    document.createElement("button");
+
+                boton.type = "button";
+                boton.className = "btn-principal";
+                boton.textContent =
+                    "Crear cuenta del empleado";
+
+                panel.appendChild(boton);
+
+                let procesando = false;
+
+                boton.addEventListener(
+                    "click",
+                    async () => {
+
+                        if (procesando) return;
+
+                        const email =
+                            correo.value.trim();
+
+                        if (
+                            !email ||
+                            !correo.checkValidity()
+                        ) {
+
+                            mensaje.textContent =
+                                "Escribe un correo válido.";
+
+                            correo.focus();
+                            return;
+                        }
+
+                        if (password.value.length < 8) {
+
+                            mensaje.textContent =
+                                "La contraseña debe tener " +
+                                "al menos 8 caracteres.";
+
+                            password.focus();
+                            return;
+                        }
+
+                        if (
+                            password.value !== repetir.value
+                        ) {
+
+                            mensaje.textContent =
+                                "Las contraseñas no coinciden.";
+
+                            repetir.focus();
+                            return;
+                        }
+
+                        procesando = true;
+                        boton.disabled = true;
+
+                        mensaje.textContent =
+                            "Creando la cuenta...";
+
+                        try {
+
+                            const {
+                                data: sesion,
+                                error: errorSesion
+                            } = await supabaseClient.auth
+                                .getSession();
+
+                            if (errorSesion) {
+                                throw errorSesion;
+                            }
+
+                            if (!sesion.session) {
+
+                                throw new Error(
+                                    "Tu sesión terminó. " +
+                                    "Vuelve a iniciar sesión."
+                                );
+                            }
+
+                            const {
+                                data,
+                                error: errorCrear
+                            } = await supabaseClient.functions
+                                .invoke(
+                                    "cr-crear-cuenta-empleado",
+                                    {
+                                        headers: {
+                                            Authorization:
+                                                "Bearer " +
+                                                sesion.session
+                                                    .access_token
+                                        },
+                                        body: {
+                                            empleado_id:
+                                                empleadoId,
+                                            correo: email,
+                                            password:
+                                                password.value
+                                        }
+                                    }
+                                );
+
+                            if (errorCrear) {
+
+                                let detalle =
+                                    errorCrear.message;
+
+                                if (
+                                    errorCrear.context &&
+                                    typeof errorCrear.context
+                                        .json === "function"
+                                ) {
+
+                                    try {
+
+                                        const respuesta =
+                                            await errorCrear
+                                                .context.json();
+
+                                        detalle =
+                                            respuesta.error ||
+                                            detalle;
+
+                                    } catch {
+                                        // Conservar el mensaje original.
+                                    }
+
+                                }
+
+                                throw new Error(detalle);
+                            }
+
+                            if (!data?.ok) {
+
+                                throw new Error(
+                                    data?.error ||
+                                    "No se confirmó la creación."
+                                );
+                            }
+
+                            password.value = "";
+                            repetir.value = "";
+
+                            alert(
+                                "Cuenta creada y vinculada. " +
+                                "Ahora selecciona sus permisos " +
+                                "y pulsa Guardar cuenta y permisos."
+                            );
+
+                            if (panel.isConnected) {
+
+                                await window
+                                    .mostrarFormularioEmpleado(
+                                        empleadoId
+                                    );
+
+                            }
+
+                        } catch (error) {
+
+                            console.error(
+                                "Error al crear cuenta:",
+                                error
+                            );
+
+                            mensaje.textContent =
+                                error.message ||
+                                "No se pudo crear la cuenta.";
+
+                        } finally {
+
+                            procesando = false;
+
+                            if (boton.isConnected) {
+                                boton.disabled = false;
+                            }
+
+                        }
+
+                    }
+                );
+
+            } catch (error) {
+
+                mensaje.textContent =
+                    "No se pudo consultar la cuenta: " +
+                    (
+                        error.message ||
+                        "Error de conexión."
+                    );
+
+            }
+
+        };
+
+})();
