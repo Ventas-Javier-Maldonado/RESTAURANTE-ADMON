@@ -2418,3 +2418,83 @@ img {
     }
 
 }
+
+/* =========================================================
+   ALERTAS DE INVENTARIO - PANEL PRINCIPAL
+========================================================= */
+
+.alerta-inventario {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 22px;
+    margin-bottom: 22px;
+
+    background: #fff8eb;
+    border: 1px solid #e5c98f;
+    border-left: 4px solid #c99a42;
+    border-radius: 14px;
+
+    color: #60471e;
+}
+
+.alerta-icono {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+
+    background: #f8e7c3;
+    border-radius: 12px;
+    font-size: 22px;
+}
+
+.alerta-inventario > div:nth-child(2) {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    flex: 1;
+}
+
+.alerta-inventario strong {
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.alerta-inventario span {
+    font-size: 13px;
+    color: #806338;
+}
+
+.alerta-inventario button {
+    padding: 11px 18px;
+
+    background: #c99a42;
+    color: #ffffff;
+
+    border: none;
+    border-radius: 9px;
+
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.alerta-inventario button:hover {
+    background: #ad8030;
+}
+
+@media (max-width: 600px) {
+
+    .alerta-inventario {
+        flex-wrap: wrap;
+        padding: 15px;
+    }
+
+    .alerta-inventario button {
+        width: 100%;
+    }
+}
