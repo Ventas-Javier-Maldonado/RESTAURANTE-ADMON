@@ -1,96 +1,107 @@
 /* =========================================================
-   CONTROL RESTAURANTE
-   SERVICE WORKER
-   ========================================================= */
+   CONTROL RESTAURANTE — CACHÉ INDEPENDIENTE
+========================================================= */
 
-const CACHE_NAME = "control-restaurante-v1";
+const CACHE_PREFIX = "control-restaurante-";
+const CACHE_NAME = CACHE_PREFIX + "v2";
 
 const ARCHIVOS = [
-	"./",
-	"./index.html",
-	"./css/styles.css",
-	"./js/app.js",
-	"./manifest.webmanifest"
+    "./",
+    "./index.html",
+    "./css/styles.css",
+    "./js/app.js",
+    "./manifest.webmanifest"
 ];
 
+const URLS_PERMITIDAS = new Set(
+    ARCHIVOS.map(
+        ruta => new URL(ruta, self.location.href).href
+    )
+);
 
-/* ---------------------------------------------------------
-   INSTALACIÓN
-   --------------------------------------------------------- */
+/* INSTALACIÓN */
 
-self.addEventListener("install", (event) => {
-
-	event.waitUntil(
-
-		caches.open(CACHE_NAME)
-			.then((cache) => {
-
-				return cache.addAll(ARCHIVOS);
-
-			})
-
-	);
-
-	self.skipWaiting();
-
+self.addEventListener("install", event => {
+    event.waitUntil(
+        caches.open(CACHE_NAME)
+            .then(cache => cache.addAll(ARCHIVOS))
+            .then(() => self.skipWaiting())
+    );
 });
 
+/* LIMPIAR SOLO VERSIONES DE ESTA APLICACIÓN */
 
-/* ---------------------------------------------------------
-   ACTIVACIÓN
-   --------------------------------------------------------- */
-
-self.addEventListener("activate", (event) => {
-
-	event.waitUntil(
-
-		caches.keys()
-			.then((nombres) => {
-
-				return Promise.all(
-
-					nombres
-						.filter(
-							(nombre) =>
-								nombre !== CACHE_NAME
-						)
-						.map(
-							(nombre) =>
-								caches.delete(nombre)
-						)
-
-				);
-
-			})
-
-	);
-
-	self.clients.claim();
-
+self.addEventListener("activate", event => {
+    event.waitUntil(
+        caches.keys()
+            .then(nombres => Promise.all(
+                nombres
+                    .filter(nombre =>
+                        nombre.startsWith(CACHE_PREFIX) &&
+                        nombre !== CACHE_NAME
+                    )
+                    .map(nombre => caches.delete(nombre))
+            ))
+            .then(() => self.clients.claim())
+    );
 });
 
+/* ACTUALIZACIÓN */
 
-/* ---------------------------------------------------------
-   PETICIONES
-   --------------------------------------------------------- */
+self.addEventListener("message", event => {
+    if (event.data?.type === "SKIP_WAITING") {
+        self.skipWaiting();
+    }
+});
 
-self.addEventListener("fetch", (event) => {
+/* INTERNET PRIMERO; CACHÉ SOLO PARA ARCHIVOS DE LA APP */
 
-	event.respondWith(
+self.addEventListener("fetch", event => {
+    const request = event.request;
 
-		caches.match(event.request)
-			.then((respuestaCache) => {
+    if (request.method !== "GET") return;
 
-				if (respuestaCache) {
+    const url = new URL(request.url);
 
-					return respuestaCache;
+    if (url.origin !== self.location.origin) return;
 
-				}
+    const urlSinParametros = new URL(url.href);
+    urlSinParametros.search = "";
+    urlSinParametros.hash = "";
 
-				return fetch(event.request);
+    if (!URLS_PERMITIDAS.has(urlSinParametros.href)) {
+        return;
+    }
 
-			})
+    event.respondWith((async () => {
+        const cache = await caches.open(CACHE_NAME);
 
-	);
+        try {
+            const respuesta = await fetch(request, {
+                cache: "no-store"
+            });
 
+            if (respuesta.ok) {
+                try {
+                    await cache.put(
+                        urlSinParametros.href,
+                        respuesta.clone()
+                    );
+                } catch (error) {
+                    console.warn("No se pudo actualizar caché:", error);
+                }
+            }
+
+            return respuesta;
+
+        } catch (error) {
+            const guardada = await cache.match(
+                urlSinParametros.href
+            );
+
+            if (guardada) return guardada;
+
+            return Response.error();
+        }
+    })());
 });
