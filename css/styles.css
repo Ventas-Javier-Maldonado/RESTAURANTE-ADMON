@@ -1583,33 +1583,49 @@ img {
 }
 
 /* =========================================================
-   RESUMEN
-   ========================================================= */
+   RESUMEN DE JORNADA
+========================================================= */
 
 .resumen-jornada {
-    display: flex;
-
-    align-items: center;
-
-    gap: 9px;
-
-    margin-top: 9px;
-
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 16px;
     color: var(--texto-suave);
-
-    font-size: 11px;
 }
 
-.jornada-finalizada-info {
+.resumen-jornada > div {
     display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+}
 
-    align-items: center;
-
-    gap: 7px;
-
+.resumen-jornada span {
+    font-size: 12px;
+    font-weight: 600;
     color: var(--texto-suave);
+}
 
-    font-size: 11px;
+.resumen-jornada strong {
+    font-size: 19px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+@media (max-width: 600px) {
+
+    .resumen-jornada {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .resumen-jornada > div {
+        padding: 14px;
+    }
 }
 
 /* =========================================================
