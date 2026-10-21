@@ -1204,6 +1204,32 @@ function regresarDashboard() {
    PERSONAL
    ========================================================= */
 
+/* =========================================================
+   CARGAR EMPLEADOS DESDE SUPABASE
+========================================================= */
+
+async function cargarEmpleadosSupabase() {
+
+    const { data, error } = await supabaseClient
+        .from("cr_empleados")
+        .select("*")
+        .order("nombre", { ascending: true });
+
+    if (error) {
+
+        console.error(
+            "Error al cargar empleados:",
+            error
+        );
+
+        throw error;
+    }
+
+    window.empleadosSupabase = data || [];
+
+    return window.empleadosSupabase;
+}
+
 function obtenerEmpleados() {
 
     const datos =
@@ -1244,13 +1270,30 @@ function guardarEmpleados(
 }
 
 
-function mostrarPersonal() {
+async function mostrarPersonal() {
 
     const app =
         document.getElementById("app");
 
-    const empleados =
-        obtenerEmpleados();
+        let empleados = [];
+
+    try {
+
+        empleados = await cargarEmpleadosSupabase();
+
+    } catch (error) {
+
+        console.error(
+            "No se pudo consultar el personal:",
+            error
+        );
+
+        alert(
+            "No se pudo cargar el personal desde Supabase."
+        );
+
+        return;
+    }
 
     app.innerHTML = `
 
