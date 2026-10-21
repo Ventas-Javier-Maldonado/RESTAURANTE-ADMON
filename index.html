@@ -49,4 +49,47 @@
     <script src="js/app.js?v=20261021-2"></script>
 
 </body>
+
+ <script>
+if ("serviceWorker" in navigator) {
+
+    let recargandoPorActualizacion = false;
+
+    navigator.serviceWorker.addEventListener(
+        "controllerchange",
+        () => {
+            if (recargandoPorActualizacion) return;
+
+            recargandoPorActualizacion = true;
+            window.location.reload();
+        }
+    );
+
+    window.addEventListener("load", async () => {
+        try {
+            const registro =
+                await navigator.serviceWorker.register(
+                    "./service-worker.js",
+                    {
+                        updateViaCache: "none"
+                    }
+                );
+
+            if (registro.waiting) {
+                registro.waiting.postMessage({
+                    type: "SKIP_WAITING"
+                });
+            }
+
+            await registro.update();
+
+        } catch (error) {
+            console.error(
+                "No se pudo registrar el service worker:",
+                error
+            );
+        }
+    });
+}
+</script>   
 </html>
