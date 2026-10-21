@@ -1477,13 +1477,16 @@ img {
 }
 
 .empleado-eliminar {
-    border: 0;
-
-    background: transparent;
-
-    color: #697788;
-
-    font-size: 16px;
+    width: auto;
+    min-width: 80px;
+    height: 38px;
+    padding: 0 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(200, 164, 93, .45);
+    background: #123d67;
+    color: #ffffff;
+    font-size: 13px;
+    cursor: pointer;
 }
 
 .empleado-eliminar:hover {
