@@ -4115,37 +4115,98 @@ function guardarMovimientosInventario(
    MOSTRAR MOVIMIENTOS DE PRODUCTO
    ========================================================= */
 
-function mostrarMovimientosProducto(
+async function mostrarMovimientosProducto(
     id
 ) {
 
-    const productos =
-        obtenerInventario();
+    let producto;
+    let movimientos;
 
+    try {
 
-    const producto =
-        productos.find(
-            item =>
-                item.id === id
+        const [
+            resultadoProducto,
+            resultadoMovimientos
+        ] = await Promise.all([
+
+            supabaseClient
+                .from("cr_inventario")
+                .select("*")
+                .eq("id", id)
+                .single(),
+
+            supabaseClient
+                .from("cr_movimientos_inventario")
+                .select("*")
+                .eq("productoid", id)
+                .order("fecha", {
+                    ascending: false
+                })
+                .order("id", {
+                    ascending: false
+                })
+                .limit(200)
+
+        ]);
+
+        if (resultadoProducto.error) {
+            throw resultadoProducto.error;
+        }
+
+        if (resultadoMovimientos.error) {
+            throw resultadoMovimientos.error;
+        }
+
+        producto = resultadoProducto.data;
+
+        movimientos =
+            (resultadoMovimientos.data || [])
+                .map(movimiento => ({
+                    ...movimiento,
+                    productoId:
+                        movimiento.productoid
+                }));
+
+        if (
+            Array.isArray(
+                window.inventarioSupabase
+            )
+        ) {
+
+            const posicion =
+                window.inventarioSupabase.findIndex(
+                    item =>
+                        String(item.id) ===
+                        String(producto.id)
+                );
+
+            if (posicion !== -1) {
+
+                window.inventarioSupabase[posicion] =
+                    producto;
+
+            }
+
+        }
+
+    } catch (error) {
+
+        console.error(
+            "Error al consultar movimientos:",
+            error
         );
 
-
-    if (!producto) {
-        return;
-    }
-
-
-    const movimientos =
-        obtenerMovimientosInventario()
-            .filter(
-                movimiento =>
-                    movimiento.productoId === id
+        alert(
+            "No se pudo cargar el historial desde Supabase.\n\n" +
+            (
+                error.message ||
+                "Revisa tu conexión."
             )
-            .sort(
-                (a, b) =>
-                    new Date(b.fecha) -
-                    new Date(a.fecha)
-            );
+        );
+
+        return;
+
+    }
 
 
     const app =
@@ -4235,8 +4296,8 @@ function mostrarMovimientosProducto(
 
 
                         <p>
-                            Historial de movimientos
-                            del producto.
+                            Últimos 200 movimientos registrados
+                             en Supabase para este producto.
                         </p>
 
                     </div>
@@ -4863,209 +4924,228 @@ function mostrarFormularioMovimiento(
    GUARDAR MOVIMIENTO
    ========================================================= */
 
-function guardarMovimiento(
+async function guardarMovimiento(
     event,
     productoId
 ) {
 
     event.preventDefault();
 
+    const formulario = event.target;
 
-    const productos =
-        obtenerInventario();
-
-
-    const producto =
-        productos.find(
-            item =>
-                item.id === productoId
-        );
-
-
-    if (!producto) {
-
-        alert(
-            "No se encontró el producto."
-        );
-
+    if (formulario.dataset.procesando === "true") {
         return;
     }
-
 
     const tipo =
-        document
-            .getElementById(
-                "tipoMovimiento"
-            )
-            .value;
+        document.getElementById(
+            "tipoMovimiento"
+        ).value;
 
+    const cantidadTexto =
+        document.getElementById(
+            "cantidadMovimiento"
+        ).value.trim();
 
-    const cantidad =
-        Number(
-            document
-                .getElementById(
-                    "cantidadMovimiento"
-                )
-                .value
-        );
-
+    const cantidad = Number(cantidadTexto);
 
     const motivo =
-        document
-            .getElementById(
-                "motivoMovimiento"
-            )
-            .value
-            .trim();
+        document.getElementById(
+            "motivoMovimiento"
+        ).value.trim();
 
-
-    if (!tipo) {
-
-        alert(
-            "Selecciona el tipo de movimiento."
-        );
-
+    if (
+        !["Entrada", "Salida", "Merma", "Ajuste"]
+            .includes(tipo)
+    ) {
+        alert("Selecciona el tipo de movimiento.");
         return;
     }
 
-
     if (
+        cantidadTexto === "" ||
         !Number.isFinite(cantidad) ||
-        cantidad <= 0
+        cantidad < 0 ||
+        (
+            tipo !== "Ajuste" &&
+            cantidad === 0
+        )
     ) {
-
         alert(
-            "La cantidad debe ser mayor que cero."
+            "Escribe una cantidad válida. " +
+            "Solo un ajuste puede ser cero."
         );
-
         return;
     }
 
-
-    const existenciaAnterior =
-        Number(
-            producto.existencia
-        ) || 0;
-
-
-    let existenciaNueva =
-        existenciaAnterior;
-
-
-    if (
-        tipo ===
-        "Entrada"
-    ) {
-
-        existenciaNueva +=
-            cantidad;
-    }
-
-
-    if (
-        tipo ===
-        "Salida"
-    ) {
-
-        existenciaNueva -=
-            cantidad;
-    }
-
-
-    if (
-        tipo ===
-        "Merma"
-    ) {
-
-        existenciaNueva -=
-            cantidad;
-    }
-
-
-    if (
-        tipo ===
-        "Ajuste"
-    ) {
-
-        existenciaNueva =
-            cantidad;
-    }
-
-
-    if (
-        existenciaNueva < 0
-    ) {
-
-        alert(
-            "No puedes registrar una salida o merma mayor a la existencia disponible."
-        );
-
+    if (!motivo) {
+        alert("Escribe el motivo del movimiento.");
         return;
     }
 
+    /*
+       Conservar el identificador para que un reintento
+       desde este formulario no aplique dos movimientos.
+    */
 
-    producto.existencia =
-        Number(
-            existenciaNueva.toFixed(2)
+    if (!formulario.dataset.operacionId) {
+
+        formulario.dataset.operacionId =
+            crypto.randomUUID();
+
+    }
+
+    const boton =
+        event.submitter ||
+        formulario.querySelector(
+            'button[type="submit"]'
         );
 
+    const textoOriginal =
+        boton?.textContent || "Registrar movimiento";
 
-    producto.fechaModificacion =
-        new Date().toISOString();
+    formulario.dataset.procesando = "true";
 
+    if (boton) {
+        boton.disabled = true;
+        boton.textContent = "Guardando...";
+    }
 
-    const movimientos =
-        obtenerMovimientosInventario();
+    let confirmado = false;
 
+    try {
 
-    movimientos.push({
+        const { data, error } =
+            await supabaseClient.rpc(
+                "cr_registrar_movimiento_inventario",
+                {
+                    p_producto_id: productoId,
+                    p_tipo: tipo,
+                    p_cantidad: cantidad,
+                    p_motivo: motivo,
+                    p_operacion_id:
+                        formulario.dataset.operacionId
+                }
+            );
 
-        id: Date.now(),
+        if (error) {
+            throw error;
+        }
 
-        productoId:
-            producto.id,
+        if (
+            data?.success !== true ||
+            !data.producto
+        ) {
+            throw new Error(
+                "Supabase no confirmó el movimiento."
+            );
+        }
 
-        productoNombre:
-            producto.nombre,
+        confirmado = true;
 
-        tipo,
+        /*
+           Actualizar la existencia en memoria con
+           el resultado confirmado por Supabase.
+        */
 
-        cantidad,
+        if (
+            Array.isArray(
+                window.inventarioSupabase
+            )
+        ) {
 
-        unidad:
-            producto.unidad,
+            const posicion =
+                window.inventarioSupabase.findIndex(
+                    producto =>
+                        String(producto.id) ===
+                        String(data.producto.id)
+                );
 
-        existenciaAnterior,
+            if (posicion !== -1) {
 
-        existenciaNueva:
-            producto.existencia,
+                window.inventarioSupabase[posicion] =
+                    data.producto;
 
-        motivo,
+            } else {
 
-        usuario:
-            USUARIO_ACTUAL.nombre,
+                window.inventarioSupabase.push(
+                    data.producto
+                );
 
-        fecha:
-            new Date().toISOString()
+            }
 
-    });
+        }
 
+        alert(
+            data.repetido
+                ? "Este movimiento ya estaba registrado. " +
+                  "No se aplicó nuevamente."
+                : "Movimiento registrado correctamente."
+        );
 
-    guardarInventario(
-        productos
-    );
+    } catch (error) {
 
+        console.error(
+            "Error al guardar el movimiento:",
+            error
+        );
 
-    guardarMovimientosInventario(
-        movimientos
-    );
+        alert(
+            "No se pudo confirmar el movimiento.\n\n" +
+            (
+                error.message ||
+                "Error de conexión."
+            ) +
+            "\n\nSi hubo una interrupción de internet, " +
+            "revisa el historial antes de abrir otra captura. " +
+            "Este formulario conserva el identificador " +
+            "para reintentar la misma operación."
+        );
 
+    } finally {
 
-    mostrarMovimientosProducto(
-        producto.id
-    );
+        formulario.dataset.procesando = "false";
+
+        if (boton) {
+
+            boton.disabled = confirmado;
+            boton.textContent = confirmado
+                ? "Movimiento registrado"
+                : textoOriginal;
+
+        }
+
+    }
+
+    if (
+        confirmado &&
+        formulario.isConnected
+    ) {
+
+        try {
+
+            await mostrarMovimientosProducto(
+                productoId
+            );
+
+        } catch (error) {
+
+            console.error(
+                "El movimiento se guardó, pero no " +
+                "se pudo abrir el historial:",
+                error
+            );
+
+            alert(
+                "El movimiento sí quedó guardado. " +
+                "Vuelve a entrar al historial para consultarlo."
+            );
+
+        }
+
+    }
+
 }
-
 
 /* =========================================================
    UTILIDADES
