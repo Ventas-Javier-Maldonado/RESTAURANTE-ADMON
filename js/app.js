@@ -8136,7 +8136,258 @@ async function crProcesarColaOCR(){
  }}finally{crProcesandoOCR=false;crRefrescarListaOCR();}
 }
 function crRefrescarListaOCR(){const lista=document.getElementById('crListaRapida');if(lista)lista.innerHTML=crTicketsHTML();const estado=document.getElementById('crColaEstado');if(estado)estado.textContent=crProcesandoOCR?`Procesando tickets. En cola: ${crColaOCR.length}`:'Listo para capturar';}
-async function crGuardarTicket(event,id){event.preventDefault();const form=document.getElementById('crForm'),tipo=document.getElementById('crTipo').value,condicion=document.getElementById('crCondicion').value,total=Number(document.getElementById('crTotal').value),vencimiento=document.getElementById('crVence').value;const lineas=tipo==='Compra'?[...form.querySelectorAll('.cr-linea')].map(el=>({productoId:el.querySelector('.cr-insumo').value,cantidad:Number(el.querySelector('.cr-cantidad').value),costo:Number(el.querySelector('.cr-costo').value)})).filter(x=>x.productoId):[];if(tipo==='Compra'&&condicion==='Credito'&&!vencimiento){alert('Indica la fecha de vencimiento del crédito.');return;}if(lineas.some(x=>!Number.isFinite(x.cantidad)||x.cantidad<=0)){alert('Revisa las cantidades de los ingredientes.');return;}const lista=crTickets(),actual=id?lista.find(x=>x.id===id):null;if(id&&!actual)return;const ticket={...(actual||{}),id:id||'CR'+Date.now()+'-'+Math.floor(Math.random()*10000),folio:actual?.folio||'COM-'+String(Date.now()).slice(-9),tipo,proveedor:document.getElementById('crProveedor').value.trim(),fecha:document.getElementById('crFecha').value,total,condicion,metodo:document.getElementById('crMetodo').value,vencimiento:tipo==='Compra'&&condicion==='Credito'?vencimiento:'',notas:document.getElementById('crNotas').value,lineas,estado:'Pendiente',foto:Boolean(actual?.foto||crTicketFotoTemporal),creado:actual?.creado||new Date().toISOString(),usuario:actual?.usuario||USUARIO_ACTUAL.nombre};try{if(crTicketFotoTemporal)await crGuardarFoto(ticket.id,crTicketFotoTemporal);if(actual)lista[lista.indexOf(actual)]=ticket;else lista.push(ticket);crGuardarLista(CR_TICKETS_KEY,lista);mostrarTickets();}catch(e){console.error(e);alert('No se guardó el ticket. Revisa el espacio disponible y vuelve a intentar.');}}
+async function crGuardarTicket(event, id) {
+
+  event.preventDefault();
+
+  const form = document.getElementById("crForm");
+
+  if (!form || form.dataset.guardando === "true") {
+    return;
+  }
+
+  const actual = id
+    ? crTickets().find(
+        item => String(item.id) === String(id)
+      )
+    : null;
+
+  if (id && !actual) {
+    alert("No se encontró el ticket. Regresa a la lista.");
+    return;
+  }
+
+  if (actual && actual.estado !== "Pendiente") {
+    alert("Solo se pueden editar tickets pendientes.");
+    return;
+  }
+
+  const tipo =
+    document.getElementById("crTipo").value;
+
+  const condicion =
+    document.getElementById("crCondicion").value;
+
+  const total =
+    Number(document.getElementById("crTotal").value);
+
+  const vencimiento =
+    document.getElementById("crVence").value;
+
+  const lineas = tipo === "Compra"
+    ? [...form.querySelectorAll(".cr-linea")]
+        .map(elemento => ({
+          productoId:
+            elemento.querySelector(".cr-insumo").value,
+
+          cantidad:
+            Number(
+              elemento.querySelector(".cr-cantidad").value
+            ),
+
+          costo:
+            Number(
+              elemento.querySelector(".cr-costo").value
+            )
+        }))
+        .filter(linea => linea.productoId)
+    : [];
+
+  if (!Number.isFinite(total) || total <= 0) {
+    alert("Escribe un importe total válido.");
+    return;
+  }
+
+  if (
+    tipo === "Compra" &&
+    condicion === "Credito" &&
+    !vencimiento
+  ) {
+    alert("Indica la fecha de vencimiento del crédito.");
+    return;
+  }
+
+  if (lineas.some(linea =>
+    !Number.isFinite(linea.cantidad) ||
+    linea.cantidad <= 0 ||
+    !Number.isFinite(linea.costo) ||
+    linea.costo < 0
+  )) {
+    alert("Revisa las cantidades y los costos.");
+    return;
+  }
+
+  // Mantener el identificador si se reintenta
+  // después de una interrupción de conexión.
+  if (!form.dataset.ticketId) {
+    form.dataset.ticketId =
+      actual?.id ||
+      "CR-" + crypto.randomUUID();
+  }
+
+  if (!form.dataset.folio) {
+    form.dataset.folio =
+      actual?.folio ||
+      "COM-" + form.dataset.ticketId.slice(-12);
+  }
+
+  if (!form.dataset.creado) {
+    form.dataset.creado =
+      actual?.creado ||
+      new Date().toISOString();
+  }
+
+  const fotoSeleccionada = crTicketFotoTemporal;
+
+  const ticket = {
+    ...(actual || {}),
+
+    id: form.dataset.ticketId,
+    folio: form.dataset.folio,
+
+    tipo,
+
+    proveedor:
+      document.getElementById("crProveedor").value.trim(),
+
+    fecha:
+      document.getElementById("crFecha").value,
+
+    total,
+    condicion,
+
+    metodo:
+      document.getElementById("crMetodo").value,
+
+    vencimiento:
+      tipo === "Compra" && condicion === "Credito"
+        ? vencimiento
+        : "",
+
+    notas:
+      document.getElementById("crNotas").value,
+
+    lineas,
+    estado: "Pendiente",
+
+    foto:
+      Boolean(actual?.foto || fotoSeleccionada),
+
+    creado: form.dataset.creado,
+
+    usuario:
+      actual?.usuario ||
+      USUARIO_ACTUAL.nombre
+  };
+
+  form.dataset.guardando = "true";
+
+  const boton =
+    form.querySelector('[type="submit"]');
+
+  if (boton) {
+    boton.disabled = true;
+  }
+
+  let guardadoCentral = false;
+
+  try {
+
+    // La fotografía se conserva en este dispositivo.
+    if (fotoSeleccionada) {
+      await crGuardarFoto(
+        ticket.id,
+        fotoSeleccionada
+      );
+    }
+
+    const revision =
+      form.dataset.revisionSupabase ||
+      actual?.revisionSupabase;
+
+    const {
+      data,
+      error
+    } = await supabaseClient.rpc(
+      "cr_guardar_ticket",
+      {
+        p_ticket: ticket,
+
+        p_revision:
+          revision != null
+            ? Number(revision)
+            : null
+      }
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data?.success || !data.ticket) {
+      throw new Error(
+        "Supabase no confirmó el guardado."
+      );
+    }
+
+    guardadoCentral = true;
+
+    const central = data.ticket;
+
+    form.dataset.revisionSupabase =
+      String(central.revision);
+
+    ticket.idSupabase = central.id;
+    ticket.revisionSupabase = central.revision;
+
+    const lista = crTickets();
+
+    const posicion =
+      lista.findIndex(
+        item => String(item.id) === String(ticket.id)
+      );
+
+    if (posicion >= 0) {
+      lista[posicion] = ticket;
+    } else {
+      lista.push(ticket);
+    }
+
+    crGuardarLista(
+      CR_TICKETS_KEY,
+      lista
+    );
+
+    await mostrarTickets();
+
+  } catch (error) {
+
+    console.error(
+      "Error al guardar ticket pendiente:",
+      error
+    );
+
+    alert(
+      guardadoCentral
+        ? "El ticket sí quedó guardado en Supabase, " +
+          "pero falló la actualización de este equipo. " +
+          "Conserva esta pantalla."
+        : "No se pudo comprobar el guardado: " +
+          (error.message || "Revisa la conexión.") +
+          "\n\nConserva esta pantalla para reintentar."
+    );
+
+  } finally {
+
+    form.dataset.guardando = "false";
+
+    if (boton) {
+      boton.disabled = false;
+    }
+
+  }
+
+}
 async function crVerFoto(id){try{const blob=await crLeerFoto(id);if(!blob){alert('Este ticket no tiene fotografía almacenada en este dispositivo.');return;}const url=URL.createObjectURL(blob);const w=window.open(url,'_blank');if(!w){alert('Permite ventanas emergentes para visualizar la foto.');URL.revokeObjectURL(url);}else setTimeout(()=>URL.revokeObjectURL(url),120000);}catch(e){alert('No se pudo abrir la fotografía.');}}
 function crDetalle(id){const t=crTickets().find(x=>x.id===id);if(!t)return mostrarTickets();const pagos=crPagos().filter(p=>p.ticketId===id);crLayout('Ticket '+t.folio,`<section class="panel"><p><strong>Tipo:</strong> ${crEsc(t.tipo)} · <strong>Estado:</strong> ${crEsc(t.estado)}</p><p><strong>Proveedor:</strong> ${crEsc(t.proveedor||"Pendiente de identificar")}</p><p><strong>Fecha:</strong> ${crEsc(t.fecha||"Pendiente de identificar")} · <strong>Total:</strong> ${Number(t.total)>0?crDinero(t.total):"Pendiente de identificar"}</p><p><strong>Pago:</strong> ${crEsc(t.condicion)} · ${crEsc(t.metodo)} · <strong>Saldo:</strong> ${crDinero(crSaldo(t))}</p>${t.vencimiento?`<p><strong>Vence:</strong> ${crEsc(t.vencimiento)}</p>`:''}<p><strong>Notas:</strong> ${crEsc(t.notas)}</p>${t.lineas?.length?`<h3>Insumos</h3>${t.lineas.map(l=>{const p=obtenerInventario().find(x=>String(x.id)===String(l.productoId));return `<p>${crEsc(p?.nombre||'Producto no encontrado')}: ${l.cantidad} ${crEsc(p?.unidad||'')} × ${crDinero(l.costo)}</p>`;}).join('')}`:''}${t.foto?`<button class="btn-secundario" onclick="crVerFoto('${t.id}')">Ver fotografía</button>`:''}<p>${t.estado==='Pendiente'?`<button class="btn-secundario" onclick="crFormulario('${t.id}')">Editar</button> <button class="btn-principal" onclick="crConfirmar('${t.id}')">Confirmar y aplicar</button> <button class="btn-secundario" onclick="crRechazar('${t.id}')">Rechazar</button>`:''}</p>${t.estado==='Confirmado'&&t.tipo==='Compra'&&crSaldo(t)>0?`<button class="btn-principal" onclick="crRegistrarPago('${t.id}')">Registrar pago / abono</button>`:''}<h3>Pagos registrados</h3>${pagos.map(p=>`<p>${crEsc(p.fecha.slice(0,10))} · ${crDinero(p.importe)} · ${crEsc(p.metodo)}</p>`).join('')||'<p>Sin pagos.</p>'}<button class="btn-secundario" onclick="mostrarTickets()">Volver</button></section>`);}
 function crRechazar(id){if(
