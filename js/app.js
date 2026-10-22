@@ -284,7 +284,26 @@ async function iniciarAplicacion() {
         return;
     }
 
-    USUARIO_ACTUAL = usuario;
+       USUARIO_ACTUAL = usuario;
+
+    try {
+
+        await crCargarCajaCentral();
+
+    } catch (error) {
+
+        console.error(
+            "Error al consultar caja central:",
+            error
+        );
+
+        alert(
+            "No se pudo consultar la caja central. " +
+            "Revisa internet y vuelve a entrar."
+        );
+
+        return;
+    }
 
     const { data, error } = await supabaseClient
         .from("cr_inventario")
@@ -8786,3 +8805,492 @@ function crTienePermiso(permiso) {
 
     return USUARIO_ACTUAL.permisos?.[permiso] === true;
 }
+
+/* =========================================================
+   CAJA CENTRAL: SUPABASE
+========================================================= */
+
+let crCajaCentral = null;
+
+async function crCargarCajaCentral() {
+
+    crCajaCentral = null;
+
+    const { data, error } =
+        await supabaseClient.rpc(
+            "cr_obtener_caja_actual"
+        );
+
+    if (error) throw error;
+
+    if (data?.success !== true) {
+        throw new Error(
+            "No se pudo consultar la caja central."
+        );
+    }
+
+    crCajaCentral = data.caja || null;
+
+    return crCajaCentral;
+}
+
+(function conectarCajaCentral() {
+
+    const renderizarCorte =
+        window.mostrarCorteCaja;
+
+    let operando = false;
+    let solicitudApertura = null;
+
+    window.obtenerCajaActual = function () {
+        return crCajaCentral;
+    };
+
+    window.mostrarCorteCaja = async function () {
+
+        const app =
+            document.getElementById("app");
+
+        const pantallaAnterior = app.innerHTML;
+
+        try {
+
+            const caja =
+                await crCargarCajaCentral();
+
+            await cargarVentasSupabase();
+
+            let resumen = null;
+
+            if (caja) {
+
+                const { data, error } =
+                    await supabaseClient.rpc(
+                        "cr_resumen_caja",
+                        {
+                            p_caja_id: caja.id
+                        }
+                    );
+
+                if (error) throw error;
+
+                if (data?.success !== true) {
+                    throw new Error(
+                        "No se pudo consultar el arqueo."
+                    );
+                }
+
+                resumen = data;
+            }
+
+            if (
+                app.innerHTML !== pantallaAnterior
+            ) return;
+
+            renderizarCorte();
+
+            const panel =
+                document.createElement("section");
+
+            panel.className = "panel";
+            panel.id = "crResumenCajaCentral";
+
+            const titulo =
+                document.createElement("h2");
+
+            titulo.textContent = "Caja central";
+
+            panel.appendChild(titulo);
+
+            const lineas = resumen
+                ? [
+                    "Estado: abierta",
+
+                    "Fondo inicial: " +
+                    crDinero(resumen.fondoInicial),
+
+                    "Ventas en efectivo: " +
+                    crDinero(resumen.ventasEfectivo),
+
+                    "Entradas de efectivo: " +
+                    crDinero(resumen.entradasEfectivo),
+
+                    "Salidas de efectivo: " +
+                    crDinero(resumen.salidasEfectivo),
+
+                    "Efectivo esperado: " +
+                    crDinero(resumen.efectivoEsperado),
+
+                    "Tickets centrales pendientes: " +
+                    resumen.ticketsPendientes
+                ]
+                : [
+                    "No hay una caja abierta en Supabase."
+                ];
+
+            for (const texto of lineas) {
+
+                const p =
+                    document.createElement("p");
+
+                p.textContent = texto;
+
+                panel.appendChild(p);
+            }
+
+            const nota =
+                document.createElement("p");
+
+            nota.textContent =
+                "Este arqueo incluye operaciones vinculadas " +
+                "a la caja central. Los registros locales anteriores " +
+                "siguen pendientes de conciliación.";
+
+            panel.appendChild(nota);
+
+            const contenido =
+                app.querySelector("main.contenido");
+
+            if (contenido) {
+                contenido.prepend(panel);
+            }
+
+        } catch (error) {
+
+            console.error(
+                "Error al consultar caja:",
+                error
+            );
+
+            alert(
+                error.message ||
+                "No se pudo consultar la caja central."
+            );
+        }
+    };
+
+    window.abrirCaja = async function () {
+
+        if (operando) return;
+
+        operando = true;
+
+        let guardada = false;
+
+        try {
+
+            const existente =
+                await crCargarCajaCentral();
+
+            if (existente) {
+
+                alert(
+                    "Ya existe una caja central abierta. " +
+                    "Se utilizará esa misma caja."
+                );
+
+                guardada = true;
+
+            } else {
+
+                let local = null;
+
+                try {
+
+                    local = JSON.parse(
+                        localStorage.getItem(
+                            CLAVE_CAJA_ACTUAL
+                        ) || "null"
+                    );
+
+                } catch {
+
+                    throw new Error(
+                        "La caja local necesita revisión " +
+                        "antes de abrir la central."
+                    );
+                }
+
+                if (
+                    String(local?.estado || "")
+                        .toLowerCase() === "abierta"
+                ) {
+
+                    throw new Error(
+                        "Hay una caja local abierta pendiente " +
+                        "de conciliación. No se abrirá otra " +
+                        "ni se borrará su información. " +
+                        "Revisaremos esa caja primero."
+                    );
+                }
+
+                if (!solicitudApertura) {
+
+                    const entrada = prompt(
+                        "Fondo inicial real para la caja central:",
+                        "0"
+                    );
+
+                    if (entrada === null) return;
+
+                    const texto =
+                        entrada.trim().replace(",", ".");
+
+                    if (
+                        !/^\d+(\.\d{1,2})?$/.test(texto) ||
+                        !Number.isFinite(Number(texto))
+                    ) {
+
+                        throw new Error(
+                            "Escribe un fondo válido."
+                        );
+                    }
+
+                    solicitudApertura = {
+                        p_fondo_inicial: Number(texto),
+                        p_operacion_id:
+                            crypto.randomUUID()
+                    };
+
+                } else if (
+                    !confirm(
+                        "¿Reintentar la misma apertura con fondo " +
+                        crDinero(
+                            solicitudApertura.p_fondo_inicial
+                        ) +
+                        "?"
+                    )
+                ) {
+                    return;
+                }
+
+                const { data, error } =
+                    await supabaseClient.rpc(
+                        "cr_abrir_caja",
+                        solicitudApertura
+                    );
+
+                if (error) throw error;
+
+                if (
+                    data?.success !== true ||
+                    !data.caja
+                ) {
+
+                    throw new Error(
+                        "No se confirmó la apertura."
+                    );
+                }
+
+                crCajaCentral = data.caja;
+
+                solicitudApertura = null;
+                guardada = true;
+
+                alert(
+                    data.ya_abierta
+                        ? "Se encontró una caja central abierta."
+                        : "Caja central abierta correctamente."
+                );
+            }
+
+        } catch (error) {
+
+            console.error(
+                "Error al abrir caja:",
+                error
+            );
+
+            alert(
+                error.message ||
+                "No se pudo confirmar la apertura."
+            );
+
+        } finally {
+
+            operando = false;
+        }
+
+        if (guardada) {
+            await window.mostrarCorteCaja();
+        }
+    };
+
+    window.cerrarCaja = async function () {
+
+        if (operando) return;
+
+        operando = true;
+
+        let cerrada = false;
+
+        try {
+
+            const caja =
+                await crCargarCajaCentral();
+
+            if (!caja) {
+
+                throw new Error(
+                    "No hay una caja central abierta."
+                );
+            }
+
+            const {
+                data: resumen,
+                error: errorResumen
+            } = await supabaseClient.rpc(
+                "cr_resumen_caja",
+                {
+                    p_caja_id: caja.id
+                }
+            );
+
+            if (errorResumen) {
+                throw errorResumen;
+            }
+
+            if (resumen?.success !== true) {
+
+                throw new Error(
+                    "No se pudo consultar el arqueo."
+                );
+            }
+
+            let aceptarPendientes = false;
+
+            if (
+                Number(resumen.ticketsPendientes) > 0
+            ) {
+
+                aceptarPendientes = confirm(
+                    "Hay " +
+                    resumen.ticketsPendientes +
+                    " ticket(s) centrales pendientes.\n" +
+                    "¿Continuar con el cierre sin autorizarlos?"
+                );
+
+                if (!aceptarPendientes) return;
+            }
+
+            const entrada = prompt(
+                "Efectivo esperado: " +
+                crDinero(resumen.efectivoEsperado) +
+                "\n¿Cuánto efectivo contaste físicamente?",
+                ""
+            );
+
+            if (entrada === null) return;
+
+            const texto =
+                entrada.trim().replace(",", ".");
+
+            if (
+                !/^\d+(\.\d{1,2})?$/.test(texto) ||
+                !Number.isFinite(Number(texto))
+            ) {
+
+                throw new Error(
+                    "Escribe un importe contado válido."
+                );
+            }
+
+            const contado = Number(texto);
+
+            if (
+                !confirm(
+                    "¿Cerrar la caja central?\n" +
+                    "Efectivo contado: " +
+                    crDinero(contado) +
+                    "\nEl servidor calculará el cierre definitivo."
+                )
+            ) {
+                return;
+            }
+
+            const { data, error } =
+                await supabaseClient.rpc(
+                    "cr_cerrar_caja",
+                    {
+                        p_caja_id: caja.id,
+                        p_efectivo_contado: contado,
+                        p_aceptar_pendientes:
+                            aceptarPendientes,
+                        p_observaciones:
+                            "Cierre desde Control Restaurante"
+                    }
+                );
+
+            if (error) throw error;
+
+            if (
+                data?.success !== true ||
+                !data.cierre
+            ) {
+
+                throw new Error(
+                    "No se confirmó el cierre."
+                );
+            }
+
+            crCajaCentral = null;
+            cerrada = true;
+
+            alert(
+                "Cierre guardado en Supabase.\n" +
+                "Diferencia: " +
+                crDinero(data.cierre.diferencia)
+            );
+
+        } catch (error) {
+
+            console.error(
+                "Error al cerrar caja:",
+                error
+            );
+
+            alert(
+                (
+                    error.message ||
+                    "No se pudo confirmar el cierre."
+                ) +
+                "\nSi hubo una interrupción, revisa el cierre " +
+                "central antes de abrir otra caja."
+            );
+
+        } finally {
+
+            operando = false;
+        }
+
+        if (cerrada) {
+            await window.mostrarCorteCaja();
+        }
+    };
+
+    supabaseClient.auth.onAuthStateChange(
+        evento => {
+
+            if (evento === "SIGNED_OUT") {
+
+                crCajaCentral = null;
+                solicitudApertura = null;
+            }
+        }
+    );
+
+    window.addEventListener(
+        "popstate",
+        evento => {
+
+            if (
+                evento.state?.crPantalla ===
+                "mostrarCorteCaja"
+            ) {
+
+                window.mostrarCorteCaja();
+            }
+        }
+    );
+
+})();
