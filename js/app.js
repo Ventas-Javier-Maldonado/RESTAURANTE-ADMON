@@ -10850,3 +10850,533 @@ async function crCargarCajaCentral() {
   );
 
 })();
+
+/* =========================================================
+   INVENTARIO Y CAJA: GUARDADO CENTRAL Y ACTUALIZACIÓN
+========================================================= */
+
+(function conectarInventarioYCaja() {
+
+  if (window.crInventarioCajaConectados) return;
+  window.crInventarioCajaConectados = true;
+
+  const firmas = new WeakMap();
+
+  const inventarioOriginal = window.mostrarInventario;
+  const editarOriginal = window.editarProducto;
+  const cajaOriginal = window.mostrarCorteCaja;
+
+  let actualizando = false;
+  let operaciones = 0;
+  let consultasCaja = 0;
+
+  function ocupado() {
+    return Boolean(
+      operaciones ||
+      consultasCaja ||
+      document.querySelector("#app form") ||
+      window.crConfirmar?.procesando ||
+      window.crRechazar?.procesando ||
+      window.crRegistrarPago?.procesando
+    );
+  }
+
+  function mismaVersion(consulta, producto) {
+    return producto.fechaModificacion == null
+      ? consulta.is("fechaModificacion", null)
+      : consulta.eq(
+          "fechaModificacion",
+          producto.fechaModificacion
+        );
+  }
+
+  window.editarProducto = function(id) {
+
+    const resultado = editarOriginal(id);
+
+    const campo =
+      document.getElementById("existenciaProducto");
+
+    if (campo) {
+      campo.readOnly = true;
+      campo.title =
+        "Para ajustar existencias, utiliza Movimientos.";
+    }
+
+    return resultado;
+
+  };
+
+  window.guardarEdicionProducto = async function(event, id) {
+
+    event.preventDefault();
+
+    const form = event.currentTarget;
+
+    if (!form || form.dataset.guardando === "true") {
+      return;
+    }
+
+    const producto = obtenerInventario().find(
+      item => String(item.id) === String(id)
+    );
+
+    if (!producto) {
+      alert("No se encontró el producto.");
+      return;
+    }
+
+    const valor = nombre =>
+      document.getElementById(nombre).value;
+
+    const cambios = {
+      codigo: valor("codigoProducto").trim(),
+      nombre: valor("nombreProducto").trim(),
+      categoria: valor("categoriaProducto").trim(),
+      unidad: valor("unidadProducto"),
+      stockMinimo: Number(valor("stockMinimoProducto")),
+      costo: Number(valor("costoProducto")),
+      precio: Number(valor("precioProducto")),
+      fechaModificacion: new Date().toISOString()
+    };
+
+    if (
+      !cambios.codigo ||
+      !cambios.nombre ||
+      !cambios.categoria ||
+      !cambios.unidad
+    ) {
+      alert("Completa todos los campos obligatorios.");
+      return;
+    }
+
+    if (
+      [
+        cambios.stockMinimo,
+        cambios.costo,
+        cambios.precio
+      ].some(numero =>
+        !Number.isFinite(numero) || numero < 0
+      )
+    ) {
+      alert("Revisa el stock mínimo, costo y precio.");
+      return;
+    }
+
+    if (
+      Number(valor("existenciaProducto")) !==
+      Number(producto.existencia || 0)
+    ) {
+      alert(
+        "Para cambiar la existencia utiliza Movimientos " +
+        "y registra el ajuste."
+      );
+      return;
+    }
+
+    if (
+      obtenerInventario().some(item =>
+        String(item.id) !== String(id) &&
+        String(item.codigo || "").toLowerCase() ===
+          cambios.codigo.toLowerCase()
+      )
+    ) {
+      alert("Ya existe otro producto con ese código.");
+      return;
+    }
+
+    form.dataset.guardando = "true";
+    operaciones++;
+
+    let guardado = false;
+
+    try {
+
+      const consulta = supabaseClient
+        .from("cr_inventario")
+        .update(cambios)
+        .eq("id", id);
+
+      const { data, error } =
+        await mismaVersion(consulta, producto)
+          .select("*")
+          .single();
+
+      if (error) throw error;
+
+      guardado = true;
+
+      window.inventarioSupabase =
+        obtenerInventario().map(item =>
+          String(item.id) === String(id)
+            ? data
+            : item
+        );
+
+      if (form.isConnected) {
+        window.mostrarInventario();
+      }
+
+    } catch (error) {
+
+      console.error("Error al editar producto:", error);
+
+      alert(
+        guardado
+          ? "El producto quedó guardado. " +
+            "Vuelve a entrar en Inventario."
+          : error.code === "PGRST116"
+            ? "El producto cambió, fue eliminado o no " +
+              "tienes permiso. Vuelve a abrir su ficha."
+            : "No se pudo guardar: " +
+              (error.message || "Revisa la conexión.")
+      );
+
+    } finally {
+
+      form.dataset.guardando = "false";
+      operaciones--;
+
+    }
+
+  };
+
+  window.eliminarProducto = async function(id) {
+
+    if (operaciones) return;
+
+    const producto = obtenerInventario().find(
+      item => String(item.id) === String(id)
+    );
+
+    if (!producto) return;
+
+    if (!confirm(
+      '¿Eliminar el producto "' + producto.nombre + '"?'
+    )) {
+      return;
+    }
+
+    const pantalla =
+      document.getElementById("app").firstElementChild;
+
+    operaciones++;
+    let eliminado = false;
+
+    try {
+
+      const {
+        data: recetas,
+        error: errorRecetas
+      } = await supabaseClient
+        .from("cr_recetas")
+        .select("ingredientes");
+
+      if (errorRecetas) throw errorRecetas;
+
+      if (
+        (recetas || []).some(receta =>
+          Array.isArray(receta.ingredientes) &&
+          receta.ingredientes.some(linea =>
+            String(linea.productoId) === String(id)
+          )
+        )
+      ) {
+        throw new Error(
+          "Este ingrediente está en una receta. " +
+          "Actualiza esa receta antes de eliminarlo."
+        );
+      }
+
+      let consulta = supabaseClient
+        .from("cr_inventario")
+        .delete()
+        .eq("id", id);
+
+      consulta = producto.existencia == null
+        ? consulta.is("existencia", null)
+        : consulta.eq(
+            "existencia",
+            producto.existencia
+          );
+
+      const { error } =
+        await mismaVersion(consulta, producto)
+          .select("id")
+          .single();
+
+      if (error) throw error;
+
+      eliminado = true;
+
+      window.inventarioSupabase =
+        obtenerInventario().filter(
+          item => String(item.id) !== String(id)
+        );
+
+      if (
+        document.getElementById("app").firstElementChild ===
+        pantalla
+      ) {
+        window.mostrarInventario();
+      }
+
+    } catch (error) {
+
+      console.error("Error al eliminar producto:", error);
+
+      alert(
+        eliminado
+          ? "El producto quedó eliminado. " +
+            "Vuelve a entrar en Inventario."
+          : error.code === "PGRST116"
+            ? "El producto cambió o no tienes permiso " +
+              "para eliminarlo. Actualiza el inventario."
+            : "No se pudo eliminar: " +
+              (error.message || "Revisa la conexión.")
+      );
+
+    } finally {
+
+      operaciones--;
+
+    }
+
+  };
+
+  window.mostrarInventario = function(...args) {
+
+    const resultado =
+      inventarioOriginal.apply(this, args);
+
+    actualizar();
+
+    return resultado;
+
+  };
+
+  window.mostrarCorteCaja = async function(...args) {
+
+    consultasCaja++;
+
+    try {
+      return await cajaOriginal.apply(this, args);
+    } finally {
+      consultasCaja--;
+    }
+
+  };
+
+  for (const nombre of ["abrirCaja", "cerrarCaja"]) {
+
+    const original = window[nombre];
+
+    window[nombre] = async function(...args) {
+
+      operaciones++;
+
+      try {
+        return await original.apply(this, args);
+      } finally {
+        operaciones--;
+      }
+
+    };
+
+  }
+
+  async function actualizarInventario(lista) {
+
+    const productos = [];
+
+    for (let desde = 0; ; desde += 500) {
+
+      const { data, error } = await supabaseClient
+        .from("cr_inventario")
+        .select("*")
+        .order("id")
+        .range(desde, desde + 499);
+
+      if (error) throw error;
+
+      productos.push(...(data || []));
+
+      if (!data || data.length < 500) break;
+
+    }
+
+    if (
+      document.getElementById("lista-inventario") !== lista ||
+      ocupado() ||
+      document.visibilityState !== "visible"
+    ) {
+      return;
+    }
+
+    const firma = JSON.stringify(productos);
+
+    if (firmas.get(lista) === firma) return;
+
+    window.inventarioSupabase = productos;
+
+    const principal = lista.closest("main.contenido");
+
+    const busqueda = principal.querySelector(
+      ".buscador-inventario input"
+    );
+
+    filtrarInventario(busqueda?.value || "");
+
+    const indicadores = principal.querySelectorAll(
+      ".indicadores .indicador strong"
+    );
+
+    if (indicadores[0]) {
+      indicadores[0].textContent = productos.length;
+    }
+
+    if (indicadores[1]) {
+      indicadores[1].textContent =
+        obtenerProductosBajoMinimo(productos).length;
+    }
+
+    const contador =
+      principal.querySelector(".contador-alertas");
+
+    if (contador) {
+      contador.textContent = productos.length;
+    }
+
+    firmas.set(lista, firma);
+
+  }
+
+  async function actualizarCaja(panel) {
+
+    const { data, error } = await supabaseClient.rpc(
+      "cr_obtener_caja_actual"
+    );
+
+    if (error) throw error;
+
+    if (!data?.success) {
+      throw new Error("No se pudo consultar la caja.");
+    }
+
+    let resumen = null;
+
+    if (data.caja) {
+
+      const resultado = await supabaseClient.rpc(
+        "cr_resumen_caja",
+        {
+          p_caja_id: data.caja.id
+        }
+      );
+
+      if (resultado.error) throw resultado.error;
+
+      if (!resultado.data?.success) {
+        throw new Error(
+          "No se pudo consultar el resumen de caja."
+        );
+      }
+
+      resumen = resultado.data;
+
+    }
+
+    if (
+      document.getElementById("crResumenCajaCentral") !== panel ||
+      ocupado() ||
+      document.visibilityState !== "visible"
+    ) {
+      return;
+    }
+
+    const firma = JSON.stringify({
+      caja: data.caja,
+      resumen
+    });
+
+    if (firmas.get(panel) === firma) return;
+
+    const posicion = window.scrollY;
+
+    await window.mostrarCorteCaja();
+
+    const nuevoPanel =
+      document.getElementById("crResumenCajaCentral");
+
+    if (nuevoPanel && nuevoPanel !== panel) {
+      firmas.set(nuevoPanel, firma);
+      window.scrollTo(0, posicion);
+    }
+
+  }
+
+  async function actualizar() {
+
+    if (
+      actualizando ||
+      ocupado() ||
+      document.visibilityState !== "visible" ||
+      navigator.onLine === false
+    ) {
+      return;
+    }
+
+    const lista =
+      document.getElementById("lista-inventario");
+
+    const panel =
+      document.getElementById("crResumenCajaCentral");
+
+    if (!lista && !panel) return;
+
+    actualizando = true;
+
+    try {
+
+      if (lista) {
+        await actualizarInventario(lista);
+      } else {
+        await actualizarCaja(panel);
+      }
+
+    } catch (error) {
+
+      console.warn(
+        "No se pudo actualizar inventario o caja:",
+        error
+      );
+
+    } finally {
+
+      actualizando = false;
+
+    }
+
+  }
+
+  async function siguiente() {
+
+    try {
+      await actualizar();
+    } finally {
+      window.setTimeout(siguiente, 10000);
+    }
+
+  }
+
+  window.setTimeout(siguiente, 10000);
+
+  window.addEventListener("focus", actualizar);
+  window.addEventListener("online", actualizar);
+
+  document.addEventListener(
+    "visibilitychange",
+    actualizar
+  );
+
+})();
