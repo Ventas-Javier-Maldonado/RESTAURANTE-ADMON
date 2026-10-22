@@ -11513,3 +11513,243 @@ async function crCargarCajaCentral() {
     siguienteConsulta();
 
 })();
+
+/* =========================================================
+   SINCRONIZAR TABLA DE EXISTENCIAS ENTRE EQUIPOS
+========================================================= */
+
+(function sincronizarTablaExistencias() {
+
+    if (window.crTablaExistenciasSincronizada) {
+        return;
+    }
+
+    window.crTablaExistenciasSincronizada = true;
+
+    let consultando = false;
+
+    const firmas = new WeakMap();
+
+    function obtenerTablaVisible() {
+
+        const titulo = document.querySelector(
+            "#app .bienvenida h1"
+        );
+
+        if (
+            titulo?.textContent.trim() !==
+            "Existencias de productos"
+        ) {
+            return null;
+        }
+
+        return document.querySelector(
+            "#app main.contenido .panel table tbody"
+        );
+
+    }
+
+    async function consultarFilas(tabla, columnas) {
+
+        const filas = [];
+        const limite = 500;
+
+        for (let desde = 0; ; desde += limite) {
+
+            const { data, error } =
+                await supabaseClient
+                    .from(tabla)
+                    .select(columnas)
+                    .order("id")
+                    .range(
+                        desde,
+                        desde + limite - 1
+                    );
+
+            if (error) {
+                throw error;
+            }
+
+            filas.push(...(data || []));
+
+            if (!data || data.length < limite) {
+                break;
+            }
+
+        }
+
+        return filas;
+
+    }
+
+    async function actualizar() {
+
+        const tabla = obtenerTablaVisible();
+
+        if (
+            !tabla ||
+            consultando ||
+            document.visibilityState !== "visible" ||
+            navigator.onLine === false
+        ) {
+            return;
+        }
+
+        consultando = true;
+
+        try {
+
+            const [productos, movimientos] =
+                await Promise.all([
+
+                    consultarFilas(
+                        "cr_inventario",
+                        "*"
+                    ),
+
+                    consultarFilas(
+                        "cr_movimientos_inventario",
+                        "id, productoid, tipo, cantidad, motivo, ventaId"
+                    )
+
+                ]);
+
+            if (
+                obtenerTablaVisible() !== tabla ||
+                document.visibilityState !== "visible"
+            ) {
+                return;
+            }
+
+            const consumos = new Map();
+
+            for (const movimiento of movimientos) {
+
+                const esSalida =
+                    String(movimiento.tipo || "")
+                        .trim()
+                        .toLowerCase() === "salida";
+
+                const esVenta =
+                    movimiento.ventaId != null ||
+                    String(movimiento.motivo || "")
+                        .toLowerCase()
+                        .includes("venta");
+
+                if (!esSalida || !esVenta) {
+                    continue;
+                }
+
+                const id =
+                    String(movimiento.productoid);
+
+                consumos.set(
+                    id,
+                    (consumos.get(id) || 0) +
+                    Number(movimiento.cantidad || 0)
+                );
+
+            }
+
+            const contenido =
+                productos.map(producto => {
+
+                    const disponible =
+                        Number(producto.existencia || 0);
+
+                    const utilizado =
+                        consumos.get(
+                            String(producto.id)
+                        ) || 0;
+
+                    const antes =
+                        disponible + utilizado;
+
+                    const unidad =
+                        crEscVenta(producto.unidad || "");
+
+                    return `
+                        <tr>
+                            <td>
+                                ${crEscVenta(producto.nombre)}
+                            </td>
+
+                            <td>
+                                ${antes.toFixed(3)} ${unidad}
+                            </td>
+
+                            <td>
+                                ${utilizado.toFixed(3)} ${unidad}
+                            </td>
+
+                            <td>
+                                <strong>
+                                    ${disponible.toFixed(3)} ${unidad}
+                                </strong>
+                            </td>
+                        </tr>
+                    `;
+
+                }).join("") || `
+                    <tr>
+                        <td
+                            colspan="4"
+                            style="padding:15px;"
+                        >
+                            No hay productos registrados.
+                        </td>
+                    </tr>
+                `;
+
+            window.inventarioSupabase = productos;
+
+            if (firmas.get(tabla) !== contenido) {
+
+                tabla.innerHTML = contenido;
+                firmas.set(tabla, contenido);
+
+            }
+
+        } catch (error) {
+
+            console.error(
+                "No se pudo sincronizar la tabla de existencias:",
+                error
+            );
+
+        } finally {
+
+            consultando = false;
+
+        }
+
+    }
+
+    async function siguienteConsulta() {
+
+        try {
+
+            await actualizar();
+
+        } finally {
+
+            window.setTimeout(
+                siguienteConsulta,
+                5000
+            );
+
+        }
+
+    }
+
+    window.addEventListener("focus", actualizar);
+    window.addEventListener("online", actualizar);
+
+    document.addEventListener(
+        "visibilitychange",
+        actualizar
+    );
+
+    siguienteConsulta();
+
+})();
