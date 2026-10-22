@@ -11380,3 +11380,136 @@ async function crCargarCajaCentral() {
   );
 
 })();
+
+/* =========================================================
+   ACTUALIZACIÓN AUTOMÁTICA DEL HISTORIAL DE VENTAS
+========================================================= */
+
+(function activarActualizacionVentas() {
+
+    if (window.crActualizacionVentasActiva) {
+        return;
+    }
+
+    window.crActualizacionVentasActiva = true;
+
+    let consultando = false;
+
+    async function actualizarVentas() {
+
+        const panel =
+            document.getElementById(
+                "historialVentasRegistradas"
+            );
+
+        if (
+            !panel ||
+            consultando ||
+            document.visibilityState !== "visible" ||
+            navigator.onLine === false
+        ) {
+            return;
+        }
+
+        consultando = true;
+
+        try {
+
+            await cargarVentasSupabase();
+
+            if (
+                document.getElementById(
+                    "historialVentasRegistradas"
+                ) !== panel ||
+                document.visibilityState !== "visible"
+            ) {
+                return;
+            }
+
+            const contenido = `
+                <div class="card-header">
+                    <div>
+                        <h2>Ventas registradas</h2>
+                        <p>
+                            Operaciones sincronizadas con Supabase.
+                        </p>
+                    </div>
+                </div>
+
+                ${crHistorialVentasHTML()}
+            `;
+
+            if (panel.crContenidoVentas === contenido) {
+                return;
+            }
+
+            const tablaAnterior =
+                panel.querySelector(
+                    'div[style*="overflow-x"]'
+                );
+
+            const desplazamiento =
+                tablaAnterior?.scrollLeft || 0;
+
+            panel.innerHTML = contenido;
+            panel.crContenidoVentas = contenido;
+
+            const tablaNueva =
+                panel.querySelector(
+                    'div[style*="overflow-x"]'
+                );
+
+            if (tablaNueva) {
+                tablaNueva.scrollLeft = desplazamiento;
+            }
+
+        } catch (error) {
+
+            console.error(
+                "No se pudo actualizar el historial de ventas:",
+                error
+            );
+
+        } finally {
+
+            consultando = false;
+
+        }
+
+    }
+
+    async function siguienteConsulta() {
+
+        try {
+
+            await actualizarVentas();
+
+        } finally {
+
+            window.setTimeout(
+                siguienteConsulta,
+                5000
+            );
+
+        }
+
+    }
+
+    window.addEventListener(
+        "focus",
+        actualizarVentas
+    );
+
+    window.addEventListener(
+        "online",
+        actualizarVentas
+    );
+
+    document.addEventListener(
+        "visibilitychange",
+        actualizarVentas
+    );
+
+    siguienteConsulta();
+
+})();
