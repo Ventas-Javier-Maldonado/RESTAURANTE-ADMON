@@ -8769,10 +8769,268 @@ async function crConfirmar(id) {
 }
 function crAgregarMovimientoCaja(pago){const caja=obtenerCajaActual();if(!caja||caja.estado!=='Abierta')throw Error('Caja cerrada');const a=crLeerLista(CR_TICKET_MOV_CAJA);if(a.some(x=>x.pagoId===pago.id))return;a.push({pagoId:pago.id,cajaId:caja.id,importe:pago.importe,fecha:pago.fecha,ticketId:pago.ticketId});crGuardarLista(CR_TICKET_MOV_CAJA,a);}
 function crEgresosCaja(caja){return crLeerLista(CR_TICKET_MOV_CAJA).filter(m=>String(m.cajaId)===String(caja?.id)).reduce((a,m)=>a+Number(m.importe||0),0);}
-function crRegistrarPago(id){if(
-    !['Administrador','Encargada'].includes(USUARIO_ACTUAL.rol) &&
-    !crTienePermiso("tickets_autorizar")
-)return alert('No autorizado.');const t=crTickets().find(x=>x.id===id);if(!t||t.estado!=='Confirmado'||t.tipo!=='Compra')return;const saldo=crSaldo(t);if(saldo<=0)return alert('Ya está liquidado.');const s=prompt('Saldo: '+crDinero(saldo)+'\n¿Cuánto deseas abonar?',saldo.toFixed(2));if(s===null)return;const importe=Number(s.replace(',','.'));if(!Number.isFinite(importe)||importe<=0||importe>saldo)return alert('Abono inválido.');const metodo=prompt('Método: Efectivo, Transferencia o Tarjeta','Transferencia');if(metodo===null)return;const m=metodo.trim().toLowerCase(),normalizado=m==='efectivo'?'Efectivo':m==='transferencia'?'Transferencia':m==='tarjeta'?'Tarjeta':null;if(!normalizado)return alert('Método no válido.');if(normalizado==='Efectivo'&&!cajaEstaAbierta())return alert('Abre caja antes de registrar el pago en efectivo.');if(!confirm('Registrar abono de '+crDinero(importe)+' por '+normalizado+' a '+t.folio+'?'))return;const pago={id:'P'+Date.now()+'-'+Math.random(),ticketId:id,importe,metodo:normalizado,fecha:new Date().toISOString(),usuario:USUARIO_ACTUAL.nombre};try{const a=crPagos();a.push(pago);crGuardarLista(CR_TICKET_PAGOS_KEY,a);if(normalizado==='Efectivo')crAgregarMovimientoCaja(pago);crDetalle(id);}catch(e){console.error(e);alert('No se pudo registrar el pago. Revisa el historial antes de reintentar.');}}
+async function crRegistrarPago(id) {
+
+  if (crRegistrarPago.procesando) {
+    return;
+  }
+
+  const ticket = crTickets().find(
+    item => String(item.id) === String(id)
+  );
+
+  if (
+    !ticket ||
+    ticket.estado !== "Confirmado" ||
+    ticket.tipo !== "Compra"
+  ) {
+    return;
+  }
+
+  if (ticket.idSupabase == null) {
+    alert(
+      "Este ticket todavía es local. " +
+      "No se registró ningún abono."
+    );
+    return;
+  }
+
+  crRegistrarPago.procesando = true;
+
+  let confirmado = false;
+
+  try {
+
+    const {
+      data: autenticacion,
+      error: errorAuth
+    } = await supabaseClient.auth.getUser();
+
+    if (errorAuth) {
+      throw errorAuth;
+    }
+
+    if (!autenticacion?.user) {
+      throw new Error(
+        "Inicia sesión para continuar."
+      );
+    }
+
+    const clave =
+      "cr_abono_pendiente_v1_" +
+      autenticacion.user.id + "_" +
+      String(ticket.idSupabase);
+
+    const anterior =
+      sessionStorage.getItem(clave);
+
+    let solicitud =
+      anterior ? JSON.parse(anterior) : null;
+
+    if (solicitud) {
+
+      if (
+        String(solicitud.p_ticket_id) !==
+          String(ticket.idSupabase) ||
+        !solicitud.p_operacion_id
+      ) {
+        throw new Error(
+          "No se pudo validar el reintento guardado."
+        );
+      }
+
+      if (!confirm(
+        "Hay un abono pendiente de comprobar de " +
+        crDinero(solicitud.p_importe) +
+        " por " + solicitud.p_metodo +
+        ".\n\n¿Comprobar la misma operación en Supabase?"
+      )) {
+        return;
+      }
+
+    } else {
+
+      const saldo = crSaldo(ticket);
+
+      if (saldo <= 0) {
+        alert("Esta compra ya está liquidada.");
+        return;
+      }
+
+      const entrada = prompt(
+        "Saldo mostrado: " + crDinero(saldo) +
+        "\n¿Cuánto deseas abonar?",
+        saldo.toFixed(2)
+      );
+
+      if (entrada === null) {
+        return;
+      }
+
+      const importe =
+        Number(entrada.trim().replace(",", "."));
+
+      if (
+        !Number.isFinite(importe) ||
+        importe <= 0 ||
+        importe > saldo ||
+        Math.abs(
+          importe * 100 -
+          Math.round(importe * 100)
+        ) > 0.000001
+      ) {
+        alert(
+          "Escribe un abono válido, con máximo dos " +
+          "decimales y sin superar el saldo."
+        );
+        return;
+      }
+
+      const texto = prompt(
+        "Método: Efectivo, Transferencia o Tarjeta",
+        "Transferencia"
+      );
+
+      if (texto === null) {
+        return;
+      }
+
+      const metodos = {
+        efectivo: "Efectivo",
+        transferencia: "Transferencia",
+        tarjeta: "Tarjeta"
+      };
+
+      const metodo =
+        metodos[texto.trim().toLowerCase()];
+
+      if (!metodo) {
+        alert("Método de pago no válido.");
+        return;
+      }
+
+      if (!confirm(
+        "¿Registrar " + crDinero(importe) +
+        " por " + metodo +
+        " al ticket " + ticket.folio + "?"
+      )) {
+        return;
+      }
+
+      solicitud = {
+        p_ticket_id: ticket.idSupabase,
+
+        p_importe:
+          Math.round(importe * 100) / 100,
+
+        p_metodo: metodo,
+
+        p_operacion_id:
+          crypto.randomUUID()
+      };
+
+      // Guardar antes de enviar para poder reintentar
+      // la misma operación si falla la conexión.
+      sessionStorage.setItem(
+        clave,
+        JSON.stringify(solicitud)
+      );
+
+    }
+
+    const {
+      data,
+      error
+    } = await supabaseClient.rpc(
+      "cr_registrar_abono_ticket",
+      solicitud
+    );
+
+    if (error) {
+
+      // Una excepción de validación del servidor
+      // revierte la operación y permite corregirla.
+      if (error.code === "P0001") {
+        sessionStorage.removeItem(clave);
+      }
+
+      throw error;
+
+    }
+
+    if (!data?.success || !data.pago) {
+      throw new Error(
+        "Supabase no confirmó el resultado del abono."
+      );
+    }
+
+    confirmado = true;
+
+    sessionStorage.removeItem(clave);
+
+    const pagos = crPagos().filter(
+      pago =>
+        String(pago.id) !== String(data.pago.id)
+    );
+
+    pagos.push({
+      id: data.pago.id,
+      ticketId: ticket.id,
+      importe: Number(data.pago.importe),
+      metodo: data.pago.metodo,
+      fecha: data.pago.fecha,
+      usuario: data.pago.usuario,
+      cajaId: data.pago.caja_id,
+      origen: "Supabase"
+    });
+
+    crGuardarLista(
+      CR_TICKET_PAGOS_KEY,
+      pagos
+    );
+
+    await crCargarHistorialTicketsCentral();
+    await crCargarCajaCentral();
+
+    crDetalle(id);
+
+    alert(
+      (
+        data.repetido
+          ? "El abono ya estaba registrado."
+          : "Abono registrado en Supabase."
+      ) +
+      "\nSaldo pendiente: " +
+      crDinero(data.saldo)
+    );
+
+  } catch (error) {
+
+    console.error(
+      "Error al registrar abono:",
+      error
+    );
+
+    alert(
+      confirmado
+        ? "El abono sí quedó registrado. " +
+          "Vuelve a entrar en Tickets para actualizar."
+        : (
+            error.message ||
+            "No se pudo comprobar el abono."
+          ) +
+          "\n\nSi se interrumpió la conexión, vuelve " +
+          "a pulsar Registrar pago en esta misma " +
+          "pestaña para comprobar la misma operación."
+    );
+
+  } finally {
+
+    crRegistrarPago.procesando = false;
+
+  }
+
+}
 function crCuentas(){const t=crTickets().filter(x=>x.estado==='Confirmado'&&x.tipo==='Compra'&&crSaldo(x)>0),total=t.reduce((a,x)=>a+crSaldo(x),0);crLayout('Cuentas por pagar',`<section class="panel"><h2>Saldo total: ${crDinero(total)}</h2><p>Compras confirmadas aún no liquidadas.</p>${t.map(x=>`<article class="empleado-item"><div class="empleado-info"><strong>${crEsc(x.proveedor)} · ${crEsc(x.folio)}</strong><span>Saldo ${crDinero(crSaldo(x))} · Vence ${crEsc(x.vencimiento||'Sin fecha')}</span></div><button class="btn-secundario" onclick="crDetalle('${x.id}')">Ver / abonar</button></article>`).join('')||'<p>No hay cuentas pendientes.</p>'}<button class="btn-secundario" onclick="mostrarTickets()">Volver</button></section>`);}
 
 /* =========================================================
