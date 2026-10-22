@@ -7871,7 +7871,11 @@ async function crCargarHistorialTicketsCentral() {
   } = await supabaseClient
     .from("cr_tickets_pendientes")
     .select("*")
-    .in("estado", ["aprobado", "rechazado"])
+    .in("estado", [
+  "pendiente",
+  "aprobado",
+  "rechazado"
+])
     .order("fecha", { ascending: false })
     .limit(200);
 
@@ -7970,10 +7974,12 @@ async function crCargarHistorialTicketsCentral() {
           ? central.productos
           : [],
 
-      estado:
+           estado:
         central.estado === "aprobado"
           ? "Confirmado"
-          : "Rechazado",
+          : central.estado === "rechazado"
+            ? "Rechazado"
+            : "Pendiente",
 
       creado: central.fecha,
       autorizadoEn: central.fecha_revision,
@@ -8390,10 +8396,144 @@ async function crGuardarTicket(event, id) {
 }
 async function crVerFoto(id){try{const blob=await crLeerFoto(id);if(!blob){alert('Este ticket no tiene fotografía almacenada en este dispositivo.');return;}const url=URL.createObjectURL(blob);const w=window.open(url,'_blank');if(!w){alert('Permite ventanas emergentes para visualizar la foto.');URL.revokeObjectURL(url);}else setTimeout(()=>URL.revokeObjectURL(url),120000);}catch(e){alert('No se pudo abrir la fotografía.');}}
 function crDetalle(id){const t=crTickets().find(x=>x.id===id);if(!t)return mostrarTickets();const pagos=crPagos().filter(p=>p.ticketId===id);crLayout('Ticket '+t.folio,`<section class="panel"><p><strong>Tipo:</strong> ${crEsc(t.tipo)} · <strong>Estado:</strong> ${crEsc(t.estado)}</p><p><strong>Proveedor:</strong> ${crEsc(t.proveedor||"Pendiente de identificar")}</p><p><strong>Fecha:</strong> ${crEsc(t.fecha||"Pendiente de identificar")} · <strong>Total:</strong> ${Number(t.total)>0?crDinero(t.total):"Pendiente de identificar"}</p><p><strong>Pago:</strong> ${crEsc(t.condicion)} · ${crEsc(t.metodo)} · <strong>Saldo:</strong> ${crDinero(crSaldo(t))}</p>${t.vencimiento?`<p><strong>Vence:</strong> ${crEsc(t.vencimiento)}</p>`:''}<p><strong>Notas:</strong> ${crEsc(t.notas)}</p>${t.lineas?.length?`<h3>Insumos</h3>${t.lineas.map(l=>{const p=obtenerInventario().find(x=>String(x.id)===String(l.productoId));return `<p>${crEsc(p?.nombre||'Producto no encontrado')}: ${l.cantidad} ${crEsc(p?.unidad||'')} × ${crDinero(l.costo)}</p>`;}).join('')}`:''}${t.foto?`<button class="btn-secundario" onclick="crVerFoto('${t.id}')">Ver fotografía</button>`:''}<p>${t.estado==='Pendiente'?`<button class="btn-secundario" onclick="crFormulario('${t.id}')">Editar</button> <button class="btn-principal" onclick="crConfirmar('${t.id}')">Confirmar y aplicar</button> <button class="btn-secundario" onclick="crRechazar('${t.id}')">Rechazar</button>`:''}</p>${t.estado==='Confirmado'&&t.tipo==='Compra'&&crSaldo(t)>0?`<button class="btn-principal" onclick="crRegistrarPago('${t.id}')">Registrar pago / abono</button>`:''}<h3>Pagos registrados</h3>${pagos.map(p=>`<p>${crEsc(p.fecha.slice(0,10))} · ${crDinero(p.importe)} · ${crEsc(p.metodo)}</p>`).join('')||'<p>Sin pagos.</p>'}<button class="btn-secundario" onclick="mostrarTickets()">Volver</button></section>`);}
-function crRechazar(id){if(
-    !['Administrador','Encargada'].includes(USUARIO_ACTUAL.rol) &&
+async function crRechazar(id) {
+
+  if (crRechazar.procesando) {
+    return;
+  }
+
+  const rol =
+    String(USUARIO_ACTUAL.rol || "")
+      .trim()
+      .toLowerCase();
+
+  if (
+    ![
+      "propietario",
+      "administrador",
+      "encargada"
+    ].includes(rol) &&
     !crTienePermiso("tickets_autorizar")
-)return alert('No autorizado.');if(!confirm('¿Rechazar este comprobante?'))return;const a=crTickets(),t=a.find(x=>x.id===id);if(!t||t.estado!=='Pendiente')return;t.estado='Rechazado';t.autorizadoPor=USUARIO_ACTUAL.nombre;t.autorizadoEn=new Date().toISOString();crGuardarLista(CR_TICKETS_KEY,a);mostrarTickets();}
+  ) {
+    alert("No tienes permiso para rechazar tickets.");
+    return;
+  }
+
+  const ticket =
+    crTickets().find(
+      item => String(item.id) === String(id)
+    );
+
+  if (!ticket || ticket.estado !== "Pendiente") {
+    return;
+  }
+
+  if (
+    ticket.idSupabase == null ||
+    ticket.revisionSupabase == null
+  ) {
+    alert(
+      "Este comprobante todavía es local.\n\n" +
+      "Entra en Editar y pulsa Guardar pendiente " +
+      "para registrarlo en Supabase."
+    );
+    return;
+  }
+
+  if (!confirm(
+    "¿Rechazar el comprobante " + ticket.folio + "?\n\n" +
+    "No modificará inventario ni caja."
+  )) {
+    return;
+  }
+
+  crRechazar.procesando = true;
+
+  let rechazado = false;
+
+  try {
+
+    const {
+      data,
+      error
+    } = await supabaseClient.rpc(
+      "cr_confirmar_ticket",
+      {
+        p_ticket_id: ticket.idSupabase,
+        p_accion: "rechazar",
+        p_revision: ticket.revisionSupabase
+      }
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    if (
+      !data?.success ||
+      data.ticket?.estado !== "rechazado"
+    ) {
+      throw new Error(
+        "Supabase no confirmó el rechazo."
+      );
+    }
+
+    rechazado = true;
+
+    const lista = crTickets();
+
+    const actual =
+      lista.find(
+        item => String(item.id) === String(id)
+      );
+
+    if (actual) {
+
+      actual.estado = "Rechazado";
+
+      actual.idSupabase =
+        data.ticket.id;
+
+      actual.revisionSupabase =
+        data.ticket.revision;
+
+      actual.autorizadoEn =
+        data.ticket.fecha_revision;
+
+      actual.autorizadoPor =
+        USUARIO_ACTUAL.nombre;
+
+      crGuardarLista(
+        CR_TICKETS_KEY,
+        lista
+      );
+
+    }
+
+    await mostrarTickets();
+
+  } catch (error) {
+
+    console.error(
+      "Error al rechazar ticket:",
+      error
+    );
+
+    alert(
+      rechazado
+        ? "El ticket sí quedó rechazado en Supabase. " +
+          "Vuelve a entrar en Tickets para actualizar."
+        : "No se pudo comprobar el rechazo: " +
+          (error.message || "Revisa la conexión.")
+    );
+
+  } finally {
+
+    crRechazar.procesando = false;
+
+  }
+
+}
 async function crConfirmar(id) {
 
   if (crConfirmar.procesando) {
