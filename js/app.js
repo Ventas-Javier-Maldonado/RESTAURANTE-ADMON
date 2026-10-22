@@ -8424,6 +8424,164 @@ async function crDetalle(id) {
     return;
   }
 
+  const t = crTickets().find(
+    item => String(item.id) === String(id)
+  );
+
+  if (!t) {
+    return mostrarTickets();
+  }
+
+  const pagos = crPagos().filter(
+    pago => String(pago.ticketId) === String(t.id)
+  );
+
+  const insumos = (t.lineas || []).map(linea => {
+
+    const producto = obtenerInventario().find(
+      item =>
+        String(item.id) === String(linea.productoId)
+    );
+
+    return `
+      <p>
+        ${crEsc(producto?.nombre || "Producto no encontrado")}:
+        ${crEsc(linea.cantidad)}
+        ${crEsc(producto?.unidad || "")}
+        × ${crDinero(linea.costo)}
+      </p>
+    `;
+
+  }).join("");
+
+  const historialPagos = pagos.map(pago => `
+    <p>
+      ${crEsc(String(pago.fecha || "").slice(0, 10))}
+      · ${crDinero(pago.importe)}
+      · ${crEsc(pago.metodo)}
+    </p>
+  `).join("");
+
+  crLayout("Ticket " + t.folio, `
+
+    <section class="panel">
+
+      <p>
+        <strong>Tipo:</strong> ${crEsc(t.tipo)}
+        · <strong>Estado:</strong> ${crEsc(t.estado)}
+      </p>
+
+      <p>
+        <strong>Proveedor:</strong>
+        ${crEsc(t.proveedor || "Pendiente de identificar")}
+      </p>
+
+      <p>
+        <strong>Fecha:</strong>
+        ${crEsc(t.fecha || "Pendiente de identificar")}
+        · <strong>Total:</strong>
+        ${Number(t.total) > 0
+          ? crDinero(t.total)
+          : "Pendiente de identificar"}
+      </p>
+
+      <p>
+        <strong>Pago:</strong>
+        ${crEsc(t.condicion)} · ${crEsc(t.metodo)}
+        · <strong>Saldo:</strong>
+        ${crDinero(crSaldo(t))}
+      </p>
+
+      ${t.vencimiento ? `
+        <p>
+          <strong>Vence:</strong>
+          ${crEsc(t.vencimiento)}
+        </p>
+      ` : ""}
+
+      <p>
+        <strong>Notas:</strong>
+        ${crEsc(t.notas)}
+      </p>
+
+      ${insumos ? `<h3>Insumos</h3>${insumos}` : ""}
+
+      ${t.foto ? `
+        <button
+          class="btn-secundario"
+          type="button"
+          onclick="crVerFoto('${t.id}')"
+        >
+          Ver fotografía
+        </button>
+      ` : ""}
+
+      <p>
+
+        ${t.estado === "Pendiente" ? `
+
+          <button
+            class="btn-secundario"
+            type="button"
+            onclick="crFormulario('${t.id}')"
+          >
+            Editar
+          </button>
+
+          <button
+            class="btn-principal"
+            type="button"
+            onclick="crConfirmar('${t.id}')"
+          >
+            Confirmar y aplicar
+          </button>
+
+          <button
+            class="btn-secundario"
+            type="button"
+            onclick="crRechazar('${t.id}')"
+          >
+            Rechazar
+          </button>
+
+        ` : ""}
+
+      </p>
+
+      ${
+        t.estado === "Confirmado" &&
+        t.tipo === "Compra" &&
+        crSaldo(t) > 0
+          ? `
+            <button
+              class="btn-principal"
+              type="button"
+              onclick="crRegistrarPago('${t.id}')"
+            >
+              Registrar pago / abono
+            </button>
+          `
+          : ""
+      }
+
+      <h3>Pagos registrados</h3>
+
+      ${historialPagos || "<p>Sin pagos.</p>"}
+
+      <button
+        class="btn-secundario"
+        type="button"
+        onclick="mostrarTickets()"
+      >
+        Volver
+      </button>
+
+    </section>
+
+  `);
+
+}
+
 async function crRechazar(id) {
 
   if (crRechazar.procesando) {
@@ -9088,6 +9246,73 @@ async function crCuentas() {
     return;
   }
 
+  const tickets = crTickets().filter(ticket =>
+    ticket.estado === "Confirmado" &&
+    ticket.tipo === "Compra" &&
+    crSaldo(ticket) > 0
+  );
+
+  const total = tickets.reduce(
+    (suma, ticket) => suma + crSaldo(ticket),
+    0
+  );
+
+  const lista = tickets.map(ticket => `
+
+    <article class="empleado-item">
+
+      <div class="empleado-info">
+
+        <strong>
+          ${crEsc(ticket.proveedor)}
+          · ${crEsc(ticket.folio)}
+        </strong>
+
+        <span>
+          Saldo ${crDinero(crSaldo(ticket))}
+          · Vence
+          ${crEsc(ticket.vencimiento || "Sin fecha")}
+        </span>
+
+      </div>
+
+      <button
+        class="btn-secundario"
+        type="button"
+        onclick="crDetalle('${ticket.id}')"
+      >
+        Ver / abonar
+      </button>
+
+    </article>
+
+  `).join("");
+
+  crLayout("Cuentas por pagar", `
+
+    <section class="panel">
+
+      <h2>
+        Saldo total: ${crDinero(total)}
+      </h2>
+
+      <p>Compras confirmadas aún no liquidadas.</p>
+
+      ${lista || "<p>No hay cuentas pendientes.</p>"}
+
+      <button
+        class="btn-secundario"
+        type="button"
+        onclick="mostrarTickets()"
+      >
+        Volver
+      </button>
+
+    </section>
+
+  `);
+
+}
 
 /* =========================================================
    AJUSTES DE PRUEBA: HISTORIAL, CONTRASTE Y ATRÁS EN MÓVIL
