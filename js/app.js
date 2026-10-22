@@ -7956,10 +7956,239 @@ function crRechazar(id){if(
     !['Administrador','Encargada'].includes(USUARIO_ACTUAL.rol) &&
     !crTienePermiso("tickets_autorizar")
 )return alert('No autorizado.');if(!confirm('¿Rechazar este comprobante?'))return;const a=crTickets(),t=a.find(x=>x.id===id);if(!t||t.estado!=='Pendiente')return;t.estado='Rechazado';t.autorizadoPor=USUARIO_ACTUAL.nombre;t.autorizadoEn=new Date().toISOString();crGuardarLista(CR_TICKETS_KEY,a);mostrarTickets();}
-function crConfirmar(id){if(
-    !['Administrador','Encargada'].includes(USUARIO_ACTUAL.rol) &&
+async function crConfirmar(id) {
+
+  if (crConfirmar.procesando) {
+    return;
+  }
+
+  const rol =
+    String(USUARIO_ACTUAL.rol || "")
+      .trim()
+      .toLowerCase();
+
+  if (
+    ![
+      "propietario",
+      "administrador",
+      "encargada"
+    ].includes(rol) &&
     !crTienePermiso("tickets_autorizar")
-)return alert('Solo encargada o administrador pueden autorizar.');const lista=crTickets(),t=lista.find(x=>x.id===id);if(!t||t.estado!=='Pendiente')return;if(!t.proveedor||!t.fecha||!Number.isFinite(Number(t.total))||Number(t.total)<=0){alert('Antes de confirmar, revisa proveedor, fecha y total en Editar.');return;}const inv=obtenerInventario(),mov=obtenerMovimientosInventario();if(t.tipo==='Compra'){for(const l of t.lineas){const p=inv.find(x=>String(x.id)===String(l.productoId));if(!p)return alert('Un ingrediente ya no existe. Edita el ticket antes de confirmar.');}if(t.condicion==='Contado'&&t.metodo==='Efectivo'&&!cajaEstaAbierta())return alert('Abre caja antes de confirmar una compra pagada en efectivo.');}if(!confirm('¿Confirmar '+t.folio+'?\n\nLa compra ingresará ingredientes al inventario y registrará su pago o deuda.\nLas notas de venta externa solo se archivan: no duplican ventas.'))return;try{if(t.tipo==='Compra'){for(const l of t.lineas){const p=inv.find(x=>String(x.id)===String(l.productoId)),antes=Number(p.existencia||0),despues=Number((antes+Number(l.cantidad)).toFixed(6));p.existencia=despues;mov.push({id:Date.now()+Math.random(),productoId:p.id,productoNombre:p.nombre,tipo:'Entrada',cantidad:Number(l.cantidad),unidad:p.unidad||'',existenciaAnterior:antes,existenciaNueva:despues,motivo:'Compra ticket '+t.folio,ticketId:t.id,usuario:USUARIO_ACTUAL.nombre,fecha:new Date().toISOString()});}if(t.condicion==='Contado'){const pago={id:'P'+Date.now(),ticketId:t.id,importe:Number(t.total),metodo:t.metodo,fecha:new Date().toISOString(),usuario:USUARIO_ACTUAL.nombre};const pagos=crPagos();pagos.push(pago);crGuardarLista(CR_TICKET_PAGOS_KEY,pagos);if(t.metodo==='Efectivo')crAgregarMovimientoCaja(pago);}}t.estado='Confirmado';t.autorizadoPor=USUARIO_ACTUAL.nombre;t.autorizadoEn=new Date().toISOString();crGuardarLista(CR_TICKETS_KEY,lista);if(t.tipo==='Compra'){guardarInventario(inv);guardarMovimientosInventario(mov);}crDetalle(id);}catch(e){console.error(e);alert('Ocurrió un error guardando la confirmación. No repitas la operación sin revisar el historial.');}}
+  ) {
+    alert("No tienes permiso para autorizar tickets.");
+    return;
+  }
+
+  const ticket =
+    crTickets().find(
+      item => String(item.id) === String(id)
+    );
+
+  if (!ticket || ticket.estado !== "Pendiente") {
+    return;
+  }
+
+  if (
+    !ticket.proveedor ||
+    !ticket.fecha ||
+    !Number.isFinite(Number(ticket.total)) ||
+    Number(ticket.total) <= 0
+  ) {
+    alert(
+      "Antes de confirmar, revisa proveedor, fecha y total."
+    );
+    return;
+  }
+
+  if (!confirm(
+    "¿Confirmar " + ticket.folio + "?\n\n" +
+    "Supabase registrará la compra, el inventario " +
+    "y el pago que corresponda."
+  )) {
+    return;
+  }
+
+  crConfirmar.procesando = true;
+
+  let confirmado = false;
+
+  try {
+
+    // Buscar primero: permite recuperar un reintento
+    // sin aplicar nuevamente una compra confirmada.
+    const {
+      data: existente,
+      error: errorConsulta
+    } = await supabaseClient
+      .from("cr_tickets_pendientes")
+      .select("*")
+      .eq("clave_local", String(ticket.id))
+      .maybeSingle();
+
+    if (errorConsulta) {
+      throw errorConsulta;
+    }
+
+    let central = existente;
+
+    if (central?.estado === "rechazado") {
+      throw new Error(
+        "Este ticket ya fue rechazado en Supabase."
+      );
+    }
+
+    if (central?.estado !== "aprobado") {
+
+      // Evitar sobrescribir cambios realizados
+      // desde otro equipo.
+      if (
+        central &&
+        Number(ticket.revisionSupabase) !==
+          Number(central.revision)
+      ) {
+        throw new Error(
+          "El ticket ya existe en Supabase con otra " +
+          "revisión. No se sobrescribió ni se confirmó."
+        );
+      }
+
+      const {
+        data: guardado,
+        error: errorGuardar
+      } = await supabaseClient.rpc(
+        "cr_guardar_ticket",
+        {
+          p_ticket: ticket,
+          p_revision:
+            central
+              ? central.revision
+              : null
+        }
+      );
+
+      if (errorGuardar) {
+        throw errorGuardar;
+      }
+
+      if (!guardado?.success || !guardado.ticket) {
+        throw new Error(
+          "Supabase no confirmó el guardado del ticket."
+        );
+      }
+
+      central = guardado.ticket;
+
+      // Conservar la revisión si la autorización
+      // falla o se interrumpe la conexión.
+      const pendientes = crTickets();
+
+      const pendiente =
+        pendientes.find(
+          item => String(item.id) === String(id)
+        );
+
+      if (pendiente) {
+        pendiente.idSupabase = central.id;
+        pendiente.revisionSupabase = central.revision;
+
+        crGuardarLista(
+          CR_TICKETS_KEY,
+          pendientes
+        );
+      }
+
+      const {
+        data: resultado,
+        error: errorConfirmar
+      } = await supabaseClient.rpc(
+        "cr_confirmar_ticket",
+        {
+          p_ticket_id: central.id,
+          p_accion: "aprobar",
+          p_revision: central.revision
+        }
+      );
+
+      if (errorConfirmar) {
+        throw errorConfirmar;
+      }
+
+      if (
+        !resultado?.success ||
+        resultado.ticket?.estado !== "aprobado"
+      ) {
+        throw new Error(
+          "Supabase no confirmó la autorización."
+        );
+      }
+
+      central = resultado.ticket;
+
+    }
+
+    confirmado = true;
+
+    // Actualizar la referencia local.
+    // El inventario y la caja ya los procesó Supabase.
+    const lista = crTickets();
+
+    const actual =
+      lista.find(
+        item => String(item.id) === String(id)
+      );
+
+    if (actual) {
+
+      actual.estado = "Confirmado";
+      actual.idSupabase = central.id;
+      actual.revisionSupabase = central.revision;
+      actual.autorizadoEn = central.fecha_revision;
+      actual.autorizadoPor =
+        central.revisado_por === USUARIO_ACTUAL.id
+          ? USUARIO_ACTUAL.nombre
+          : "Autorizado en Supabase";
+
+      crGuardarLista(
+        CR_TICKETS_KEY,
+        lista
+      );
+
+    }
+
+    alert(
+      "Compra confirmada en Supabase.\n\n" +
+      "Se actualizará la aplicación para cargar " +
+      "el inventario y la caja."
+    );
+
+    window.location.reload();
+
+  } catch (error) {
+
+    console.error(
+      "Error al confirmar ticket:",
+      error
+    );
+
+    alert(
+      confirmado
+        ? "La compra sí quedó confirmada en Supabase, " +
+          "pero falló la actualización de este equipo. " +
+          "Recarga la aplicación."
+        : (
+            error.message ||
+            "No se pudo comprobar la confirmación. " +
+            "Conserva el ticket y revisa la conexión."
+          )
+    );
+
+  } finally {
+
+    crConfirmar.procesando = false;
+
+  }
+
+}
 function crAgregarMovimientoCaja(pago){const caja=obtenerCajaActual();if(!caja||caja.estado!=='Abierta')throw Error('Caja cerrada');const a=crLeerLista(CR_TICKET_MOV_CAJA);if(a.some(x=>x.pagoId===pago.id))return;a.push({pagoId:pago.id,cajaId:caja.id,importe:pago.importe,fecha:pago.fecha,ticketId:pago.ticketId});crGuardarLista(CR_TICKET_MOV_CAJA,a);}
 function crEgresosCaja(caja){return crLeerLista(CR_TICKET_MOV_CAJA).filter(m=>String(m.cajaId)===String(caja?.id)).reduce((a,m)=>a+Number(m.importe||0),0);}
 function crRegistrarPago(id){if(
