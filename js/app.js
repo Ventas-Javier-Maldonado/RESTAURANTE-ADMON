@@ -10640,3 +10640,213 @@ async function crCargarCajaCentral() {
     );
 
 })();
+
+/* =========================================================
+   ACTUALIZACIÓN AUTOMÁTICA DE TICKETS Y CUENTAS
+========================================================= */
+
+(function activarActualizacionTickets() {
+
+  if (window.crActualizacionTicketsActiva) {
+    return;
+  }
+
+  window.crActualizacionTicketsActiva = true;
+
+  const layoutOriginal = window.crLayout;
+  const detalleOriginal = window.crDetalle;
+
+  let actualizando = false;
+
+  function vistaActual() {
+    return document.querySelector(
+      "#app main.contenido[data-cr-tickets-vista]"
+    );
+  }
+
+  function operacionEnCurso() {
+    return Boolean(
+      window.crConfirmar?.procesando ||
+      window.crRechazar?.procesando ||
+      window.crRegistrarPago?.procesando ||
+      document.querySelector("#app form")
+    );
+  }
+
+  function datosActuales() {
+    return JSON.stringify({
+      tickets: crTickets(),
+      pagos: crPagos()
+    });
+  }
+
+  window.crLayout = function(titulo, contenido) {
+
+    const resultado =
+      layoutOriginal(titulo, contenido);
+
+    const principal =
+      document.querySelector("#app main.contenido");
+
+    if (principal) {
+
+      if (titulo === "Tickets") {
+
+        principal.dataset.crTicketsVista = "lista";
+        principal.dataset.crTicketsFirma = datosActuales();
+
+      } else if (titulo === "Cuentas por pagar") {
+
+        principal.dataset.crTicketsVista = "cuentas";
+        principal.dataset.crTicketsFirma = datosActuales();
+
+      }
+
+    }
+
+    return resultado;
+
+  };
+
+  window.crDetalle = async function(id) {
+
+    const anterior =
+      document.querySelector("#app main.contenido");
+
+    await detalleOriginal(id);
+
+    const principal =
+      document.querySelector("#app main.contenido");
+
+    const ticket = crTickets().find(
+      item => String(item.id) === String(id)
+    );
+
+    const titulo =
+      principal?.querySelector(".bienvenida h1");
+
+    if (
+      principal &&
+      principal !== anterior &&
+      ticket &&
+      titulo?.textContent.trim() ===
+        "Ticket " + ticket.folio
+    ) {
+
+      principal.dataset.crTicketsVista = "detalle";
+      principal.dataset.crTicketId = String(id);
+      principal.dataset.crTicketsFirma = datosActuales();
+
+    }
+
+  };
+
+  async function actualizar() {
+
+    const vista = vistaActual();
+
+    if (
+      actualizando ||
+      !vista ||
+      document.visibilityState !== "visible" ||
+      navigator.onLine === false ||
+      operacionEnCurso()
+    ) {
+      return;
+    }
+
+    actualizando = true;
+
+    const tipo = vista.dataset.crTicketsVista;
+    const id = vista.dataset.crTicketId;
+    const antes = vista.dataset.crTicketsFirma;
+
+    try {
+
+      await crCargarHistorialTicketsCentral();
+
+      if (
+        vistaActual() !== vista ||
+        operacionEnCurso() ||
+        document.visibilityState !== "visible" ||
+        antes === datosActuales()
+      ) {
+        return;
+      }
+
+      const desplazamiento = window.scrollY;
+
+      if (tipo === "detalle") {
+
+        await window.crDetalle(id);
+
+      } else if (tipo === "cuentas") {
+
+        await window.crCuentas();
+
+      } else {
+
+        await window.mostrarTickets();
+
+      }
+
+      const nuevaVista = vistaActual();
+
+      if (
+        nuevaVista &&
+        nuevaVista !== vista &&
+        nuevaVista.dataset.crTicketsVista === tipo &&
+        (
+          tipo !== "detalle" ||
+          nuevaVista.dataset.crTicketId === id
+        )
+      ) {
+        window.scrollTo(0, desplazamiento);
+      }
+
+    } catch (error) {
+
+      console.warn(
+        "No se pudieron actualizar los tickets:",
+        error
+      );
+
+    } finally {
+
+      actualizando = false;
+
+    }
+
+  }
+
+  async function siguienteActualizacion() {
+
+    try {
+
+      await actualizar();
+
+    } finally {
+
+      window.setTimeout(
+        siguienteActualizacion,
+        10000
+      );
+
+    }
+
+  }
+
+  window.setTimeout(
+    siguienteActualizacion,
+    10000
+  );
+
+  window.addEventListener("focus", actualizar);
+  window.addEventListener("online", actualizar);
+
+  document.addEventListener(
+    "visibilitychange",
+    actualizar
+  );
+
+})();
