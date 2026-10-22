@@ -7863,8 +7863,195 @@ function crDb(){return new Promise((resolve,reject)=>{const req=indexedDB.open('
 async function crGuardarFoto(id,blob){const db=await crDb();return new Promise((resolve,reject)=>{const tx=db.transaction('fotos','readwrite');tx.objectStore('fotos').put(blob,id);tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>{db.close();reject(tx.error);};});}
 async function crLeerFoto(id){const db=await crDb();return new Promise((resolve,reject)=>{const tx=db.transaction('fotos');const req=tx.objectStore('fotos').get(id);req.onsuccess=()=>{db.close();resolve(req.result||null);};req.onerror=()=>{db.close();reject(req.error);};});}
 function crLayout(titulo,contenido){document.getElementById('app').innerHTML=`<div class="sistema"><header class="topbar"><div class="marca"><button class="texto-boton" type="button" onclick="regresarDashboard()">← Inicio</button><div class="marca-icono">CR</div><div><strong>${crEsc(titulo)}</strong><small>Administración</small></div></div></header><main class="contenido"><section class="bienvenida"><div><div class="etiqueta">CONTROL RESTAURANTE</div><h1>${crEsc(titulo)}</h1></div></section>${contenido}</main></div>`;}
-function mostrarTickets(){
- const a=crAlertas(),tickets=crTickets().slice().reverse();
+async function crCargarHistorialTicketsCentral() {
+
+  const {
+    data: tickets,
+    error: errorTickets
+  } = await supabaseClient
+    .from("cr_tickets_pendientes")
+    .select("*")
+    .in("estado", ["aprobado", "rechazado"])
+    .order("fecha", { ascending: false })
+    .limit(200);
+
+  if (errorTickets) {
+    throw errorTickets;
+  }
+
+  if (!tickets?.length) {
+    return;
+  }
+
+  const ids = tickets.map(ticket => ticket.id);
+  const pagosCentral = [];
+
+  // Leer todos los pagos de estos comprobantes.
+  let desde = 0;
+
+  while (true) {
+
+    const {
+      data: pagina,
+      error: errorPagos
+    } = await supabaseClient
+      .from("cr_ticket_pagos")
+      .select("*")
+      .in("ticket_id", ids)
+      .order("id")
+      .range(desde, desde + 499);
+
+    if (errorPagos) {
+      throw errorPagos;
+    }
+
+    pagosCentral.push(...(pagina || []));
+
+    if (!pagina || pagina.length < 500) {
+      break;
+    }
+
+    desde += 500;
+
+  }
+
+  const lista = crTickets();
+  const claves = new Map();
+
+  for (const central of tickets) {
+
+    const clave =
+      central.clave_local ||
+      "SUPA-" + String(central.id);
+
+    // Estas claves se utilizan en los botones existentes.
+    if (!/^[A-Za-z0-9_-]+$/.test(clave)) {
+      throw new Error(
+        "Un ticket tiene un identificador incompatible."
+      );
+    }
+
+    claves.set(String(central.id), clave);
+
+    const posicion =
+      lista.findIndex(
+        item => String(item.id) === clave
+      );
+
+    const anterior =
+      posicion >= 0 ? lista[posicion] : {};
+
+    const detalle = central.detalle || {};
+
+    const actualizado = {
+      ...anterior,
+
+      id: clave,
+      idSupabase: central.id,
+      revisionSupabase: central.revision,
+
+      folio:
+        detalle.folio ||
+        anterior.folio ||
+        String(central.id),
+
+      tipo: detalle.tipo || anterior.tipo || "Compra",
+      proveedor: detalle.proveedor || "",
+      fecha: detalle.fecha || "",
+      total: Number(central.total || 0),
+
+      condicion: detalle.condicion || "",
+      metodo: detalle.metodo || "",
+      vencimiento: detalle.vencimiento || "",
+      notas: detalle.notas || "",
+
+      lineas:
+        Array.isArray(central.productos)
+          ? central.productos
+          : [],
+
+      estado:
+        central.estado === "aprobado"
+          ? "Confirmado"
+          : "Rechazado",
+
+      creado: central.fecha,
+      autorizadoEn: central.fecha_revision,
+
+      // Conservar la foto que exista en este dispositivo.
+      foto: Boolean(anterior.foto)
+    };
+
+    if (posicion >= 0) {
+      lista[posicion] = actualizado;
+    } else {
+      lista.push(actualizado);
+    }
+
+  }
+
+  const clavesImportadas =
+    new Set(claves.values());
+
+  // Sustituir las copias locales de estos pagos,
+  // evitando duplicar el pago recuperado.
+  const pagos =
+    crPagos().filter(
+      pago =>
+        !clavesImportadas.has(String(pago.ticketId))
+    );
+
+  for (const pago of pagosCentral) {
+
+    pagos.push({
+      id: pago.id,
+      ticketId: claves.get(String(pago.ticket_id)),
+      importe: Number(pago.importe),
+      metodo: pago.metodo,
+      fecha: pago.fecha,
+      usuario: pago.usuario,
+      cajaId: pago.caja_id,
+      origen: "Supabase"
+    });
+
+  }
+
+  crGuardarLista(CR_TICKET_PAGOS_KEY, pagos);
+  crGuardarLista(CR_TICKETS_KEY, lista);
+
+}
+async function mostrarTickets() {
+
+  const app = document.getElementById("app");
+  const pantallaAnterior = app.innerHTML;
+
+  try {
+
+    await crCargarHistorialTicketsCentral();
+
+  } catch (error) {
+
+    console.error(
+      "Error al cargar historial de tickets:",
+      error
+    );
+
+    alert(
+      "No se pudo actualizar el historial desde Supabase: " +
+      (error.message || "Revisa la conexión.")
+    );
+
+    return;
+
+  }
+
+  // Evitar regresar a Tickets si ya cambiaste de pantalla.
+  if (app.innerHTML !== pantallaAnterior) {
+    return;
+  }
+
+  const a = crAlertas();
+  const tickets = crTickets().slice().reverse();
  crLayout('Tickets',`<section class="panel">
  <h2>Captura rápida de comprobantes</h2>
  <p>Fotografía varios tickets seguidos. Se guardan como pendientes inmediatamente; el lector procesa uno a la vez y completa los datos que pueda reconocer.</p>
