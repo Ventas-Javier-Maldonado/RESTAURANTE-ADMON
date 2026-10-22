@@ -2541,7 +2541,23 @@ function mostrarInventario() {
     </article>
 
 
-    <article class="indicador">
+      <article
+        class="indicador"
+        role="button"
+        tabindex="0"
+        onclick="crFiltrarStockBajo(true)"
+        onkeydown="
+            if (
+                event.key === 'Enter' ||
+                event.key === ' '
+            ) {
+                event.preventDefault();
+                this.click();
+            }
+        "
+        style="cursor:pointer;"
+        title="Ver productos con stock bajo"
+    >
 
         <div class="indicador-icono">
             ⚠️
@@ -2558,12 +2574,12 @@ function mostrarInventario() {
             </strong>
 
             <small>
-                Requieren atención
+                Toca para ver productos
             </small>
 
         </div>
 
-    </article>
+    </article> 
 
 </section>
 
@@ -2996,56 +3012,135 @@ function renderizarInventario(productos) {
    FILTRAR INVENTARIO
    ========================================================= */
 
-function filtrarInventario(
-    texto
-) {
+function crFiltrarStockBajo(activar = true) {
+
+    const lista =
+        document.getElementById("lista-inventario");
+
+    if (!lista) {
+        return;
+    }
+
+    lista.dataset.soloStockBajo =
+        activar ? "true" : "false";
+
+    const buscador = document.querySelector(
+        "#app .buscador-inventario"
+    );
+
+    const campo =
+        buscador?.querySelector("input");
+
+    if (campo) {
+        campo.value = "";
+    }
+
+    let controles =
+        document.getElementById("crFiltroStockBajo");
+
+    if (activar && buscador && !controles) {
+
+        controles = document.createElement("div");
+        controles.id = "crFiltroStockBajo";
+
+        controles.innerHTML = `
+            <p>
+                Mostrando productos en su mínimo
+                o por debajo.
+            </p>
+
+            <button
+                class="btn-secundario"
+                type="button"
+                onclick="crFiltrarStockBajo(false)"
+            >
+                Ver todos los productos
+            </button>
+        `;
+
+        buscador.appendChild(controles);
+
+    }
+
+    if (!activar && controles) {
+        controles.remove();
+    }
+
+    filtrarInventario("");
+
+    lista.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+    });
+
+}
+
+
+function filtrarInventario(texto = "") {
+
+    const lista =
+        document.getElementById("lista-inventario");
+
+    if (!lista) {
+        return;
+    }
+
+    const soloStockBajo =
+        lista.dataset.soloStockBajo === "true";
 
     const productos =
         obtenerInventario();
 
+    const productosVisibles =
+        soloStockBajo
+            ? obtenerProductosBajoMinimo(productos)
+            : productos;
 
     const busqueda =
-        texto
+        String(texto || "")
             .trim()
             .toLowerCase();
 
-
     const filtrados =
-        productos.filter(
-            producto =>
-                String(
-                    producto.nombre
-                )
+        productosVisibles.filter(producto => {
+
+            return [
+                producto.nombre,
+                producto.codigo,
+                producto.categoria
+            ].some(valor => {
+
+                return String(valor || "")
                     .toLowerCase()
-                    .includes(busqueda) ||
+                    .includes(busqueda);
 
-                String(
-                    producto.codigo
-                )
-                    .toLowerCase()
-                    .includes(busqueda) ||
+            });
 
-                String(
-                    producto.categoria
-                )
-                    .toLowerCase()
-                    .includes(busqueda)
-        );
+        });
 
+    if (filtrados.length === 0) {
 
-    const lista =
-        document.getElementById(
-            "lista-inventario"
-        );
+        lista.innerHTML = `
+            <div class="personal-vacio">
+                <h3>
+                    ${
+                        busqueda
+                            ? "No hay productos que coincidan."
+                            : soloStockBajo
+                                ? "No hay productos con stock bajo."
+                                : "No hay productos registrados."
+                    }
+                </h3>
+            </div>
+        `;
 
+        return;
 
-    if (lista) {
-
-        lista.innerHTML =
-            renderizarInventario(
-                filtrados
-            );
     }
+
+    lista.innerHTML =
+        renderizarInventario(filtrados);
+
 }
 
 
