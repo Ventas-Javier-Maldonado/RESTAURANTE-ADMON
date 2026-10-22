@@ -8395,7 +8395,35 @@ async function crGuardarTicket(event, id) {
 
 }
 async function crVerFoto(id){try{const blob=await crLeerFoto(id);if(!blob){alert('Este ticket no tiene fotografía almacenada en este dispositivo.');return;}const url=URL.createObjectURL(blob);const w=window.open(url,'_blank');if(!w){alert('Permite ventanas emergentes para visualizar la foto.');URL.revokeObjectURL(url);}else setTimeout(()=>URL.revokeObjectURL(url),120000);}catch(e){alert('No se pudo abrir la fotografía.');}}
-function crDetalle(id){const t=crTickets().find(x=>x.id===id);if(!t)return mostrarTickets();const pagos=crPagos().filter(p=>p.ticketId===id);crLayout('Ticket '+t.folio,`<section class="panel"><p><strong>Tipo:</strong> ${crEsc(t.tipo)} · <strong>Estado:</strong> ${crEsc(t.estado)}</p><p><strong>Proveedor:</strong> ${crEsc(t.proveedor||"Pendiente de identificar")}</p><p><strong>Fecha:</strong> ${crEsc(t.fecha||"Pendiente de identificar")} · <strong>Total:</strong> ${Number(t.total)>0?crDinero(t.total):"Pendiente de identificar"}</p><p><strong>Pago:</strong> ${crEsc(t.condicion)} · ${crEsc(t.metodo)} · <strong>Saldo:</strong> ${crDinero(crSaldo(t))}</p>${t.vencimiento?`<p><strong>Vence:</strong> ${crEsc(t.vencimiento)}</p>`:''}<p><strong>Notas:</strong> ${crEsc(t.notas)}</p>${t.lineas?.length?`<h3>Insumos</h3>${t.lineas.map(l=>{const p=obtenerInventario().find(x=>String(x.id)===String(l.productoId));return `<p>${crEsc(p?.nombre||'Producto no encontrado')}: ${l.cantidad} ${crEsc(p?.unidad||'')} × ${crDinero(l.costo)}</p>`;}).join('')}`:''}${t.foto?`<button class="btn-secundario" onclick="crVerFoto('${t.id}')">Ver fotografía</button>`:''}<p>${t.estado==='Pendiente'?`<button class="btn-secundario" onclick="crFormulario('${t.id}')">Editar</button> <button class="btn-principal" onclick="crConfirmar('${t.id}')">Confirmar y aplicar</button> <button class="btn-secundario" onclick="crRechazar('${t.id}')">Rechazar</button>`:''}</p>${t.estado==='Confirmado'&&t.tipo==='Compra'&&crSaldo(t)>0?`<button class="btn-principal" onclick="crRegistrarPago('${t.id}')">Registrar pago / abono</button>`:''}<h3>Pagos registrados</h3>${pagos.map(p=>`<p>${crEsc(p.fecha.slice(0,10))} · ${crDinero(p.importe)} · ${crEsc(p.metodo)}</p>`).join('')||'<p>Sin pagos.</p>'}<button class="btn-secundario" onclick="mostrarTickets()">Volver</button></section>`);}
+async function crDetalle(id) {
+
+  const app = document.getElementById("app");
+  const pantallaAnterior = app.firstElementChild;
+
+  try {
+
+    await crCargarHistorialTicketsCentral();
+
+  } catch (error) {
+
+    console.error(
+      "Error al actualizar el ticket:",
+      error
+    );
+
+    alert(
+      "No se pudo consultar el ticket: " +
+      (error.message || "Revisa la conexión.")
+    );
+
+    return;
+
+  }
+
+  if (app.firstElementChild !== pantallaAnterior) {
+    return;
+  }
+
 async function crRechazar(id) {
 
   if (crRechazar.procesando) {
@@ -9031,7 +9059,35 @@ async function crRegistrarPago(id) {
   }
 
 }
-function crCuentas(){const t=crTickets().filter(x=>x.estado==='Confirmado'&&x.tipo==='Compra'&&crSaldo(x)>0),total=t.reduce((a,x)=>a+crSaldo(x),0);crLayout('Cuentas por pagar',`<section class="panel"><h2>Saldo total: ${crDinero(total)}</h2><p>Compras confirmadas aún no liquidadas.</p>${t.map(x=>`<article class="empleado-item"><div class="empleado-info"><strong>${crEsc(x.proveedor)} · ${crEsc(x.folio)}</strong><span>Saldo ${crDinero(crSaldo(x))} · Vence ${crEsc(x.vencimiento||'Sin fecha')}</span></div><button class="btn-secundario" onclick="crDetalle('${x.id}')">Ver / abonar</button></article>`).join('')||'<p>No hay cuentas pendientes.</p>'}<button class="btn-secundario" onclick="mostrarTickets()">Volver</button></section>`);}
+async function crCuentas() {
+
+  const app = document.getElementById("app");
+  const pantallaAnterior = app.firstElementChild;
+
+  try {
+
+    await crCargarHistorialTicketsCentral();
+
+  } catch (error) {
+
+    console.error(
+      "Error al actualizar cuentas por pagar:",
+      error
+    );
+
+    alert(
+      "No se pudieron consultar los saldos: " +
+      (error.message || "Revisa la conexión.")
+    );
+
+    return;
+
+  }
+
+  if (app.firstElementChild !== pantallaAnterior) {
+    return;
+  }
+
 
 /* =========================================================
    AJUSTES DE PRUEBA: HISTORIAL, CONTRASTE Y ATRÁS EN MÓVIL
