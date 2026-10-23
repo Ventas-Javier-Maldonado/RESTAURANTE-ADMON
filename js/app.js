@@ -8165,7 +8165,42 @@ async function mostrarTickets() {
  <section class="panel"><div class="panel-cabecera"><h2>Comprobantes</h2></div><div id="crListaRapida">${crTicketsHTML()}</div></section>`);
 }
 function crTicketsHTML(){return crTickets().slice().reverse().map(t=>`<article class="empleado-item" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><div class="empleado-info"><strong>${crEsc(t.folio)} · ${crEsc(t.tipo)}</strong><span>${crEsc(t.proveedor||'Proveedor por identificar')} · ${crEsc(t.fecha||'Fecha por identificar')}</span><small>${Number(t.total)>0?crDinero(t.total):'Importe por identificar'} · ${crEsc(t.estado)} · ${crEsc(t.ocrEstado||'Pendiente de revisión')}</small></div><button class="btn-secundario" onclick="crDetalle('${t.id}')">Revisar</button></article>`).join('')||'<p>No hay tickets registrados.</p>';}
-function crFormulario(id){const t=id?crTickets().find(x=>x.id===id):null;if(t&&t.estado!=='Pendiente'){alert('Solo se pueden editar tickets pendientes.');return;}const inv=obtenerInventario();crTicketFotoTemporal=null;crLayout(t?'Revisar ticket':'Capturar ticket',`<section class="panel"><form id="crForm" onsubmit="crGuardarTicket(event,'${id||''}')"><div class="formulario-grid"><div class="campo"><label>Tipo de documento</label><select id="crTipo" onchange="crActualizarTipo()"><option value="Compra" ${t?.tipo==='Compra'?'selected':''}>Compra a proveedor</option><option value="NotaVenta" ${t?.tipo==='NotaVenta'?'selected':''}>Nota de venta externa (solo evidencia)</option></select></div><div class="campo"><label>Proveedor / referencia</label><input id="crProveedor" required value="${crEsc(t?.proveedor||'')}"></div><div class="campo"><label>Fecha del documento</label><input id="crFecha" type="date" required value="${crEsc(t?.fecha||obtenerFechaActual())}"></div><div class="campo"><label>Importe total</label><input id="crTotal" type="number" min="0.01" step="0.01" required value="${t?.total??''}"></div><div class="campo"><label>Condición de pago</label><select id="crCondicion" onchange="crActualizarTipo()"><option value="Contado" ${t?.condicion==='Contado'?'selected':''}>Pagado de contado</option><option value="Credito" ${t?.condicion==='Credito'?'selected':''}>A crédito / por pagar</option></select></div><div class="campo"><label>Medio de pago (si es contado)</label><select id="crMetodo"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option></select></div><div class="campo"><label>Vencimiento (si es crédito)</label><input id="crVence" type="date" value="${crEsc(t?.vencimiento||'')}"></div><div class="campo"><label>Foto del comprobante (cámara o galería)</label><input id="crFoto" type="file" accept="image/*" capture="environment" onchange="crFotoSeleccionada(event)"></div></div><p id="crFotoEstado">${t?.foto?'Fotografía guardada anteriormente':'Sin fotografía'}</p><button type="button" class="btn-secundario" onclick="crOCR()">Leer foto (OCR, requiere internet)</button><div class="campo"><label>Texto leído / notas del comprobante</label><textarea id="crNotas" rows="4">${crEsc(t?.notas||'')}</textarea></div><div id="crLineasCompra"><h3>Ingredientes comprados (se suman SOLO al confirmar)</h3><div id="crLineas">${(t?.lineas?.length?t.lineas:[{}]).map(x=>crFilaInsumo(inv,x)).join('')}</div><button type="button" class="btn-secundario" onclick="crAgregarLinea()">+ Agregar ingrediente</button></div><div class="formulario-acciones"><button class="btn-secundario" type="button" onclick="mostrarTickets()">Cancelar</button><button class="btn-principal" type="submit">Guardar pendiente</button></div></form></section>`);crActualizarTipo();}
+function crFormulario(id){const t=id?crTickets().find(x=>x.id===id):null;if(t&&t.estado!=='Pendiente'){alert('Solo se pueden editar tickets pendientes.');return;}const inv=obtenerInventario();crTicketFotoTemporal=null;crLayout(t?'Revisar ticket':'Capturar ticket',`<section class="panel"><form id="crForm" onsubmit="crGuardarTicket(event,'${id||''}')"><div class="formulario-grid"><div class="campo"><label>Tipo de documento</label><select id="crTipo" onchange="crActualizarTipo()"><option value="Compra" ${t?.tipo==='Compra'?'selected':''}>Compra a proveedor</option><option value="NotaVenta" ${t?.tipo==='NotaVenta'?'selected':''}>Nota de venta externa (solo evidencia)</option></select></div><div class="campo"><label>Proveedor / referencia</label><input id="crProveedor" required value="${crEsc(t?.proveedor||'')}"></div><div class="campo"><label>Fecha del documento</label><input id="crFecha" type="date" required value="${crEsc(t?.fecha||obtenerFechaActual())}"></div><div class="campo"><label>Importe total</label><input id="crTotal" type="number" min="0.01" step="0.01" required value="${t?.total??''}"></div><div class="campo"><label>Condición de pago</label><select id="crCondicion" onchange="crActualizarTipo()"><option value="Contado" ${t?.condicion==='Contado'?'selected':''}>Pagado de contado</option><option value="Credito" ${t?.condicion==='Credito'?'selected':''}>A crédito / por pagar</option></select></div><div class="campo"><label>Medio de pago (si es contado)</label><select id="crMetodo">
+
+    <option
+        value="Efectivo"
+        ${
+            (t?.metodo || "Efectivo") === "Efectivo"
+                ? "selected"
+                : ""
+        }
+    >
+        Efectivo
+    </option>
+
+    <option
+        value="Transferencia"
+        ${
+            t?.metodo === "Transferencia"
+                ? "selected"
+                : ""
+        }
+    >
+        Transferencia
+    </option>
+
+    <option
+        value="Tarjeta"
+        ${
+            t?.metodo === "Tarjeta"
+                ? "selected"
+                : ""
+        }
+    >
+        Tarjeta
+    </option>
+
+</select></div><div class="campo"><label>Vencimiento (si es crédito)</label><input id="crVence" type="date" value="${crEsc(t?.vencimiento||'')}"></div><div class="campo"><label>Foto del comprobante (cámara o galería)</label><input id="crFoto" type="file" accept="image/*" capture="environment" onchange="crFotoSeleccionada(event)"></div></div><p id="crFotoEstado">${t?.foto?'Fotografía guardada anteriormente':'Sin fotografía'}</p><button type="button" class="btn-secundario" onclick="crOCR()">Leer foto (OCR, requiere internet)</button><div class="campo"><label>Texto leído / notas del comprobante</label><textarea id="crNotas" rows="4">${crEsc(t?.notas||'')}</textarea></div><div id="crLineasCompra"><h3>Ingredientes comprados (se suman SOLO al confirmar)</h3><div id="crLineas">${(t?.lineas?.length?t.lineas:[{}]).map(x=>crFilaInsumo(inv,x)).join('')}</div><button type="button" class="btn-secundario" onclick="crAgregarLinea()">+ Agregar ingrediente</button></div><div class="formulario-acciones"><button class="btn-secundario" type="button" onclick="mostrarTickets()">Cancelar</button><button class="btn-principal" type="submit">Guardar pendiente</button></div></form></section>`);crActualizarTipo();}
 function crFilaInsumo(inv,x={}){return `<div class="cr-linea" style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0"><select class="cr-insumo" style="flex:2;min-width:150px"><option value="">Sin ingrediente / no aplica</option>${inv.map(p=>`<option value="${p.id}" ${String(x.productoId)===String(p.id)?'selected':''}>${crEsc(p.nombre)} (${crEsc(p.unidad)})</option>`).join('')}</select><input class="cr-cantidad" type="number" min="0.001" step="any" placeholder="Cantidad" style="flex:1;min-width:85px" value="${x.cantidad??''}"><input class="cr-costo" type="number" min="0" step="0.01" placeholder="Costo unitario" style="flex:1;min-width:85px" value="${x.costo??''}"><button type="button" onclick="this.closest('.cr-linea').remove()">×</button></div>`;}
 function crAgregarLinea(){document.getElementById('crLineas').insertAdjacentHTML('beforeend',crFilaInsumo(obtenerInventario()));}
 function crActualizarTipo(){const compra=document.getElementById('crTipo').value==='Compra';document.getElementById('crLineasCompra').style.display=compra?'':'none';document.getElementById('crVence').disabled=!compra||document.getElementById('crCondicion').value!=='Credito';}
