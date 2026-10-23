@@ -8380,6 +8380,11 @@ async function crCapturarRapido(event) {
             );
 
             crColaOCR.push(id);
+
+           localStorage.setItem(
+    "cr_ocr_queue_v1",
+    JSON.stringify(crColaOCR)
+);
             guardados++;
 
             try {
@@ -12575,6 +12580,103 @@ async function crCargarCajaCentral() {
                 );
 
             }
+
+        };
+
+})();
+
+/* =========================================================
+   CONSERVAR Y REANUDAR LA COLA OCR
+========================================================= */
+
+(function conservarColaOCR() {
+
+    const clave =
+        "cr_ocr_queue_v1";
+
+    try {
+
+        const guardada =
+            JSON.parse(
+                localStorage.getItem(clave) || "[]"
+            );
+
+        if (Array.isArray(guardada)) {
+            crColaOCR = [
+                ...new Set([
+                    ...guardada.filter(
+                        id => typeof id === "string"
+                    ),
+                    ...crColaOCR
+                ])
+            ];
+        }
+
+    } catch (error) {
+
+        console.error(
+            "No se pudo recuperar la cola OCR:",
+            error
+        );
+
+    }
+
+    const procesarOriginal =
+        window.crProcesarColaOCR;
+
+    window.crProcesarColaOCR =
+        async function(...args) {
+
+            if (crProcesandoOCR) {
+                return;
+            }
+
+            localStorage.setItem(
+                clave,
+                JSON.stringify(crColaOCR)
+            );
+
+            try {
+
+                return await procesarOriginal.apply(
+                    this,
+                    args
+                );
+
+            } finally {
+
+                localStorage.setItem(
+                    clave,
+                    JSON.stringify(crColaOCR)
+                );
+
+            }
+
+        };
+
+    const mostrarTicketsOriginal =
+        window.mostrarTickets;
+
+    window.mostrarTickets =
+        async function(...args) {
+
+            const resultado =
+                await mostrarTicketsOriginal.apply(
+                    this,
+                    args
+                );
+
+            if (
+                crColaOCR.length &&
+                !crProcesandoOCR
+            ) {
+                window.setTimeout(
+                    () => window.crProcesarColaOCR(),
+                    0
+                );
+            }
+
+            return resultado;
 
         };
 
