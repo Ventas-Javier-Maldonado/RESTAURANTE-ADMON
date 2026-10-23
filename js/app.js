@@ -7960,22 +7960,35 @@ async function crLeerFoto(id){const db=await crDb();return new Promise((resolve,
 function crLayout(titulo,contenido){document.getElementById('app').innerHTML=`<div class="sistema"><header class="topbar"><div class="marca"><button class="texto-boton" type="button" onclick="regresarDashboard()">← Inicio</button><div class="marca-icono">CR</div><div><strong>${crEsc(titulo)}</strong><small>Administración</small></div></div></header><main class="contenido"><section class="bienvenida"><div><div class="etiqueta">CONTROL RESTAURANTE</div><h1>${crEsc(titulo)}</h1></div></section>${contenido}</main></div>`;}
 async function crCargarHistorialTicketsCentral() {
 
-  const {
-    data: tickets,
-    error: errorTickets
-  } = await supabaseClient
-    .from("cr_tickets_pendientes")
-    .select("*")
-    .in("estado", [
-  "pendiente",
-  "aprobado",
-  "rechazado"
-])
-    .order("fecha", { ascending: false })
-    .limit(200);
+   const tickets = [];
+  const limite = 500;
 
-  if (errorTickets) {
-    throw errorTickets;
+  for (let desde = 0; ; desde += limite) {
+
+    const {
+      data: pagina,
+      error: errorTickets
+    } = await supabaseClient
+      .from("cr_tickets_pendientes")
+      .select("*")
+      .in("estado", [
+        "pendiente",
+        "aprobado",
+        "rechazado"
+      ])
+      .order("fecha", { ascending: false })
+      .range(desde, desde + limite - 1);
+
+    if (errorTickets) {
+      throw errorTickets;
+    }
+
+    tickets.push(...(pagina || []));
+
+    if (!pagina || pagina.length < limite) {
+      break;
+    }
+
   }
 
   if (!tickets?.length) {
