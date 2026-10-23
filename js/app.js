@@ -8258,33 +8258,387 @@ function crExtraerDatosOCR(texto, confianza=0){
 let crUltimaConfianzaOCR=0;
 async function crLeerTexto(blob){const motor=await crMotorOCR();const foto=await crImagenOptimizada(blob);const r=await motor.recognize(foto);crUltimaConfianzaOCR=Number(r.data.confidence||0);return r.data.text||'';}
 async function crOCR(){const archivo=crTicketFotoTemporal;if(!archivo){alert('Selecciona primero una fotografía nueva.');return;}const estado=document.getElementById('crFotoEstado');estado.textContent='Leyendo fotografía...';try{const texto=await crLeerTexto(archivo);const datos=crExtraerDatosOCR(texto,crUltimaConfianzaOCR);document.getElementById('crNotas').value=texto;if(datos.proveedor)document.getElementById('crProveedor').value=datos.proveedor;if(datos.fecha)document.getElementById('crFecha').value=datos.fecha;if(datos.total)document.getElementById('crTotal').value=datos.total;estado.textContent='Lectura terminada. Los datos detectados son aproximados: revisa antes de confirmar.';}catch(e){console.error(e);estado.textContent='No se pudo leer: '+e.message+'. Puedes guardar la fotografía pendiente.';}}
-async function crCapturarRapido(event){
- const archivos=[...(event.target.files||[])];event.target.value='';if(!archivos.length)return;
- const lista=crTickets();let guardados=0;
- for(const foto of archivos){
-  if(!foto.type.startsWith('image/'))continue;
-  const id='CR'+Date.now()+'-'+Math.random().toString(36).slice(2,9);
-  try{
-   await crGuardarFoto(id,foto);
-   lista.push({id,folio:'COM-'+id.slice(-9),tipo:'Compra',proveedor:'',fecha:'',total:null,condicion:'Contado',metodo:'Efectivo',vencimiento:'',notas:'',lineas:[],estado:'Pendiente',ocrEstado:'En cola de lectura',foto:true,creado:new Date().toISOString(),usuario:USUARIO_ACTUAL.nombre});
-   crGuardarLista(CR_TICKETS_KEY,lista);
-   crColaOCR.push(id);guardados++;
-  }catch(e){console.error(e);alert('No se pudo guardar una fotografía. Revisa el espacio disponible.');}
- }
- if(guardados){mostrarTickets();crProcesarColaOCR();}
+async function crGuardarTicketRapidoCentral(ticket) {
+
+    const { data, error } =
+        await supabaseClient.rpc(
+            "cr_guardar_ticket",
+            {
+                p_ticket: {
+                    id: ticket.id,
+                    folio: ticket.folio,
+                    tipo: ticket.tipo || "Compra",
+                    proveedor: ticket.proveedor || "",
+                    fecha: ticket.fecha || "",
+                    total: Number(ticket.total || 0),
+                    condicion: ticket.condicion || "Contado",
+                    metodo: ticket.metodo || "Efectivo",
+                    vencimiento: ticket.vencimiento || "",
+                    notas: ticket.notas || "",
+                    lineas: Array.isArray(ticket.lineas)
+                        ? ticket.lineas
+                        : [],
+                    estado: "Pendiente",
+                    ocrEstado: ticket.ocrEstado || "",
+                    creado: ticket.creado,
+                    usuario: ticket.usuario
+                },
+                p_revision:
+                    ticket.revisionSupabase == null
+                        ? null
+                        : Number(ticket.revisionSupabase)
+            }
+        );
+
+    if (error) {
+        throw error;
+    }
+
+    if (!data?.success || !data.ticket) {
+        throw new Error(
+            "Supabase no confirmó el guardado del ticket."
+        );
+    }
+
+    ticket.idSupabase = data.ticket.id;
+    ticket.revisionSupabase =
+        data.ticket.revision;
+
+    const lista = crTickets();
+
+    const posicion = lista.findIndex(item =>
+        String(item.id) === String(ticket.id)
+    );
+
+    if (posicion >= 0) {
+        lista[posicion] = ticket;
+    } else {
+        lista.push(ticket);
+    }
+
+    crGuardarLista(CR_TICKETS_KEY, lista);
+
+    return data.ticket;
 }
-async function crProcesarColaOCR(){
- if(crProcesandoOCR)return;crProcesandoOCR=true;
- try{while(crColaOCR.length){
-  const id=crColaOCR.shift();const lista=crTickets();const t=lista.find(x=>x.id===id);if(!t||t.estado!=='Pendiente')continue;
-  t.ocrEstado='Leyendo...';crGuardarLista(CR_TICKETS_KEY,lista);crRefrescarListaOCR();
-  try{const foto=await crLeerFoto(id);if(!foto)throw Error('No se encontró la fotografía');const texto=await crLeerTexto(foto);const datos=crExtraerDatosOCR(texto,crUltimaConfianzaOCR);const nueva=crTickets();const actual=nueva.find(x=>x.id===id);if(actual&&actual.estado==='Pendiente'){
-   actual.notas=texto;actual.proveedor=datos.proveedor;actual.fecha=datos.fecha;actual.total=datos.total;actual.ocrEstado=texto.trim()?'Leído, revisar datos':'No se reconoció texto';actual.ocrProcesadoEn=new Date().toISOString();crGuardarLista(CR_TICKETS_KEY,nueva);
-  }}catch(e){console.error(e);const nueva=crTickets();const actual=nueva.find(x=>x.id===id);if(actual){actual.ocrEstado='Lectura pendiente: '+String(e.message||e).slice(0,100);crGuardarLista(CR_TICKETS_KEY,nueva);}}
-  crRefrescarListaOCR();
- }}finally{crProcesandoOCR=false;crRefrescarListaOCR();}
+
+
+async function crCapturarRapido(event) {
+
+    const archivos =
+        [...(event.target.files || [])];
+
+    event.target.value = "";
+
+    if (!archivos.length) {
+        return;
+    }
+
+    let guardados = 0;
+    let erroresSincronizacion = 0;
+
+    for (const foto of archivos) {
+
+        if (!foto.type.startsWith("image/")) {
+            continue;
+        }
+
+        const id =
+            "CR" +
+            Date.now() +
+            "-" +
+            Math.random().toString(36).slice(2, 9);
+
+        const ticket = {
+            id,
+            folio: "COM-" + id.slice(-9),
+            tipo: "Compra",
+            proveedor: "",
+            fecha: "",
+            total: null,
+            condicion: "Contado",
+            metodo: "Efectivo",
+            vencimiento: "",
+            notas: "",
+            lineas: [],
+            estado: "Pendiente",
+            ocrEstado: "En cola de lectura",
+            foto: true,
+            creado: new Date().toISOString(),
+            usuario: USUARIO_ACTUAL.nombre
+        };
+
+        try {
+
+            await crGuardarFoto(id, foto);
+
+            const lista = crTickets();
+            lista.push(ticket);
+
+            crGuardarLista(
+                CR_TICKETS_KEY,
+                lista
+            );
+
+            crColaOCR.push(id);
+            guardados++;
+
+            try {
+
+                await crGuardarTicketRapidoCentral(ticket);
+
+                if (
+                    typeof window.crSubirFotoTicket ===
+                    "function"
+                ) {
+                    const ruta =
+                        await window.crSubirFotoTicket(
+                            id,
+                            foto
+                        );
+
+                    ticket.fotoRuta = ruta;
+
+                    const actualizados = crTickets();
+                    const posicion = actualizados.findIndex(
+                        item => String(item.id) === String(id)
+                    );
+
+                    if (posicion >= 0) {
+                        actualizados[posicion] = ticket;
+
+                        crGuardarLista(
+                            CR_TICKETS_KEY,
+                            actualizados
+                        );
+                    }
+                }
+
+            } catch (error) {
+
+                erroresSincronizacion++;
+
+                console.error(
+                    "No se pudo sincronizar la captura rápida:",
+                    error
+                );
+
+            }
+
+        } catch (error) {
+
+            console.error(
+                "No se pudo guardar la fotografía:",
+                error
+            );
+
+            alert(
+                "No se pudo guardar una fotografía. " +
+                "Revisa el espacio disponible."
+            );
+
+        }
+
+    }
+
+    if (guardados) {
+
+        await mostrarTickets();
+        crProcesarColaOCR();
+
+    }
+
+    if (erroresSincronizacion) {
+
+        alert(
+            "Se guardó la captura en este equipo, pero " +
+            "una o más fotografías o tickets no se pudieron " +
+            "sincronizar. Revisa tu conexión y vuelve a guardar " +
+            "el ticket pendiente."
+        );
+
+    }
+
 }
-function crRefrescarListaOCR(){const lista=document.getElementById('crListaRapida');if(lista)lista.innerHTML=crTicketsHTML();const estado=document.getElementById('crColaEstado');if(estado)estado.textContent=crProcesandoOCR?`Procesando tickets. En cola: ${crColaOCR.length}`:'Listo para capturar';}
+
+
+async function crProcesarColaOCR() {
+
+    if (crProcesandoOCR) {
+        return;
+    }
+
+    crProcesandoOCR = true;
+
+    try {
+
+        while (crColaOCR.length) {
+
+            const id =
+                crColaOCR.shift();
+
+            const lista =
+                crTickets();
+
+            const ticket =
+                lista.find(item =>
+                    String(item.id) === String(id)
+                );
+
+            if (!ticket || ticket.estado !== "Pendiente") {
+                continue;
+            }
+
+            ticket.ocrEstado = "Leyendo...";
+
+            crGuardarLista(
+                CR_TICKETS_KEY,
+                lista
+            );
+
+            crRefrescarListaOCR();
+
+            try {
+
+                const foto =
+                    await crLeerFoto(id);
+
+                if (!foto) {
+                    throw new Error(
+                        "No se encontró la fotografía en este equipo."
+                    );
+                }
+
+                const texto =
+                    await crLeerTexto(foto);
+
+                const datos =
+                    crExtraerDatosOCR(
+                        texto,
+                        crUltimaConfianzaOCR
+                    );
+
+                const actuales =
+                    crTickets();
+
+                const actual =
+                    actuales.find(item =>
+                        String(item.id) === String(id)
+                    );
+
+                if (
+                    actual &&
+                    actual.estado === "Pendiente"
+                ) {
+
+                    actual.notas = texto;
+                    actual.proveedor =
+                        datos.proveedor || "";
+                    actual.fecha =
+                        datos.fecha || "";
+                    actual.total =
+                        datos.total || null;
+                    actual.ocrEstado =
+                        texto.trim()
+                            ? "Leído, revisar datos"
+                            : "No se reconoció texto";
+                    actual.ocrProcesadoEn =
+                        new Date().toISOString();
+
+                    crGuardarLista(
+                        CR_TICKETS_KEY,
+                        actuales
+                    );
+
+                    try {
+
+                        await crGuardarTicketRapidoCentral(
+                            actual
+                        );
+
+                    } catch (error) {
+
+                        actual.ocrEstado =
+                            "Leído en este equipo; falta sincronizar";
+
+                        crGuardarLista(
+                            CR_TICKETS_KEY,
+                            actuales
+                        );
+
+                        console.error(
+                            "El OCR se leyó, pero no se sincronizó:",
+                            error
+                        );
+
+                    }
+
+                }
+
+            } catch (error) {
+
+                console.error(
+                    "Error al procesar el ticket con OCR:",
+                    error
+                );
+
+                const actuales =
+                    crTickets();
+
+                const actual =
+                    actuales.find(item =>
+                        String(item.id) === String(id)
+                    );
+
+                if (actual) {
+
+                    actual.ocrEstado =
+                        "Lectura pendiente: " +
+                        String(error.message || error)
+                            .slice(0, 100);
+
+                    crGuardarLista(
+                        CR_TICKETS_KEY,
+                        actuales
+                    );
+
+                }
+
+            }
+
+            crRefrescarListaOCR();
+
+        }
+
+    } finally {
+
+        crProcesandoOCR = false;
+        crRefrescarListaOCR();
+
+    }
+
+}
+
+
+function crRefrescarListaOCR() {
+
+    const lista =
+        document.getElementById("crListaRapida");
+
+    if (lista) {
+        lista.innerHTML = crTicketsHTML();
+    }
+
+    const estado =
+        document.getElementById("crColaEstado");
+
+    if (estado) {
+        estado.textContent =
+            crProcesandoOCR
+                ? `Procesando tickets. En cola: ${crColaOCR.length}`
+                : "Listo para capturar";
+    }
+
+}
 async function crGuardarTicket(event, id) {
 
   event.preventDefault();
