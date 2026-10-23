@@ -11896,3 +11896,332 @@ async function crCargarCajaCentral() {
     siguienteConsulta();
 
 })();
+
+/* =========================================================
+   FOTOS DE TICKETS EN SUPABASE
+========================================================= */
+
+(function conectarFotosTicketsSupabase() {
+
+    if (window.crFotosTicketsConectadas) {
+        return;
+    }
+
+    window.crFotosTicketsConectadas = true;
+
+    const guardarTicketOriginal =
+        window.crGuardarTicket;
+
+    const cargarTicketsOriginal =
+        window.crCargarHistorialTicketsCentral;
+
+    async function subirFotoTicket(claveLocal, archivo) {
+
+        const { data: autenticacion, error: errorAuth } =
+            await supabaseClient.auth.getUser();
+
+        if (errorAuth) {
+            throw errorAuth;
+        }
+
+        const usuarioId =
+            autenticacion?.user?.id;
+
+        if (!usuarioId) {
+            throw new Error(
+                "Inicia sesión para subir la fotografía."
+            );
+        }
+
+        const clave =
+            String(claveLocal || "");
+
+        if (!/^[A-Za-z0-9_-]+$/.test(clave)) {
+            throw new Error(
+                "El identificador del ticket no es válido."
+            );
+        }
+
+        const extensiones = {
+            "image/jpeg": "jpg",
+            "image/png": "png",
+            "image/webp": "webp",
+            "image/heic": "heic",
+            "image/heif": "heif"
+        };
+
+        const extension =
+            extensiones[archivo.type] || "jpg";
+
+        const ruta =
+            usuarioId + "/ticket-" + clave + "." + extension;
+
+        const { error: errorSubida } =
+            await supabaseClient
+                .storage
+                .from("cr-tickets")
+                .upload(ruta, archivo, {
+                    upsert: true,
+                    contentType:
+                        archivo.type || "image/jpeg"
+                });
+
+        if (errorSubida) {
+            throw errorSubida;
+        }
+
+        const { error: errorRegistro } =
+            await supabaseClient
+                .from("cr_ticket_fotos")
+                .upsert({
+                    clave_local: clave,
+                    ruta,
+                    usuario_id: usuarioId,
+                    fecha_modificacion:
+                        new Date().toISOString()
+                }, {
+                    onConflict: "clave_local"
+                });
+
+        if (errorRegistro) {
+            throw errorRegistro;
+        }
+
+        return ruta;
+
+    }
+
+    window.crSubirFotoTicket =
+        subirFotoTicket;
+
+
+    /*
+      Después de cargar los tickets, recuperar las rutas
+      compartidas de sus fotografías.
+    */
+    window.crCargarHistorialTicketsCentral =
+        async function(...args) {
+
+            await cargarTicketsOriginal.apply(this, args);
+
+            const ticketsLocales =
+                crTickets().filter(ticket =>
+                    ticket.idSupabase != null &&
+                    ticket.id != null
+                );
+
+            if (!ticketsLocales.length) {
+                return;
+            }
+
+            const claves =
+                ticketsLocales.map(ticket =>
+                    String(ticket.id)
+                );
+
+            const { data: fotos, error } =
+                await supabaseClient
+                    .from("cr_ticket_fotos")
+                    .select("clave_local, ruta")
+                    .in("clave_local", claves);
+
+            if (error) {
+                throw error;
+            }
+
+            const rutas =
+                new Map(
+                    (fotos || []).map(foto => [
+                        String(foto.clave_local),
+                        foto.ruta
+                    ])
+                );
+
+            const lista = crTickets();
+
+            for (const ticket of lista) {
+
+                const ruta =
+                    rutas.get(String(ticket.id));
+
+                if (ruta) {
+                    ticket.foto = true;
+                    ticket.fotoRuta = ruta;
+                }
+
+            }
+
+            crGuardarLista(CR_TICKETS_KEY, lista);
+
+        };
+
+
+    /*
+      Mantener el guardado actual del ticket.
+      Si se guardó correctamente y hay una foto nueva,
+      subir también esa foto a Supabase.
+    */
+    window.crGuardarTicket =
+        async function(event, id) {
+
+            const form =
+                document.getElementById("crForm");
+
+            const archivo =
+                typeof crTicketFotoTemporal !== "undefined"
+                    ? crTicketFotoTemporal
+                    : null;
+
+            let claveLocal =
+                form?.dataset.ticketId ||
+                id ||
+                "";
+
+            if (archivo && form && !claveLocal) {
+                claveLocal =
+                    "CR-" + crypto.randomUUID();
+
+                form.dataset.ticketId =
+                    claveLocal;
+            }
+
+            await guardarTicketOriginal.call(
+                this,
+                event,
+                id
+            );
+
+            const guardado =
+                form && !form.isConnected;
+
+            if (!guardado || !archivo || !claveLocal) {
+                return;
+            }
+
+            try {
+
+                const ruta =
+                    await subirFotoTicket(
+                        claveLocal,
+                        archivo
+                    );
+
+                const lista = crTickets();
+
+                const ticket = lista.find(item =>
+                    String(item.id) ===
+                    String(claveLocal)
+                );
+
+                if (ticket) {
+                    ticket.foto = true;
+                    ticket.fotoRuta = ruta;
+
+                    crGuardarLista(
+                        CR_TICKETS_KEY,
+                        lista
+                    );
+                }
+
+            } catch (error) {
+
+                console.error(
+                    "El ticket se guardó, pero la foto no pudo subirse:",
+                    error
+                );
+
+                alert(
+                    "El ticket quedó guardado, pero no se pudo " +
+                    "sincronizar la fotografía. Edita el ticket, " +
+                    "selecciona la foto otra vez y guarda."
+                );
+
+            }
+
+        };
+
+
+    /*
+      Abrir primero una pestaña para que el navegador
+      permita mostrar la fotografía firmada.
+    */
+    window.crVerFoto =
+        async function(id) {
+
+            const ventana =
+                window.open("about:blank", "_blank");
+
+            if (!ventana) {
+                alert(
+                    "Permite ventanas emergentes para ver la fotografía."
+                );
+                return;
+            }
+
+            try {
+
+                const fotoLocal =
+                    await crLeerFoto(id);
+
+                if (fotoLocal) {
+
+                    const urlLocal =
+                        URL.createObjectURL(fotoLocal);
+
+                    ventana.location.href =
+                        urlLocal;
+
+                    setTimeout(
+                        () => URL.revokeObjectURL(urlLocal),
+                        120000
+                    );
+
+                    return;
+                }
+
+                const { data: registro, error } =
+                    await supabaseClient
+                        .from("cr_ticket_fotos")
+                        .select("ruta")
+                        .eq("clave_local", String(id))
+                        .single();
+
+                if (error) {
+                    throw error;
+                }
+
+                const { data: enlace, error: errorEnlace } =
+                    await supabaseClient
+                        .storage
+                        .from("cr-tickets")
+                        .createSignedUrl(
+                            registro.ruta,
+                            120
+                        );
+
+                if (errorEnlace) {
+                    throw errorEnlace;
+                }
+
+                ventana.location.href =
+                    enlace.signedUrl;
+
+            } catch (error) {
+
+                console.error(
+                    "No se pudo abrir la fotografía:",
+                    error
+                );
+
+                ventana.close();
+
+                alert(
+                    "No se encontró una fotografía disponible " +
+                    "para este ticket."
+                );
+
+            }
+
+        };
+
+})();
