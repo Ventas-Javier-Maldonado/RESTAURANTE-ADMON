@@ -5982,7 +5982,7 @@ function mostrarRecetas(){
                 <div>
                     <h1>Recetas</h1>
                     <p>
-                        Administración de ingredientes por platillo.
+                        Consulta o administra los ingredientes por platillo.
                     </p>
                 </div>
 
@@ -6000,14 +6000,12 @@ function mostrarRecetas(){
                 <section class="card">
 
                     <div class="card-header">
-
                         <div>
                             <h2>Recetas registradas</h2>
                             <p>
-                                Selecciona un producto para administrar su receta.
+                                Consulta los ingredientes o edita la receta.
                             </p>
                         </div>
-
                     </div>
 
                     <div>
@@ -6020,22 +6018,37 @@ function mostrarRecetas(){
                             : productos.map(producto => {
 
                                 const receta = recetas.find(
-                                    r => String(r.productoId) === String(producto.id)
+                                    r =>
+                                        String(r.productoId) ===
+                                        String(producto.id)
                                 );
 
                                 return `
 
                                     <div class="card">
 
-                                        <h3>${producto.nombre}</h3>
+                                        <h3>${crEsc(producto.nombre)}</h3>
 
                                         <p>
                                             ${
                                                 receta
-                                                ? "Receta registrada"
-                                                : "Sin receta"
+                                                    ? "Receta registrada"
+                                                    : "Sin receta"
                                             }
                                         </p>
+
+                                        ${
+                                            receta
+                                                ? `
+                                                    <button
+                                                        type="button"
+                                                        onclick="mostrarDetalleReceta('${producto.id}')"
+                                                    >
+                                                        Ver receta
+                                                    </button>
+                                                `
+                                                : ""
+                                        }
 
                                         <button
                                             type="button"
@@ -6043,8 +6056,8 @@ function mostrarRecetas(){
                                         >
                                             ${
                                                 receta
-                                                ? "Editar receta"
-                                                : "Crear receta"
+                                                    ? "Editar receta"
+                                                    : "Crear receta"
                                             }
                                         </button>
 
@@ -6056,6 +6069,132 @@ function mostrarRecetas(){
                         }
 
                     </div>
+
+                </section>
+
+            </main>
+
+        </div>
+
+    `;
+
+}
+
+
+function mostrarDetalleReceta(productoId){
+
+    const app = document.getElementById("app");
+
+    if(!app) return;
+
+    const productos = obtenerProductosVenta();
+    const inventario = obtenerInventario();
+    const recetas = obtenerRecetas();
+
+    const producto = productos.find(
+        p => String(p.id) === String(productoId)
+    );
+
+    const receta = recetas.find(
+        r => String(r.productoId) === String(productoId)
+    );
+
+    if(!producto || !receta){
+        alert("No se encontró la receta de este platillo.");
+        mostrarRecetas();
+        return;
+    }
+
+    const ingredientes = Array.isArray(receta.ingredientes)
+        ? receta.ingredientes
+        : [];
+
+    app.innerHTML = `
+
+        <div class="pantalla">
+
+            <header class="topbar">
+
+                <div>
+                    <h1>Detalle de receta</h1>
+                    <p>${crEsc(producto.nombre)}</p>
+                </div>
+
+                <button
+                    type="button"
+                    onclick="mostrarRecetas()"
+                >
+                    ← Regresar
+                </button>
+
+            </header>
+
+            <main class="contenido">
+
+                <section class="card">
+
+                    <div class="card-header">
+                        <div>
+                            <h2>Ingredientes por porción</h2>
+                            <p>
+                                Cantidades utilizadas para preparar un platillo.
+                            </p>
+                        </div>
+                    </div>
+
+                    ${
+                        ingredientes.length === 0
+
+                            ? `<p>Esta receta no tiene ingredientes registrados.</p>`
+
+                            : ingredientes.map(ingrediente => {
+
+                                const insumo = inventario.find(
+                                    item =>
+                                        String(item.id) ===
+                                        String(ingrediente.productoId)
+                                );
+
+                                const cantidad =
+                                    Number(ingrediente.cantidad)
+                                        .toLocaleString("es-MX", {
+                                            maximumFractionDigits: 6
+                                        });
+
+                                return `
+
+                                    <article class="empleado-item">
+
+                                        <div class="empleado-info">
+
+                                            <strong>
+                                                ${crEsc(
+                                                    insumo?.nombre ||
+                                                    "Ingrediente no encontrado"
+                                                )}
+                                            </strong>
+
+                                            <span>
+                                                ${cantidad}
+                                                ${crEsc(insumo?.unidad || "")}
+                                                por porción
+                                            </span>
+
+                                        </div>
+
+                                    </article>
+
+                                `;
+
+                            }).join("")
+                    }
+
+                    <button
+                        type="button"
+                        onclick="mostrarFormularioReceta('${producto.id}')"
+                    >
+                        Editar receta
+                    </button>
 
                 </section>
 
