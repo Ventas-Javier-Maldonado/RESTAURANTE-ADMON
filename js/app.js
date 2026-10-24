@@ -12781,3 +12781,122 @@ async function crCargarCajaCentral() {
         };
 
 })();
+
+/* =========================================================
+   ARCHIVAR CAJA LOCAL DE PRUEBA AL ABRIR UNA NUEVA
+========================================================= */
+
+(function archivarCajaLocalDePrueba() {
+
+    if (window.crArchivoCajaLocalInstalado) {
+        return;
+    }
+
+    window.crArchivoCajaLocalInstalado = true;
+
+    const abrirCajaOriginal =
+        window.abrirCaja;
+
+    window.abrirCaja = async function(...args) {
+
+        const cajaCentral =
+            await crCargarCajaCentral();
+
+        /*
+          Si Supabase ya tiene una caja abierta,
+          se conserva el comportamiento normal.
+        */
+        if (!cajaCentral) {
+
+            let cajaLocal = null;
+
+            try {
+
+                cajaLocal = JSON.parse(
+                    localStorage.getItem(
+                        CLAVE_CAJA_ACTUAL
+                    ) || "null"
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "No se pudo leer la caja local:",
+                    error
+                );
+
+                throw error;
+
+            }
+
+            if (
+                String(cajaLocal?.estado || "")
+                    .trim()
+                    .toLowerCase() === "abierta"
+            ) {
+
+                const archivada = {
+                    ...cajaLocal,
+                    estado: "Cerrada",
+                    horaCierre:
+                        cajaLocal.horaCierre ||
+                        new Date().toISOString(),
+                    usuarioCierre:
+                        "Archivo de caja local de prueba",
+                    notaArchivo:
+                        "Caja local de prueba archivada. " +
+                        "Se conserva el registro original."
+                };
+
+                let historial = [];
+
+                try {
+
+                    historial = JSON.parse(
+                        localStorage.getItem(
+                            CLAVE_HISTORIAL_CAJAS
+                        ) || "[]"
+                    );
+
+                    if (!Array.isArray(historial)) {
+                        historial = [];
+                    }
+
+                } catch {
+                    historial = [];
+                }
+
+                const indice =
+                    historial.findIndex(item =>
+                        String(item.id) ===
+                        String(archivada.id)
+                    );
+
+                if (indice >= 0) {
+                    historial[indice] = archivada;
+                } else {
+                    historial.push(archivada);
+                }
+
+                localStorage.setItem(
+                    CLAVE_HISTORIAL_CAJAS,
+                    JSON.stringify(historial)
+                );
+
+                localStorage.setItem(
+                    CLAVE_CAJA_ACTUAL,
+                    JSON.stringify(archivada)
+                );
+
+            }
+
+        }
+
+        return abrirCajaOriginal.apply(
+            this,
+            args
+        );
+
+    };
+
+})();
