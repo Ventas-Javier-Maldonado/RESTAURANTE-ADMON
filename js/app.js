@@ -275,16 +275,46 @@ async function iniciarAplicacion() {
        VERIFICAR SESIÓN DE SUPABASE
     ========================================================= */
 
-    const usuario = await obtenerUsuarioAutenticado();
+   let usuario = null;
 
-    if (!usuario) {
+try {
+    usuario = await obtenerUsuarioAutenticado();
 
-        mostrarPantallaLogin();
+} catch (error) {
 
-        return;
-    }
+    console.error(
+        "No se pudo recuperar la sesión o validar el perfil:",
+        error
+    );
 
-       USUARIO_ACTUAL = usuario;
+    app.innerHTML = `
+        <main class="pantalla-jornada">
+            <section class="jornada-card">
+                <h1>No se pudo validar la sesión</h1>
+                <p>
+                    Revisa tu conexión e intenta nuevamente.
+                    Tu sesión no se cerró.
+                </p>
+                <button
+                    class="btn-jornada"
+                    type="button"
+                    onclick="iniciarAplicacion()"
+                >
+                    REINTENTAR
+                </button>
+            </section>
+        </main>
+    `;
+
+    return;
+}
+
+if (!usuario) {
+    mostrarPantallaLogin();
+    return;
+}
+
+USUARIO_ACTUAL = usuario;
 
     try {
 
