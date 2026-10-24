@@ -13557,7 +13557,10 @@ async function crActualizarResumenFinancieroDashboard() {
 
         ingreso.textContent = crDinero(data.ingresos);
         egreso.textContent = crDinero(data.egresos);
-        utilidad.textContent = crDinero(data.utilidad);
+        utilidad.textContent =
+    data.utilidad === null
+        ? "Pendiente"
+        : crDinero(data.utilidad);
 
     } catch (error) {
         console.error(
