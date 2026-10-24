@@ -8177,7 +8177,106 @@ async function mostrarTickets() {
  </section><section class="indicadores"><article class="indicador"><div><span>PENDIENTES</span><strong>${a.pendientes.length}</strong></div></article><article class="indicador"><div><span>ATRASADOS</span><strong>${a.atrasados.length}</strong></div></article><article class="indicador"><div><span>PAGOS VENCIDOS</span><strong>${a.vencidos.length}</strong></div></article></section>
  <section class="panel"><div class="panel-cabecera"><h2>Comprobantes</h2></div><div id="crListaRapida">${crTicketsHTML()}</div></section>`);
 }
-function crTicketsHTML(){return crTickets().slice().reverse().map(t=>`<article class="empleado-item" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><div class="empleado-info"><strong>${crEsc(t.folio)} · ${crEsc(t.tipo)}</strong><span>${crEsc(t.proveedor||'Proveedor por identificar')} · ${crEsc(t.fecha||'Fecha por identificar')}</span><small>${Number(t.total)>0?crDinero(t.total):'Importe por identificar'} · ${crEsc(t.estado)} · ${crEsc(t.ocrEstado||'Pendiente de revisión')}</small></div><button class="btn-secundario" onclick="crDetalle('${t.id}')">Revisar</button></article>`).join('')||'<p>No hay tickets registrados.</p>';}
+function crTicketsHTML() {
+
+    const tickets =
+        crTickets().slice().reverse();
+
+    const pendientes =
+        tickets.filter(ticket =>
+            ticket.estado === "Pendiente"
+        );
+
+    const historial =
+        tickets.filter(ticket =>
+            ticket.estado !== "Pendiente"
+        );
+
+    function tarjeta(ticket) {
+
+        return `
+            <article
+                class="empleado-item"
+                style="
+                    display:flex;
+                    justify-content:space-between;
+                    gap:12px;
+                    flex-wrap:wrap;
+                "
+            >
+                <div class="empleado-info">
+                    <strong>
+                        ${crEsc(ticket.folio)} ·
+                        ${crEsc(ticket.tipo)}
+                    </strong>
+
+                    <span>
+                        ${crEsc(
+                            ticket.proveedor ||
+                            "Proveedor por identificar"
+                        )}
+                        ·
+                        ${crEsc(
+                            ticket.fecha ||
+                            "Fecha por identificar"
+                        )}
+                    </span>
+
+                    <small>
+                        ${
+                            Number(ticket.total) > 0
+                                ? crDinero(ticket.total)
+                                : "Importe por identificar"
+                        }
+                        · ${crEsc(ticket.estado)}
+                        · ${crEsc(
+                            ticket.ocrEstado ||
+                            "Pendiente de revisión"
+                        )}
+                    </small>
+                </div>
+
+                <button
+                    class="btn-secundario"
+                    type="button"
+                    onclick="crDetalle('${ticket.id}')"
+                >
+                    Revisar
+                </button>
+            </article>
+        `;
+
+    }
+
+    return `
+        <section>
+            <h3>
+                Pendientes por revisar (${pendientes.length})
+            </h3>
+
+            ${
+                pendientes.length
+                    ? pendientes.map(tarjeta).join("")
+                    : "<p>No hay tickets pendientes.</p>"
+            }
+        </section>
+
+        <details style="margin-top:18px;">
+            <summary style="cursor:pointer;">
+                Historial de comprobantes (${historial.length})
+            </summary>
+
+            <div style="margin-top:12px;">
+                ${
+                    historial.length
+                        ? historial.map(tarjeta).join("")
+                        : "<p>Aún no hay comprobantes revisados.</p>"
+                }
+            </div>
+        </details>
+    `;
+
+}
 function crFormulario(id){const t=id?crTickets().find(x=>x.id===id):null;if(t&&t.estado!=='Pendiente'){alert('Solo se pueden editar tickets pendientes.');return;}const inv=obtenerInventario();crTicketFotoTemporal=null;crLayout(t?'Revisar ticket':'Capturar ticket',`<section class="panel"><form id="crForm" onsubmit="crGuardarTicket(event,'${id||''}')"><div class="formulario-grid"><div class="campo"><label>Tipo de documento</label><select id="crTipo" onchange="crActualizarTipo()"><option value="Compra" ${t?.tipo==='Compra'?'selected':''}>Compra a proveedor</option><option value="NotaVenta" ${t?.tipo==='NotaVenta'?'selected':''}>Nota de venta externa (solo evidencia)</option></select></div><div class="campo"><label>Proveedor / referencia</label><input id="crProveedor" required value="${crEsc(t?.proveedor||'')}"></div><div class="campo"><label>Fecha del documento</label><input id="crFecha" type="date" required value="${crEsc(t?.fecha||obtenerFechaActual())}"></div><div class="campo"><label>Importe total</label><input id="crTotal" type="number" min="0.01" step="0.01" required value="${t?.total??''}"></div><div class="campo"><label>Condición de pago</label><select id="crCondicion" onchange="crActualizarTipo()"><option value="Contado" ${t?.condicion==='Contado'?'selected':''}>Pagado de contado</option><option value="Credito" ${t?.condicion==='Credito'?'selected':''}>A crédito / por pagar</option></select></div><div class="campo"><label>Medio de pago (si es contado)</label><select id="crMetodo">
 
     <option
