@@ -1242,16 +1242,14 @@ function mostrarDashboard(jornada) {
 
 function regresarDashboard() {
 
-    const jornada =
-        obtenerJornadaActual();
+   const jornada = obtenerJornadaActual();
 
-    if (!jornada) {
-        mostrarPantallaJornada();
-        return;
-    }
-
-    mostrarDashboard(jornada);
+if (!jornada || jornada.estado !== "Activa") {
+    mostrarPantallaJornada();
+    return;
 }
+
+mostrarDashboard(jornada);
 
 
 /* =========================================================
