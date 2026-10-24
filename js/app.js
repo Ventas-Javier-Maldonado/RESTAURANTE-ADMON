@@ -797,9 +797,7 @@ function mostrarDashboard(jornada) {
                                 INGRESOS
                             </span>
 
-                            <strong>
-                                $0.00
-                            </strong>
+                            <strong id="crKpiIngresos">$0.00</strong>
 
                             <small>
                                 Hoy
@@ -822,9 +820,7 @@ function mostrarDashboard(jornada) {
                                 EGRESOS
                             </span>
 
-                            <strong>
-                                $0.00
-                            </strong>
+                            <strong id="crKpiEgresos">$0.00</strong>
 
                             <small>
                                 Hoy
@@ -847,9 +843,7 @@ function mostrarDashboard(jornada) {
                                 UTILIDAD
                             </span>
 
-                            <strong>
-                                $0.00
-                            </strong>
+                           <strong id="crKpiUtilidad">$0.00</strong>
 
                             <small>
                                 Hoy
@@ -1201,6 +1195,8 @@ function mostrarDashboard(jornada) {
         </div>
 
     `;
+
+   crIniciarActualizacionFinancieraDashboard();
 }
 /* =========================================================
    REGRESAR AL DASHBOARD
@@ -13533,4 +13529,66 @@ async function crGuardarEgreso(event) {
             boton.textContent = "Guardar egreso";
         }
     }
+}
+
+async function crActualizarResumenFinancieroDashboard() {
+    const ingreso = document.getElementById("crKpiIngresos");
+    const egreso = document.getElementById("crKpiEgresos");
+    const utilidad = document.getElementById("crKpiUtilidad");
+
+    if (!ingreso || !egreso || !utilidad) {
+        return;
+    }
+
+    if (window.crCargandoResumenFinanciero) {
+        return;
+    }
+
+    window.crCargandoResumenFinanciero = true;
+
+    try {
+        const { data, error } = await supabaseClient.rpc(
+            "cr_resumen_financiero_dia"
+        );
+
+        if (error) {
+            throw error;
+        }
+
+        ingreso.textContent = crDinero(data.ingresos);
+        egreso.textContent = crDinero(data.egresos);
+        utilidad.textContent = crDinero(data.utilidad);
+
+    } catch (error) {
+        console.error(
+            "No se pudo cargar el resumen financiero:",
+            error
+        );
+
+        if (ingreso.isConnected) ingreso.textContent = "—";
+        if (egreso.isConnected) egreso.textContent = "—";
+        if (utilidad.isConnected) utilidad.textContent = "—";
+
+    } finally {
+        window.crCargandoResumenFinanciero = false;
+    }
+}
+
+
+function crIniciarActualizacionFinancieraDashboard() {
+    if (window.crResumenFinancieroTimer) {
+        clearInterval(window.crResumenFinancieroTimer);
+    }
+
+    crActualizarResumenFinancieroDashboard();
+
+    window.crResumenFinancieroTimer = setInterval(() => {
+        if (!document.getElementById("crKpiIngresos")) {
+            clearInterval(window.crResumenFinancieroTimer);
+            window.crResumenFinancieroTimer = null;
+            return;
+        }
+
+        crActualizarResumenFinancieroDashboard();
+    }, 30000);
 }
