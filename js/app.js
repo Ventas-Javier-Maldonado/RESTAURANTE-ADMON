@@ -12900,3 +12900,69 @@ async function crCargarCajaCentral() {
     };
 
 })();
+
+/* =========================================================
+   ACTUALIZAR RECETAS DESDE SUPABASE EN OTROS DISPOSITIVOS
+========================================================= */
+
+if (!window.__crIntervaloRecetasSupabase) {
+
+    window.__crIntervaloRecetasSupabase =
+        window.setInterval(async () => {
+
+            if (
+                document.hidden ||
+                !navigator.onLine ||
+                document.getElementById("formularioReceta")
+            ) {
+                return;
+            }
+
+            try {
+
+                const recetasAntes =
+                    JSON.stringify(
+                        [...(window.recetasSupabase || [])]
+                            .sort((a, b) =>
+                                String(a.productoId).localeCompare(
+                                    String(b.productoId)
+                                )
+                            )
+                    );
+
+                await cargarRecetasSupabase();
+
+                const recetasAhora =
+                    JSON.stringify(
+                        [...(window.recetasSupabase || [])]
+                            .sort((a, b) =>
+                                String(a.productoId).localeCompare(
+                                    String(b.productoId)
+                                )
+                            )
+                    );
+
+                if (recetasAntes !== recetasAhora) {
+
+                    const titulo =
+                        document.querySelector("#app .topbar h1");
+
+                    if (
+                        titulo &&
+                        titulo.textContent.trim() === "Recetas"
+                    ) {
+                        mostrarRecetas();
+                    }
+                }
+
+            } catch (error) {
+
+                console.warn(
+                    "No se pudieron actualizar las recetas:",
+                    error
+                );
+
+            }
+
+        }, 15000);
+}
