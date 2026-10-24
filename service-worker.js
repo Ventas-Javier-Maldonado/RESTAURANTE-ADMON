@@ -3,7 +3,7 @@
 ========================================================= */
 
 const CACHE_PREFIX = "control-restaurante-";
-const CACHE_NAME = CACHE_PREFIX + "v2";
+const CACHE_NAME = CACHE_PREFIX + "v3-recetas-20261023";
 
 const ARCHIVOS = [
     "./",
