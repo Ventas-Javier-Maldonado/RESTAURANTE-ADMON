@@ -1236,20 +1236,19 @@ function mostrarDashboard(jornada) {
 
    crIniciarActualizacionFinancieraDashboard();
 }
-/* =========================================================
-   REGRESAR AL DASHBOARD
-   ========================================================= */
 
 function regresarDashboard() {
 
-   const jornada = obtenerJornadaActual();
+    const jornada =
+        obtenerJornadaActual();
 
-if (!jornada || jornada.estado !== "Activa") {
-    mostrarPantallaJornada();
-    return;
+    if (!jornada) {
+        mostrarPantallaJornada();
+        return;
+    }
+
+    mostrarDashboard(jornada);
 }
-
-mostrarDashboard(jornada);
 
 
 /* =========================================================
