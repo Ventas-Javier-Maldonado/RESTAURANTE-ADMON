@@ -8956,11 +8956,12 @@ async function crDetalle(id) {
 
   }).join("");
 
-  const historialPagos = pagos.map(pago => `
+ const historialPagos = pagos.map(pago => `
     <p>
       ${crEsc(String(pago.fecha || "").slice(0, 10))}
       · ${crDinero(pago.importe)}
-      · ${crEsc(pago.metodo)}
+      · ${crEsc(pago.metodo || "Método no registrado")}
+      · Registró: ${crEsc(pago.usuario || "Usuario no disponible")}
     </p>
   `).join("");
 
