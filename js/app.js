@@ -43,27 +43,36 @@ let USUARIO_ACTUAL = {
 
 async function obtenerUsuarioAutenticado() {
 
-    const { data: authData, error: authError } =
-        await supabaseClient.auth.getUser();
+    const {
+        data: datosSesion,
+        error: errorSesion
+    } = await supabaseClient.auth.getSession();
 
-    if (authError || !authData?.user) {
+    if (errorSesion) {
+        throw errorSesion;
+    }
+
+    const usuarioAuth =
+        datosSesion?.session?.user;
+
+    if (!usuarioAuth) {
         return null;
     }
 
-    const { data: perfil, error: perfilError } =
-        await supabaseClient
-            .from("cr_usuarios")
-            .select("id, nombre, rol, activo, permisos")
-            .eq("id", authData.user.id)
-            .single();
+    const {
+        data: perfil,
+        error: errorPerfil
+    } = await supabaseClient
+        .from("cr_usuarios")
+        .select("id, nombre, rol, activo, permisos")
+        .eq("id", usuarioAuth.id)
+        .single();
 
-    if (perfilError || !perfil || !perfil.activo) {
+    if (errorPerfil) {
+        throw errorPerfil;
+    }
 
-        console.error(
-            "No se pudo validar el perfil:",
-            perfilError
-        );
-
+    if (!perfil || perfil.activo !== true) {
         return null;
     }
 
@@ -75,7 +84,6 @@ async function obtenerUsuarioAutenticado() {
         autenticado: true
     };
 }
-
 /* =========================================================
    PANTALLA DE INICIO DE SESIÓN
    SUPABASE AUTH
