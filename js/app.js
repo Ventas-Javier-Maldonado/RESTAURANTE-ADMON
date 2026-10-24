@@ -7682,6 +7682,32 @@ function mostrarCorteCaja(){
     CERRAR CAJA
 </button>
 
+${
+    String(USUARIO_ACTUAL.rol || "")
+        .trim()
+        .toLowerCase() === "propietario" ||
+    crTienePermiso("caja_ver")
+        ? `
+            <button
+                type="button"
+                onclick="crMostrarEgresos()"
+                style="
+                    background:#174f86;
+                    color:white;
+                    border:none;
+                    border-radius:10px;
+                    padding:12px 18px;
+                    font-weight:600;
+                    cursor:pointer;
+                    margin-left:10px;
+                "
+            >
+                EGRESOS
+            </button>
+        `
+        : ""
+}
+
 </div>
 
 
@@ -7950,7 +7976,7 @@ function abrirCaja() {
    CIERRE Y ARQUEO DE CAJA
    ========================================================= */
 
-function cerrarCaja() {
+async function cerrarCaja() {
 
     const caja = obtenerCajaActual();
 
@@ -7984,7 +8010,38 @@ function cerrarCaja() {
     // Los movimientos adicionales de caja se integrarán
     // cuando conectemos el módulo correspondiente.
     const entradasEfectivo = 0;
-    const salidasEfectivo = crEgresosCaja(caja);
+   let salidasEfectivo = 0;
+
+try {
+
+    const { data, error } =
+        await supabaseClient.rpc(
+            "cr_total_egresos_efectivo_caja",
+            {
+                p_caja_id: caja.id
+            }
+        );
+
+    if (error) {
+        throw error;
+    }
+
+    salidasEfectivo = Number(data || 0);
+
+} catch (error) {
+
+    console.error(
+        "No se pudieron consultar las salidas de efectivo:",
+        error
+    );
+
+    alert(
+        "No se pudieron cargar los egresos de la caja. " +
+        "No se cerró el corte."
+    );
+
+    return;
+}
 
     const efectivoEsperado =
         fondoInicial +
@@ -8002,6 +8059,7 @@ function cerrarCaja() {
         "ARQUEO DE CAJA\n\n" +
         "Fondo inicial: $" + fondoInicial.toFixed(2) + "\n" +
         "Ventas en efectivo: $" + ventasEfectivo.toFixed(2) + "\n" +
+        "Salidas en efectivo: $" + salidasEfectivo.toFixed(2) + "\n" + 
         "Efectivo esperado: $" + efectivoEsperado.toFixed(2) + "\n\n" +
         "¿Cuánto efectivo contaste físicamente?",
         efectivoEsperado.toFixed(2)
@@ -10152,6 +10210,7 @@ const CR_OPCIONES_PERMISOS = [
     ["ventas_cobrar", "Registrar y cobrar ventas"],
     ["caja_ver", "Consultar caja"],
     ["caja_abrir", "Abrir caja"],
+    ["caja_egresos", "Registrar egresos manuales"],
     ["caja_cortar", "Realizar cortes de caja"],
     ["personal_ver", "Consultar personal"],
     ["personal_editar", "Agregar y editar empleados"],
@@ -13104,4 +13163,374 @@ if (!window.__crIntervaloRecetasSupabase) {
             }
 
         }, 15000);
+}
+
+/* =========================================================
+   EGRESOS MANUALES EN SUPABASE
+========================================================= */
+
+function crEsPropietarioActual() {
+
+    return String(USUARIO_ACTUAL?.rol || "")
+        .trim()
+        .toLowerCase() === "propietario";
+}
+
+
+function crPuedeConsultarEgresos() {
+
+    return crEsPropietarioActual() ||
+        crTienePermiso("caja_ver");
+}
+
+
+function crPuedeRegistrarEgresos() {
+
+    return crEsPropietarioActual() ||
+        crTienePermiso("caja_egresos");
+}
+
+
+async function crMostrarEgresos() {
+
+    const app = document.getElementById("app");
+
+    if (!app) return;
+
+    if (!crPuedeConsultarEgresos()) {
+        alert("No tienes permiso para consultar los egresos.");
+        return;
+    }
+
+    app.innerHTML = `
+        <div class="pantalla">
+            <header class="topbar">
+                <div>
+                    <h1>Egresos</h1>
+                    <p>Historial de gastos registrados.</p>
+                </div>
+
+                <button
+                    type="button"
+                    onclick="mostrarCorteCaja()"
+                >
+                    ← Regresar a caja
+                </button>
+            </header>
+
+            <main class="contenido">
+                <section class="card">
+                    ${
+                        crPuedeRegistrarEgresos()
+                            ? `
+                                <button
+                                    type="button"
+                                    onclick="crFormularioEgreso()"
+                                >
+                                    Registrar egreso
+                                </button>
+                            `
+                            : ""
+                    }
+
+                    <h2>Movimientos recientes</h2>
+                    <div id="crListaEgresos">
+                        <p>Cargando egresos...</p>
+                    </div>
+                </section>
+            </main>
+        </div>
+    `;
+
+    try {
+
+        const { data, error } =
+            await supabaseClient.rpc(
+                "cr_listar_egresos",
+                {
+                    p_limite: 100
+                }
+            );
+
+        if (error) {
+            throw error;
+        }
+
+        const lista =
+            document.getElementById("crListaEgresos");
+
+        if (!lista) return;
+
+        if (!Array.isArray(data) || data.length === 0) {
+            lista.innerHTML =
+                "<p>No hay egresos manuales registrados.</p>";
+            return;
+        }
+
+        lista.innerHTML = data.map(egreso => {
+
+            const fecha = new Date(egreso.fecha);
+
+            const fechaTexto =
+                Number.isNaN(fecha.getTime())
+                    ? "Fecha no disponible"
+                    : fecha.toLocaleString("es-MX");
+
+            return `
+                <article class="empleado-item">
+                    <div class="empleado-info">
+                        <strong>${crEsc(egreso.concepto)}</strong>
+                        <span>
+                            ${fechaTexto} ·
+                            ${crEsc(egreso.metodo || "Sin método")}
+                        </span>
+                        <small>
+                            Registró: ${crEsc(egreso.usuario || "Usuario")}
+                            ${
+                                egreso.observaciones
+                                    ? " · " + crEsc(egreso.observaciones)
+                                    : ""
+                            }
+                        </small>
+                    </div>
+
+                    <strong>${crDinero(egreso.monto)}</strong>
+                </article>
+            `;
+
+        }).join("");
+
+    } catch (error) {
+
+        console.error(
+            "Error cargando egresos:",
+            error
+        );
+
+        const lista =
+            document.getElementById("crListaEgresos");
+
+        if (lista) {
+            lista.innerHTML =
+                "<p>No se pudieron cargar los egresos.</p>";
+        }
+    }
+}
+
+
+function crFormularioEgreso() {
+
+    if (!crPuedeRegistrarEgresos()) {
+        alert("No tienes permiso para registrar egresos.");
+        return;
+    }
+
+    const app = document.getElementById("app");
+
+    if (!app) return;
+
+    app.innerHTML = `
+        <div class="pantalla">
+            <header class="topbar">
+                <div>
+                    <h1>Registrar egreso</h1>
+                    <p>El movimiento se guardará en Supabase.</p>
+                </div>
+
+                <button
+                    type="button"
+                    onclick="crMostrarEgresos()"
+                >
+                    ← Regresar
+                </button>
+            </header>
+
+            <main class="contenido">
+                <section class="card">
+
+                    <form
+                        id="crFormularioEgreso"
+                        onsubmit="crGuardarEgreso(event)"
+                    >
+
+                        <div class="campo">
+                            <label for="crEgresoCategoria">
+                                Categoría
+                            </label>
+
+                            <select
+                                id="crEgresoCategoria"
+                                required
+                            >
+                                <option value="">Selecciona una categoría</option>
+                                <option>Compra operativa</option>
+                                <option>Gas o combustible</option>
+                                <option>Nómina</option>
+                                <option>Servicios</option>
+                                <option>Transporte</option>
+                                <option>Mantenimiento</option>
+                                <option>Otro</option>
+                            </select>
+                        </div>
+
+                        <div class="campo">
+                            <label for="crEgresoDescripcion">
+                                Descripción
+                            </label>
+
+                            <input
+                                id="crEgresoDescripcion"
+                                type="text"
+                                maxlength="160"
+                                required
+                                placeholder="Describe el gasto"
+                            >
+                        </div>
+
+                        <div class="campo">
+                            <label for="crEgresoMonto">
+                                Importe
+                            </label>
+
+                            <input
+                                id="crEgresoMonto"
+                                type="number"
+                                min="0.01"
+                                step="0.01"
+                                required
+                                placeholder="0.00"
+                            >
+                        </div>
+
+                        <div class="campo">
+                            <label for="crEgresoMetodo">
+                                Método de pago
+                            </label>
+
+                            <select id="crEgresoMetodo" required>
+                                <option value="Efectivo">Efectivo</option>
+                                <option value="Transferencia">
+                                    Transferencia
+                                </option>
+                                <option value="Tarjeta">Tarjeta</option>
+                            </select>
+                        </div>
+
+                        <div class="campo">
+                            <label for="crEgresoObservaciones">
+                                Observaciones (opcional)
+                            </label>
+
+                            <textarea
+                                id="crEgresoObservaciones"
+                                rows="3"
+                                maxlength="500"
+                            ></textarea>
+                        </div>
+
+                        <button type="submit">
+                            Guardar egreso
+                        </button>
+
+                    </form>
+
+                </section>
+            </main>
+        </div>
+    `;
+}
+
+
+async function crGuardarEgreso(event) {
+
+    event.preventDefault();
+
+    if (!crPuedeRegistrarEgresos()) {
+        alert("No tienes permiso para registrar egresos.");
+        return;
+    }
+
+    const categoria =
+        document.getElementById("crEgresoCategoria").value.trim();
+
+    const descripcion =
+        document.getElementById("crEgresoDescripcion").value.trim();
+
+    const monto =
+        Number(document.getElementById("crEgresoMonto").value);
+
+    const metodo =
+        document.getElementById("crEgresoMetodo").value;
+
+    const observaciones =
+        document.getElementById(
+            "crEgresoObservaciones"
+        ).value.trim();
+
+    if (!categoria || !descripcion) {
+        alert("Completa la categoría y la descripción.");
+        return;
+    }
+
+    if (!Number.isFinite(monto) || monto <= 0) {
+        alert("Escribe un importe válido.");
+        return;
+    }
+
+    const boton =
+        document.querySelector(
+            "#crFormularioEgreso button[type='submit']"
+        );
+
+    if (boton) {
+        boton.disabled = true;
+        boton.textContent = "Guardando...";
+    }
+
+    try {
+
+        const { data, error } =
+            await supabaseClient.rpc(
+                "cr_registrar_egreso",
+                {
+                    p_concepto:
+                        categoria + ": " + descripcion,
+                    p_monto: monto,
+                    p_metodo: metodo,
+                    p_observaciones:
+                        observaciones || null
+                }
+            );
+
+        if (error) {
+            throw error;
+        }
+
+        if (!data || data.ok !== true) {
+            throw new Error(
+                "Supabase no confirmó el egreso."
+            );
+        }
+
+        alert("Egreso guardado correctamente.");
+
+        await crMostrarEgresos();
+
+    } catch (error) {
+
+        console.error(
+            "Error guardando egreso:",
+            error
+        );
+
+        alert(
+            error.message ||
+            "No se pudo guardar el egreso."
+        );
+
+        if (boton) {
+            boton.disabled = false;
+            boton.textContent = "Guardar egreso";
+        }
+    }
 }
