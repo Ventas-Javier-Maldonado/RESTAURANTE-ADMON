@@ -410,10 +410,10 @@ try {
 
     const jornada = obtenerJornadaActual();
 
-    if (!jornada) {
-        mostrarPantallaJornada();
-        return;
-    }
+   if (!jornada || jornada.estado !== "Activa") {
+    mostrarPantallaJornada();
+    return;
+}
 
     mostrarDashboard(jornada);
 }
