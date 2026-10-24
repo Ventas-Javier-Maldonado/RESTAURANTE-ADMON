@@ -3,7 +3,7 @@
 ========================================================= */
 
 const CACHE_PREFIX = "control-restaurante-";
-const CACHE_NAME = CACHE_PREFIX + "v5-sesion-20261024";
+const CACHE_NAME = CACHE_PREFIX + "v6-jornada-20261024";
 
 const ARCHIVOS = [
     "./",
