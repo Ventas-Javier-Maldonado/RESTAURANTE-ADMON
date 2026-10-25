@@ -10333,6 +10333,7 @@ const CR_OPCIONES_PERMISOS = [
     ["recetas_ver", "Consultar recetas"],
     ["recetas_editar", "Modificar recetas"],
     ["inventario_ver", "Consultar inventario"],
+    ["inventario_editar", "Agregar, editar y eliminar productos de inventario"],
     ["inventario_movimientos", "Registrar movimientos de inventario"],
     ["tickets_capturar", "Capturar tickets"],
     ["tickets_revisar", "Revisar tickets"],
