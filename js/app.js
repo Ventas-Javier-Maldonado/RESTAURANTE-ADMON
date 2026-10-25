@@ -11124,155 +11124,119 @@ async function crCargarCajaCentral() {
     };
 
     window.mostrarCorteCaja = async function () {
+    const app = document.getElementById("app");
+    const pantallaAnterior = app.innerHTML;
 
-        const app =
-            document.getElementById("app");
+    try {
+        const caja = await crCargarCajaCentral();
+        await cargarVentasSupabase();
 
-        const pantallaAnterior = app.innerHTML;
+        let resumen = null;
+        let cierre = null;
 
-        try {
+        if (caja) {
+            const { data, error } = await supabaseClient.rpc(
+                "cr_resumen_caja",
+                { p_caja_id: caja.id }
+            );
 
-            const caja =
-                await crCargarCajaCentral();
+            if (error) throw error;
+            if (data?.success !== true) {
+                throw new Error("No se pudo consultar el resumen de caja.");
+            }
 
-            await cargarVentasSupabase();
+            resumen = data;
+        } else {
+            const { data, error } = await supabaseClient.rpc(
+                "cr_obtener_ultimo_cierre_caja"
+            );
 
-            let resumen = null;
+            if (error) throw error;
 
-            if (caja) {
+            cierre = data?.cierre || null;
 
-                const { data, error } =
-                    await supabaseClient.rpc(
-                        "cr_resumen_caja",
-                        {
-                            p_caja_id: caja.id
-                        }
-                    );
+            if (cierre?.caja_id != null) {
+                const resultado = await supabaseClient.rpc(
+                    "cr_resumen_caja",
+                    { p_caja_id: cierre.caja_id }
+                );
 
-                if (error) throw error;
-
-                if (data?.success !== true) {
-                    throw new Error(
-                        "No se pudo consultar el arqueo."
-                    );
+                if (resultado.error) throw resultado.error;
+                if (resultado.data?.success !== true) {
+                    throw new Error("No se pudo consultar el último corte.");
                 }
 
-                resumen = data;
+                resumen = resultado.data;
             }
-
-            if (
-                app.innerHTML !== pantallaAnterior
-            ) return;
-
-            renderizarCorte();
-
-            const panel =
-                document.createElement("section");
-
-            panel.className = "panel";
-            panel.id = "crResumenCajaCentral";
-
-            const titulo =
-                document.createElement("h2");
-
-            titulo.textContent = "Caja central";
-
-            panel.appendChild(titulo);
-
-           const fechaCajaTexto = resumen?.fechaCaja
-    ? new Date(
-        resumen.fechaCaja + "T12:00:00"
-    ).toLocaleDateString("es-MX")
-    : "No disponible";
-
-const lineas = resumen
-    ? [
-        "Jornada de caja: " + fechaCajaTexto,
-        "Estado: " + resumen.estadoCaja,
-
-        "VENTAS TOTALES: " +
-        crDinero(resumen.ventasTotal),
-
-        "Ventas en efectivo: " +
-        crDinero(resumen.ventasEfectivo),
-
-        "Ventas con tarjeta: " +
-        crDinero(resumen.ventasTarjeta),
-
-        "Ventas por transferencia: " +
-        crDinero(resumen.ventasTransferencia),
-
-        "EGRESOS TOTALES: " +
-        crDinero(resumen.egresosTotal),
-
-        "Egresos en efectivo: " +
-        crDinero(resumen.egresosEfectivo),
-
-        "Egresos con tarjeta: " +
-        crDinero(resumen.egresosTarjeta),
-
-        "Egresos por transferencia: " +
-        crDinero(resumen.egresosTransferencia),
-
-        "Fondo inicial: " +
-        crDinero(resumen.fondoInicial),
-
-        "Entradas de efectivo: " +
-        crDinero(resumen.entradasEfectivo),
-
-        "Efectivo esperado: " +
-        crDinero(resumen.efectivoEsperado),
-
-        "Cálculo: fondo inicial + ventas en efectivo " +
-        "+ entradas en efectivo − egresos en efectivo",
-
-        "Tickets pendientes: " +
-        resumen.ticketsPendientes
-    ]
-    : [
-        "No hay una caja abierta en Supabase."
-    ];
-
-            for (const texto of lineas) {
-
-                const p =
-                    document.createElement("p");
-
-                p.textContent = texto;
-
-                panel.appendChild(p);
-            }
-
-            const nota =
-                document.createElement("p");
-
-            nota.textContent =
-                "Este arqueo incluye operaciones vinculadas " +
-                "a la caja central. Los registros locales anteriores " +
-                "siguen pendientes de conciliación.";
-
-            panel.appendChild(nota);
-
-            const contenido =
-                app.querySelector("main.contenido");
-
-            if (contenido) {
-                contenido.prepend(panel);
-            }
-
-        } catch (error) {
-
-            console.error(
-                "Error al consultar caja:",
-                error
-            );
-
-            alert(
-                error.message ||
-                "No se pudo consultar la caja central."
-            );
         }
-    };
+
+        if (app.innerHTML !== pantallaAnterior) return;
+
+        renderizarCorte();
+
+        const panel = document.createElement("section");
+        panel.className = "panel";
+        panel.id = "crResumenCajaCentral";
+
+        const titulo = document.createElement("h2");
+        titulo.textContent = caja ? "Resumen de caja abierta" : "Último corte de caja";
+        panel.appendChild(titulo);
+
+        const lineas = [];
+
+        if (resumen) {
+            lineas.push(
+                "Fecha de la caja: " + (cierre?.fecha || resumen.fechaCaja || caja?.fecha || "—"),
+                "Estado: " + (caja ? "Abierta" : "Cerrada"),
+                "Fondo inicial: " + crDinero(resumen.fondoInicial),
+                "Ventas totales: " + crDinero(resumen.ventasTotal),
+                "Ventas en efectivo: " + crDinero(resumen.ventasEfectivo),
+                "Ventas con tarjeta: " + crDinero(resumen.ventasTarjeta),
+                "Ventas por transferencia: " + crDinero(resumen.ventasTransferencia),
+                "Egresos totales: " + crDinero(resumen.egresosTotal),
+                "Egresos en efectivo: " + crDinero(resumen.egresosEfectivo),
+                "Egresos con tarjeta: " + crDinero(resumen.egresosTarjeta),
+                "Egresos por transferencia: " + crDinero(resumen.egresosTransferencia),
+                "Entradas de efectivo: " + crDinero(resumen.entradasEfectivo),
+                "Efectivo esperado: " + crDinero(resumen.efectivoEsperado),
+                "Tickets centrales pendientes: " + (resumen.ticketsPendientes ?? 0)
+            );
+
+            if (cierre) {
+                lineas.push(
+                    "Efectivo contado al cierre: " + crDinero(cierre.efectivoContado),
+                    "Diferencia del corte: " + crDinero(cierre.diferencia),
+                    "Cierre realizado: " + (
+                        cierre.horacierre
+                            ? new Date(cierre.horacierre).toLocaleString("es-MX")
+                            : "—"
+                    )
+                );
+            }
+        } else {
+            lineas.push("No hay una caja abierta ni cierres registrados.");
+        }
+
+        for (const texto of lineas) {
+            const p = document.createElement("p");
+            p.textContent = texto;
+            panel.appendChild(p);
+        }
+
+        const nota = document.createElement("p");
+        nota.textContent =
+            "El corte corresponde a la jornada de caja, desde su apertura hasta su cierre. " +
+            "El resumen de ventas del día calendario aparece por separado.";
+        panel.appendChild(nota);
+
+        const contenido = app.querySelector("main.contenido");
+        if (contenido) contenido.prepend(panel);
+
+    } catch (error) {
+        console.error("Error al consultar el corte de caja:", error);
+        alert(error.message || "No se pudo consultar el corte de caja.");
+    }
+};
 
     window.abrirCaja = async function () {
 
