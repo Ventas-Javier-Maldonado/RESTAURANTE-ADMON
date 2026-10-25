@@ -11179,31 +11179,59 @@ async function crCargarCajaCentral() {
 
             panel.appendChild(titulo);
 
-            const lineas = resumen
-                ? [
-                    "Estado: abierta",
+           const fechaCajaTexto = resumen?.fechaCaja
+    ? new Date(
+        resumen.fechaCaja + "T12:00:00"
+    ).toLocaleDateString("es-MX")
+    : "No disponible";
 
-                    "Fondo inicial: " +
-                    crDinero(resumen.fondoInicial),
+const lineas = resumen
+    ? [
+        "Jornada de caja: " + fechaCajaTexto,
+        "Estado: " + resumen.estadoCaja,
 
-                    "Ventas en efectivo: " +
-                    crDinero(resumen.ventasEfectivo),
+        "VENTAS TOTALES: " +
+        crDinero(resumen.ventasTotal),
 
-                    "Entradas de efectivo: " +
-                    crDinero(resumen.entradasEfectivo),
+        "Ventas en efectivo: " +
+        crDinero(resumen.ventasEfectivo),
 
-                    "Salidas de efectivo: " +
-                    crDinero(resumen.salidasEfectivo),
+        "Ventas con tarjeta: " +
+        crDinero(resumen.ventasTarjeta),
 
-                    "Efectivo esperado: " +
-                    crDinero(resumen.efectivoEsperado),
+        "Ventas por transferencia: " +
+        crDinero(resumen.ventasTransferencia),
 
-                    "Tickets centrales pendientes: " +
-                    resumen.ticketsPendientes
-                ]
-                : [
-                    "No hay una caja abierta en Supabase."
-                ];
+        "EGRESOS TOTALES: " +
+        crDinero(resumen.egresosTotal),
+
+        "Egresos en efectivo: " +
+        crDinero(resumen.egresosEfectivo),
+
+        "Egresos con tarjeta: " +
+        crDinero(resumen.egresosTarjeta),
+
+        "Egresos por transferencia: " +
+        crDinero(resumen.egresosTransferencia),
+
+        "Fondo inicial: " +
+        crDinero(resumen.fondoInicial),
+
+        "Entradas de efectivo: " +
+        crDinero(resumen.entradasEfectivo),
+
+        "Efectivo esperado: " +
+        crDinero(resumen.efectivoEsperado),
+
+        "Cálculo: fondo inicial + ventas en efectivo " +
+        "+ entradas en efectivo − egresos en efectivo",
+
+        "Tickets pendientes: " +
+        resumen.ticketsPendientes
+    ]
+    : [
+        "No hay una caja abierta en Supabase."
+    ];
 
             for (const texto of lineas) {
 
