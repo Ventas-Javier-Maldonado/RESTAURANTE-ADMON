@@ -3465,6 +3465,11 @@ async function guardarProducto(
 
     event.preventDefault();
 
+       if (!crTienePermiso("inventario_editar")) {
+        alert("No tienes permiso para agregar productos al inventario.");
+        return;
+    }
+
 
     const productos =
         obtenerInventario();
