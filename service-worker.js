@@ -4,7 +4,7 @@
 
 const CACHE_PREFIX = "control-restaurante-";
 const CACHE_NAME =
-    CACHE_PREFIX + "v8-venta-idempotencia-20261025";
+    CACHE_PREFIX + "v9-venta-idempotencia-20261025";
 
 const ARCHIVOS = [
     "./",
