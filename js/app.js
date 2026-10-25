@@ -11840,6 +11840,11 @@ async function crCargarCajaCentral() {
 
     event.preventDefault();
 
+         if (!crTienePermiso("inventario_editar")) {
+      alert("No tienes permiso para editar productos del inventario.");
+      return;
+    }
+
     const form = event.currentTarget;
 
     if (!form || form.dataset.guardando === "true") {
@@ -11971,6 +11976,11 @@ async function crCargarCajaCentral() {
   };
 
   window.eliminarProducto = async function(id) {
+
+         if (!crTienePermiso("inventario_editar")) {
+      alert("No tienes permiso para eliminar productos del inventario.");
+      return;
+    }
 
     if (operaciones) return;
 
