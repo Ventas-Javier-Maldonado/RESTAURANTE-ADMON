@@ -6317,11 +6317,15 @@ function mostrarFormularioReceta(productoId){
                                 No hay ingredientes en Inventario.
                                </p>`
 
-                            : [...inventario].sort((a,b) => {
-                                const aUsado = ingredientes.some(i => String(i.productoId) === String(a.id));
-                                const bUsado = ingredientes.some(i => String(i.productoId) === String(b.id));
-                                return Number(bUsado) - Number(aUsado) || String(a.nombre).localeCompare(String(b.nombre), 'es');
-                            }).map(item => {
+                           : [...inventario]
+    .sort((a, b) =>
+        String(a.nombre || "").localeCompare(
+            String(b.nombre || ""),
+            "es",
+            { sensitivity: "base" }
+        )
+    )
+    .map(item => {
 
                                 const ingrediente = ingredientes.find(
                                     i => String(i.productoId) === String(item.id)
