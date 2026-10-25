@@ -13471,7 +13471,6 @@ function crFormularioEgreso() {
     `;
 }
 
-
 async function crGuardarEgreso(event) {
 
     event.preventDefault();
@@ -13508,6 +13507,70 @@ async function crGuardarEgreso(event) {
         return;
     }
 
+    const concepto =
+        categoria + ": " + descripcion;
+
+    const clavePendiente =
+        "cr_egreso_operacion_pendiente_v1";
+
+    const firmaOperacion = JSON.stringify({
+        usuario_id: USUARIO_ACTUAL.id,
+        concepto,
+        monto: Number(monto.toFixed(2)),
+        metodo,
+        observaciones: observaciones || null
+    });
+
+    let operacionPendiente = null;
+
+    try {
+        const guardado =
+            localStorage.getItem(clavePendiente);
+
+        operacionPendiente =
+            guardado ? JSON.parse(guardado) : null;
+
+    } catch (error) {
+        alert(
+            "No se pudo preparar el control contra egresos duplicados. " +
+            "Recarga la aplicación e intenta nuevamente."
+        );
+        return;
+    }
+
+    if (
+        operacionPendiente?.id &&
+        operacionPendiente.firma !== firmaOperacion
+    ) {
+        alert(
+            "Hay un egreso anterior cuya respuesta no se confirmó. " +
+            "Reintenta con los mismos datos antes de capturar otro."
+        );
+        return;
+    }
+
+    if (!operacionPendiente?.id) {
+
+        try {
+            operacionPendiente = {
+                id: window.crypto.randomUUID(),
+                firma: firmaOperacion
+            };
+
+            localStorage.setItem(
+                clavePendiente,
+                JSON.stringify(operacionPendiente)
+            );
+
+        } catch (error) {
+            alert(
+                "No se pudo generar la clave del egreso. " +
+                "Recarga la aplicación e intenta nuevamente."
+            );
+            return;
+        }
+    }
+
     const boton =
         document.querySelector(
             "#crFormularioEgreso button[type='submit']"
@@ -13518,18 +13581,21 @@ async function crGuardarEgreso(event) {
         boton.textContent = "Guardando...";
     }
 
+    let rpcConfirmado = false;
+
     try {
 
         const { data, error } =
             await supabaseClient.rpc(
                 "cr_registrar_egreso",
                 {
-                    p_concepto:
-                        categoria + ": " + descripcion,
-                    p_monto: monto,
+                    p_concepto: concepto,
+                    p_monto: Number(monto.toFixed(2)),
                     p_metodo: metodo,
                     p_observaciones:
-                        observaciones || null
+                        observaciones || null,
+                    p_operacion_id:
+                        operacionPendiente.id
                 }
             );
 
@@ -13543,9 +13609,17 @@ async function crGuardarEgreso(event) {
             );
         }
 
-        alert("Egreso guardado correctamente.");
+        rpcConfirmado = true;
+
+        alert(
+            data.duplicado
+                ? "Este egreso ya estaba guardado. Se recuperó el mismo registro."
+                : "Egreso guardado correctamente."
+        );
 
         await crMostrarEgresos();
+
+        localStorage.removeItem(clavePendiente);
 
     } catch (error) {
 
@@ -13554,10 +13628,37 @@ async function crGuardarEgreso(event) {
             error
         );
 
-        alert(
-            error.message ||
-            "No se pudo guardar el egreso."
-        );
+        const estado =
+            Number(error?.status || 0);
+
+        const errorDefinitivo =
+            Boolean(error?.code) ||
+            (estado >= 400 && estado < 500);
+
+        if (!rpcConfirmado && errorDefinitivo) {
+            try {
+                localStorage.removeItem(clavePendiente);
+            } catch (errorLocal) {
+                console.warn(
+                    "No se pudo limpiar la clave pendiente:",
+                    errorLocal
+                );
+            }
+        }
+
+        if (rpcConfirmado) {
+            alert(
+                "El egreso sí quedó guardado en Supabase, " +
+                "pero no se pudo actualizar la pantalla. " +
+                "No vuelvas a capturarlo; actualiza el historial."
+            );
+        } else {
+            alert(
+                error.message ||
+                "No se pudo confirmar el egreso. " +
+                "Si hubo un problema de conexión, reintenta con los mismos datos."
+            );
+        }
 
         if (boton) {
             boton.disabled = false;
