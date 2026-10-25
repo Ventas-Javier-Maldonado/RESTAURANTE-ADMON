@@ -3,7 +3,8 @@
 ========================================================= */
 
 const CACHE_PREFIX = "control-restaurante-";
-const CACHE_NAME = CACHE_PREFIX + "v8-recetas-orden-a-z";
+const CACHE_NAME =
+    CACHE_PREFIX + "v8-venta-idempotencia-20261025";
 
 const ARCHIVOS = [
     "./",
