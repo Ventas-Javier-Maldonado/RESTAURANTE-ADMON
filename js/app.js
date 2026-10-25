@@ -7231,12 +7231,13 @@ function renderizarCarritoVenta(){
 ========================================================= */
 
 async function registrarVenta() {
-    if (window.crVentaEnProceso) {
-        return;
-    }
 
     const boton =
         document.getElementById("btnRegistrarVenta");
+
+    if (window.crVentaEnProceso) {
+        return;
+    }
 
     window.crVentaEnProceso = true;
 
@@ -7247,15 +7248,18 @@ async function registrarVenta() {
 
     try {
         await registrarVentaOperacion();
+
     } finally {
         window.crVentaEnProceso = false;
 
-        if (boton && boton.isConnected) {
+        if (boton) {
             boton.disabled = false;
             boton.textContent = "REGISTRAR VENTA";
         }
     }
 }
+
+async function registrarVentaOperacion() {
 
 async function registrarVentaOperacion(){
 
