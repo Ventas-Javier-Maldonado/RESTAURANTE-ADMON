@@ -7209,13 +7209,14 @@ function renderizarCarritoVenta(){
             </div>
 
 
-            <button
-                type="button"
-                class="btn-principal"
-                onclick="registrarVenta()"
-            >
-                REGISTRAR VENTA
-            </button>
+           <button
+    id="btnRegistrarVenta"
+    type="button"
+    class="btn-principal"
+    onclick="registrarVenta()"
+>
+    REGISTRAR VENTA
+</button>
 
         </div>
 
@@ -7229,7 +7230,34 @@ function renderizarCarritoVenta(){
    REGISTRAR VENTA CON DESCUENTO POR RECETA EN SUPABASE
 ========================================================= */
 
-async function registrarVenta(){
+async function registrarVenta() {
+    if (window.crVentaEnProceso) {
+        return;
+    }
+
+    const boton =
+        document.getElementById("btnRegistrarVenta");
+
+    window.crVentaEnProceso = true;
+
+    if (boton) {
+        boton.disabled = true;
+        boton.textContent = "REGISTRANDO...";
+    }
+
+    try {
+        await registrarVentaOperacion();
+    } finally {
+        window.crVentaEnProceso = false;
+
+        if (boton && boton.isConnected) {
+            boton.disabled = false;
+            boton.textContent = "REGISTRAR VENTA";
+        }
+    }
+}
+
+async function registrarVentaOperacion(){
 
     if(carritoVenta.length === 0){
         alert("Agrega al menos un producto a la venta.");
@@ -7379,8 +7407,65 @@ async function registrarVenta(){
         : "Efectivo";
 
     const total = Number(subtotal.toFixed(2));
-    const folio = generarFolioVenta();
-    const fecha = new Date().toISOString();
+
+const claveIntentoVenta =
+    "cr_venta_intento_pendiente_v1";
+
+const firmaVenta = JSON.stringify({
+    usuarioId: USUARIO_ACTUAL?.id || "",
+    metodoPago,
+    total,
+    items: itemsVenta.map(item => ({
+        productoId: String(item.productoId),
+        cantidad: Number(item.cantidad),
+        precio: Number(item.precio)
+    }))
+});
+
+let intentoVenta = null;
+
+try {
+    intentoVenta = JSON.parse(
+        localStorage.getItem(claveIntentoVenta) || "null"
+    );
+} catch (error) {
+    intentoVenta = null;
+}
+
+if (
+    intentoVenta &&
+    intentoVenta.firma !== firmaVenta
+) {
+    const revisarAntes = confirm(
+        "Hay un intento de venta anterior sin confirmación.\n\n" +
+        "Revisa el historial de ventas antes de continuar. " +
+        "Acepta solo si confirmaste que esa venta no aparece."
+    );
+
+    if (!revisarAntes) {
+        return;
+    }
+
+    localStorage.removeItem(claveIntentoVenta);
+    intentoVenta = null;
+}
+
+if (!intentoVenta) {
+    intentoVenta = {
+        firma: firmaVenta,
+        id: Date.now(),
+        folio: generarFolioVenta(),
+        fecha: new Date().toISOString()
+    };
+
+    localStorage.setItem(
+        claveIntentoVenta,
+        JSON.stringify(intentoVenta)
+    );
+}
+
+const folio = intentoVenta.folio;
+const fecha = intentoVenta.fecha;
 
     const usuario =
         typeof USUARIO_ACTUAL !== "undefined" && USUARIO_ACTUAL
@@ -7388,7 +7473,7 @@ async function registrarVenta(){
             : "Administrador";
 
     const venta = {
-        id: Date.now(),
+        id: intentoVenta.id,
         folio: folio,
         fecha: fecha,
         usuario: usuario,
@@ -7430,6 +7515,15 @@ async function registrarVenta(){
         }
 
         resultado = data;
+
+       try {
+    localStorage.removeItem(claveIntentoVenta);
+} catch (error) {
+    console.warn(
+        "No se pudo limpiar el intento guardado:",
+        error
+    );
+}
 
     }catch(error){
 
