@@ -6393,6 +6393,11 @@ async function guardarFormularioReceta(event, productoId){
 
     event.preventDefault();
 
+       if (!crTienePermiso("recetas_editar")) {
+        alert("No tienes permiso para modificar recetas.");
+        return;
+    }
+
     const inventario = obtenerInventario();
     const recetas = obtenerRecetas();
 
@@ -6702,6 +6707,19 @@ async function guardarProductoVenta(event, id = null){
 
     event.preventDefault();
 
+       const permisoMenu = id
+        ? "menu_editar"
+        : "menu_agregar";
+
+    if (!crTienePermiso(permisoMenu)) {
+        alert(
+            id
+                ? "No tienes permiso para editar platillos."
+                : "No tienes permiso para agregar platillos."
+        );
+        return;
+    }
+
     const productos = obtenerProductosVenta();
 
     const nombre = document
@@ -6849,6 +6867,11 @@ function editarProductoVenta(id){
 ========================================================= */
 
 async function eliminarCatalogoProductoVenta(id){
+
+      if (!crTienePermiso("menu_eliminar")) {
+        alert("No tienes permiso para eliminar platillos.");
+        return;
+    } 
 
     const productos = obtenerProductosVenta();
 
