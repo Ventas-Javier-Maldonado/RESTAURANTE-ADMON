@@ -7259,8 +7259,6 @@ async function registrarVenta() {
     }
 }
 
-async function registrarVentaOperacion() {
-
 async function registrarVentaOperacion(){
 
     if(carritoVenta.length === 0){
