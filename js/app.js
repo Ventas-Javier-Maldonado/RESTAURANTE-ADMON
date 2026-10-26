@@ -10266,27 +10266,41 @@ function crFechaISOReporte(fecha) {
 }
 
 function crCalcularRangoReporte(tipo, fechaReferencia) {
-    const partes = String(fechaReferencia || "")
-        .split("-")
-        .map(Number);
+    let textoFecha = "";
+
+    if (typeof fechaReferencia === "string") {
+        textoFecha = fechaReferencia.trim();
+    } else if (fechaReferencia?.value) {
+        textoFecha = fechaReferencia.value.trim();
+    }
+
+    let año;
+    let mes;
+    let dia;
+
+    if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(textoFecha)) {
+        [año, mes, dia] = textoFecha.split("-").map(Number);
+
+    } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(textoFecha)) {
+        [dia, mes, año] = textoFecha.split("/").map(Number);
+
+    } else {
+        throw new Error("Selecciona una fecha válida.");
+    }
+
+    const fecha = new Date(año, mes - 1, dia, 12);
 
     if (
-        partes.length !== 3 ||
-        partes.some(numero => !Number.isFinite(numero))
+        fecha.getFullYear() !== año ||
+        fecha.getMonth() !== mes - 1 ||
+        fecha.getDate() !== dia
     ) {
         throw new Error("Selecciona una fecha válida.");
     }
 
-    const fecha = new Date(
-        partes[0],
-        partes[1] - 1,
-        partes[2],
-        12
-    );
-
     if (tipo === "dia") {
-        const dia = crFechaISOReporte(fecha);
-        return { inicio: dia, fin: dia };
+        const diaISO = crFechaISOReporte(fecha);
+        return { inicio: diaISO, fin: diaISO };
     }
 
     if (tipo === "semana") {
