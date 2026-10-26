@@ -10415,85 +10415,305 @@ async function crObtenerPaginasReporte(funcion, parametros) {
 }
 
 function crAgregarEstilosImpresionReporte() {
-    if (document.getElementById("crEstilosImpresionReporte")) {
-        return;
+    let estilos =
+        document.getElementById("crEstilosImpresionReporte");
+
+    if (!estilos) {
+        estilos = document.createElement("style");
+        estilos.id = "crEstilosImpresionReporte";
+        document.head.appendChild(estilos);
     }
 
-    const estilos = document.createElement("style");
-    estilos.id = "crEstilosImpresionReporte";
     estilos.textContent = `
+        #crReporteImpresionTemporal {
+            display: none;
+        }
+
         @media print {
-            body.cr-imprimiendo-reporte #app * {
-                visibility: hidden !important;
+            @page {
+                size: landscape;
+                margin: 10mm;
             }
 
-            body.cr-imprimiendo-reporte #crReporteImprimible,
-            body.cr-imprimiendo-reporte #crReporteImprimible * {
-                visibility: visible !important;
+            body.cr-imprimiendo-reporte > *:not(#crReporteImpresionTemporal) {
+                display: none !important;
             }
 
-            body.cr-imprimiendo-reporte #crReporteImprimible {
-                position: absolute !important;
-                inset: 0 !important;
+            body.cr-imprimiendo-reporte
+                > #crReporteImpresionTemporal {
+                display: block !important;
+                position: static !important;
                 width: 100% !important;
                 padding: 0 !important;
-                background: #ffffff !important;
+                margin: 0 !important;
                 color: #111111 !important;
+                background: #ffffff !important;
+                font-family: Arial, sans-serif !important;
+                font-size: 9pt !important;
             }
 
-            body.cr-imprimiendo-reporte #crReporteImprimible * {
+            #crReporteImpresionTemporal,
+            #crReporteImpresionTemporal * {
+                visibility: visible !important;
+                box-sizing: border-box !important;
                 color: #111111 !important;
                 box-shadow: none !important;
             }
 
-            body.cr-imprimiendo-reporte #crReporteControles,
-            body.cr-imprimiendo-reporte .cr-no-imprimir {
-                display: none !important;
+            #crReporteImpresionTemporal h1 {
+                margin: 0 0 5mm !important;
+                font-size: 20pt !important;
             }
 
-            body.cr-imprimiendo-reporte table {
-                width: 100% !important;
-                border-collapse: collapse !important;
-                font-size: 9pt !important;
+            #crReporteImpresionTemporal h2 {
+                margin: 8mm 0 3mm !important;
+                font-size: 14pt !important;
+                break-after: avoid;
             }
 
-            body.cr-imprimiendo-reporte th,
-            body.cr-imprimiendo-reporte td {
+            #crReporteImpresionTemporal p {
+                margin: 2mm 0 !important;
+            }
+
+            #crReporteImpresionTemporal .cr-print-resumen {
+                display: grid !important;
+                grid-template-columns: repeat(3, 1fr) !important;
+                gap: 3mm !important;
+                margin: 5mm 0 !important;
+            }
+
+            #crReporteImpresionTemporal .cr-print-indicador {
                 border: 1px solid #999999 !important;
-                padding: 5px !important;
-                text-align: left !important;
-            }
-
-            body.cr-imprimiendo-reporte thead {
-                display: table-header-group;
-            }
-
-            body.cr-imprimiendo-reporte tr {
+                padding: 3mm !important;
                 break-inside: avoid;
             }
 
-            @page {
-                size: auto;
-                margin: 12mm;
+            #crReporteImpresionTemporal table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                table-layout: auto !important;
+                font-size: 7.5pt !important;
+            }
+
+            #crReporteImpresionTemporal th,
+            #crReporteImpresionTemporal td {
+                border: 1px solid #888888 !important;
+                padding: 2mm !important;
+                text-align: left !important;
+                vertical-align: top !important;
+                overflow-wrap: anywhere !important;
+            }
+
+            #crReporteImpresionTemporal thead {
+                display: table-header-group !important;
+            }
+
+            #crReporteImpresionTemporal tr {
+                break-inside: avoid;
+            }
+
+            #crReporteImpresionTemporal .cr-print-nota {
+                margin-top: 5mm !important;
+                font-size: 8pt !important;
             }
         }
     `;
-
-    document.head.appendChild(estilos);
 }
 
+
 function crImprimirReporteFinanciero() {
-    if (!window.crReporteFinancieroActual) {
+    const reporte = window.crReporteFinancieroActual;
+
+    if (!reporte) {
         alert("Primero consulta el periodo que quieres imprimir.");
         return;
     }
 
+    const resumen = reporte.resumen || {};
+    const ventas = Array.isArray(reporte.ventas)
+        ? reporte.ventas
+        : [];
+    const movimientos = Array.isArray(reporte.movimientos)
+        ? reporte.movimientos
+        : [];
+
+    const escapar = valor =>
+        String(valor ?? "").replace(/[&<>"']/g, caracter => ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;"
+        })[caracter]);
+
+    const dinero = valor => {
+        if (valor === null || valor === undefined || valor === "") {
+            return "Pendiente";
+        }
+
+        const numero = Number(valor);
+
+        if (!Number.isFinite(numero)) {
+            return "Pendiente";
+        }
+
+        return new Intl.NumberFormat("es-MX", {
+            style: "currency",
+            currency: "MXN"
+        }).format(numero);
+    };
+
+    const resumenVentas = resumen.ventas || {};
+
+    const indicadores = [
+        ["Ventas registradas", resumenVentas.cantidad ?? 0],
+        ["Ventas totales", dinero(resumenVentas.total)],
+        ["Efectivo", dinero(resumenVentas.efectivo)],
+        ["Tarjeta", dinero(resumenVentas.tarjeta)],
+        ["Transferencias", dinero(resumenVentas.transferencia)],
+        ["Descuentos", dinero(resumenVentas.descuentos)],
+        ["Costo de ingredientes", dinero(resumen.costo_ingredientes)],
+        ["Utilidad bruta", dinero(resumen.utilidad_bruta)],
+        ["Egresos operativos", dinero(resumen.egresos_operativos?.total)],
+        ["Compras pagadas", dinero(resumen.compras_pagadas?.total)],
+        ["Egresos totales", dinero(resumen.egresos_totales?.total)],
+        ["Utilidad operativa", dinero(resumen.utilidad_operativa)]
+    ];
+
+    const filasVentas = ventas.length
+        ? ventas.map(venta => {
+            const productos = Array.isArray(venta.items)
+                ? venta.items.map(item =>
+                    `${Number(item.cantidad) || 0} x ${item.nombre || "Producto"}`
+                ).join(", ")
+                : "";
+
+            return `
+                <tr>
+                    <td>${escapar(venta.fecha_operativa)}</td>
+                    <td>${escapar(venta.folio)}</td>
+                    <td>${escapar(productos)}</td>
+                    <td>${escapar(venta.metodo_pago)}</td>
+                    <td>${dinero(venta.subtotal)}</td>
+                    <td>${dinero(venta.descuento)}</td>
+                    <td>${dinero(venta.total)}</td>
+                    <td>${dinero(venta.costo_ingredientes)}</td>
+                    <td>${dinero(venta.utilidad_bruta)}</td>
+                </tr>
+            `;
+        }).join("")
+        : `
+            <tr>
+                <td colspan="9">No hay ventas en este periodo.</td>
+            </tr>
+        `;
+
+    const filasMovimientos = movimientos.length
+        ? movimientos.map(movimiento => `
+            <tr>
+                <td>${escapar(movimiento.fecha_operativa)}</td>
+                <td>${escapar(movimiento.fecha)}</td>
+                <td>${escapar(movimiento.origen)}</td>
+                <td>${escapar(movimiento.tipo)}</td>
+                <td>${escapar(movimiento.referencia)}</td>
+                <td>${escapar(movimiento.concepto)}</td>
+                <td>${escapar(movimiento.metodo)}</td>
+                <td>${dinero(movimiento.monto)}</td>
+                <td>${escapar(movimiento.usuario)}</td>
+                <td>${escapar(movimiento.observaciones)}</td>
+            </tr>
+        `).join("")
+        : `
+            <tr>
+                <td colspan="10">No hay movimientos en este periodo.</td>
+            </tr>
+        `;
+
+    const areaAnterior =
+        document.getElementById("crReporteImpresionTemporal");
+
+    if (areaAnterior) {
+        areaAnterior.remove();
+    }
+
+    const area = document.createElement("main");
+    area.id = "crReporteImpresionTemporal";
+
+    area.innerHTML = `
+        <h1>CONTROL RESTAURANTE</h1>
+        <h2>Reporte financiero</h2>
+
+        <p>
+            Periodo:
+            <strong>${escapar(reporte.periodo?.inicio)}</strong>
+            al
+            <strong>${escapar(reporte.periodo?.fin)}</strong>
+            · Ventas registradas:
+            <strong>${escapar(resumenVentas.cantidad ?? 0)}</strong>
+        </p>
+
+        <section class="cr-print-resumen">
+            ${indicadores.map(([titulo, valor]) => `
+                <article class="cr-print-indicador">
+                    <strong>${escapar(titulo)}</strong>
+                    <p>${escapar(valor)}</p>
+                </article>
+            `).join("")}
+        </section>
+
+        <p class="cr-print-nota">
+            Utilidad bruta = ventas totales menos costo de ingredientes.
+            Utilidad operativa = ventas totales menos costo de ingredientes
+            y egresos operativos. Las compras pagadas aparecen como salidas
+            de dinero y no se restan nuevamente de la utilidad.
+        </p>
+
+        <h2>Detalle de ventas</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha operativa</th>
+                    <th>Folio</th>
+                    <th>Productos</th>
+                    <th>Pago</th>
+                    <th>Subtotal</th>
+                    <th>Descuento</th>
+                    <th>Total</th>
+                    <th>Costo ingredientes</th>
+                    <th>Utilidad bruta</th>
+                </tr>
+            </thead>
+            <tbody>${filasVentas}</tbody>
+        </table>
+
+        <h2>Entradas, egresos y compras pagadas</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha operativa</th>
+                    <th>Fecha y hora</th>
+                    <th>Origen</th>
+                    <th>Tipo</th>
+                    <th>Referencia</th>
+                    <th>Concepto o proveedor</th>
+                    <th>Método</th>
+                    <th>Importe</th>
+                    <th>Usuario</th>
+                    <th>Observaciones</th>
+                </tr>
+            </thead>
+            <tbody>${filasMovimientos}</tbody>
+        </table>
+    `;
+
+    document.body.appendChild(area);
     crAgregarEstilosImpresionReporte();
 
     const limpiar = () => {
-        document.body.classList.remove(
-            "cr-imprimiendo-reporte"
-        );
+        document.body.classList.remove("cr-imprimiendo-reporte");
+        area.remove();
     };
 
     document.body.classList.add("cr-imprimiendo-reporte");
@@ -10503,7 +10723,7 @@ function crImprimirReporteFinanciero() {
     });
 
     window.print();
-    window.setTimeout(limpiar, 3000);
+    window.setTimeout(limpiar, 60000);
 }
 
 function crExportarReporteFinancieroCSV() {
