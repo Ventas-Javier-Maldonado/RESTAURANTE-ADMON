@@ -10369,7 +10369,7 @@ function crActualizarCamposReporte() {
         document.getElementById("crReporteTipo")?.value;
 
     const fechaReferencia =
-        document.getElementById("crReporteFechaReferencia");
+        document.getElementById("crReporteFecha");
 
     const rangoPersonalizado =
         document.getElementById("crReporteRangoPersonalizado");
@@ -10669,7 +10669,7 @@ async function crEjecutarReporteFinanciero() {
 
         const fechaReferencia =
             document.getElementById(
-                "crReporteFechaReferencia"
+                "crReporteFecha"
             ).value;
 
         const periodo = crCalcularRangoReporte(
@@ -10968,7 +10968,7 @@ function mostrarReportes() {
 
                         <div
                             class="campo"
-                            id="crReporteFechaReferencia"
+                            id="crReporteFecha"
                         >
                             <label for="crReporteFecha">Fecha de referencia</label>
                             <input
