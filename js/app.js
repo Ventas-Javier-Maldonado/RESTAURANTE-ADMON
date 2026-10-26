@@ -10432,7 +10432,7 @@ function crAgregarEstilosImpresionReporte() {
         @media print {
             @page {
                 size: landscape;
-                margin: 10mm;
+                margin: 9mm;
             }
 
             body.cr-imprimiendo-reporte > *:not(#crReporteImpresionTemporal) {
@@ -10449,7 +10449,7 @@ function crAgregarEstilosImpresionReporte() {
                 color: #111111 !important;
                 background: #ffffff !important;
                 font-family: Arial, sans-serif !important;
-                font-size: 9pt !important;
+                font-size: 8pt !important;
             }
 
             #crReporteImpresionTemporal,
@@ -10461,14 +10461,15 @@ function crAgregarEstilosImpresionReporte() {
             }
 
             #crReporteImpresionTemporal h1 {
-                margin: 0 0 5mm !important;
-                font-size: 20pt !important;
+                margin: 0 0 4mm !important;
+                font-size: 19pt !important;
             }
 
             #crReporteImpresionTemporal h2 {
-                margin: 8mm 0 3mm !important;
-                font-size: 14pt !important;
-                break-after: avoid;
+                margin: 6mm 0 2mm !important;
+                font-size: 13pt !important;
+                break-after: avoid !important;
+                page-break-after: avoid !important;
             }
 
             #crReporteImpresionTemporal p {
@@ -10478,30 +10479,35 @@ function crAgregarEstilosImpresionReporte() {
             #crReporteImpresionTemporal .cr-print-resumen {
                 display: grid !important;
                 grid-template-columns: repeat(3, 1fr) !important;
-                gap: 3mm !important;
-                margin: 5mm 0 !important;
+                gap: 2.5mm !important;
+                margin: 4mm 0 !important;
             }
 
             #crReporteImpresionTemporal .cr-print-indicador {
                 border: 1px solid #999999 !important;
-                padding: 3mm !important;
-                break-inside: avoid;
+                padding: 2.5mm !important;
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
             }
 
             #crReporteImpresionTemporal table {
                 width: 100% !important;
                 border-collapse: collapse !important;
                 table-layout: auto !important;
-                font-size: 7.5pt !important;
+                font-size: 6.8pt !important;
+                page-break-inside: auto !important;
             }
 
             #crReporteImpresionTemporal th,
             #crReporteImpresionTemporal td {
                 border: 1px solid #888888 !important;
-                padding: 2mm !important;
+                padding: 1.3mm !important;
                 text-align: left !important;
                 vertical-align: top !important;
-                overflow-wrap: anywhere !important;
+                white-space: normal !important;
+                word-break: normal !important;
+                overflow-wrap: break-word !important;
+                hyphens: none !important;
             }
 
             #crReporteImpresionTemporal thead {
@@ -10509,18 +10515,17 @@ function crAgregarEstilosImpresionReporte() {
             }
 
             #crReporteImpresionTemporal tr {
-                break-inside: avoid;
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
             }
 
             #crReporteImpresionTemporal .cr-print-nota {
-                margin-top: 5mm !important;
-                font-size: 8pt !important;
+                margin-top: 4mm !important;
+                font-size: 7.5pt !important;
             }
         }
     `;
 }
-
-
 function crImprimirReporteFinanciero() {
     const reporte = window.crReporteFinancieroActual;
 
