@@ -13844,15 +13844,40 @@ async function crActualizarResumenFinancieroDashboard() {
     }
 }
 
-
 function crIniciarActualizacionFinancieraDashboard() {
+
     if (window.crResumenFinancieroTimer) {
         clearInterval(window.crResumenFinancieroTimer);
+        window.crResumenFinancieroTimer = null;
+    }
+
+    const puedeVerReportes =
+        crTienePermiso("reportes_ver");
+
+    const idsIndicadoresFinancieros = [
+        "crKpiIngresos",
+        "crKpiEgresos",
+        "crKpiUtilidad"
+    ];
+
+    for (const id of idsIndicadoresFinancieros) {
+        const elemento = document.getElementById(id);
+        const tarjeta = elemento?.closest(".indicador");
+
+        if (tarjeta) {
+            tarjeta.style.display =
+                puedeVerReportes ? "" : "none";
+        }
+    }
+
+    if (!puedeVerReportes) {
+        return;
     }
 
     crActualizarResumenFinancieroDashboard();
 
     window.crResumenFinancieroTimer = setInterval(() => {
+
         if (!document.getElementById("crKpiIngresos")) {
             clearInterval(window.crResumenFinancieroTimer);
             window.crResumenFinancieroTimer = null;
@@ -13860,5 +13885,6 @@ function crIniciarActualizacionFinancieraDashboard() {
         }
 
         crActualizarResumenFinancieroDashboard();
+
     }, 30000);
 }
