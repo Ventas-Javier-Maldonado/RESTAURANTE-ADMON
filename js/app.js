@@ -10506,7 +10506,7 @@ function crAgregarEstilosImpresionReporte() {
                 vertical-align: top !important;
                 white-space: normal !important;
                 word-break: normal !important;
-                overflow-wrap: break-word !important;
+                overflow-wrap: normal !important;
                 hyphens: none !important;
             }
 
