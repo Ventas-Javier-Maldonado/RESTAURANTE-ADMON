@@ -10668,7 +10668,7 @@ async function crEjecutarReporteFinanciero() {
             document.getElementById("crReporteTipo").value;
 
        const fechaReferencia =
-    document.getElementById("crReporteFecha")?.value || "";
+    document.querySelector("#app input[type='date']")?.value || "";
 
         const periodo = crCalcularRangoReporte(
             tipo,
