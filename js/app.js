@@ -1073,6 +1073,20 @@ function mostrarDashboard(jornada) {
 
 </button>
 
+${
+    crTienePermiso("reportes_ver")
+        ? `
+            <button
+                type="button"
+                onclick="mostrarReportes()"
+            >
+                <span>📊</span>
+                <span>Reportes</span>
+            </button>
+        `
+        : ""
+}
+
                     </div>
 
                 </section>
@@ -10243,6 +10257,797 @@ async function crCuentas() {
 
 }
 
+function crFechaISOReporte(fecha) {
+    const año = fecha.getFullYear();
+    const mes = String(fecha.getMonth() + 1).padStart(2, "0");
+    const dia = String(fecha.getDate()).padStart(2, "0");
+
+    return `${año}-${mes}-${dia}`;
+}
+
+function crCalcularRangoReporte(tipo, fechaReferencia) {
+    const partes = String(fechaReferencia || "")
+        .split("-")
+        .map(Number);
+
+    if (
+        partes.length !== 3 ||
+        partes.some(numero => !Number.isFinite(numero))
+    ) {
+        throw new Error("Selecciona una fecha válida.");
+    }
+
+    const fecha = new Date(
+        partes[0],
+        partes[1] - 1,
+        partes[2],
+        12
+    );
+
+    if (tipo === "dia") {
+        const dia = crFechaISOReporte(fecha);
+        return { inicio: dia, fin: dia };
+    }
+
+    if (tipo === "semana") {
+        const lunes = new Date(fecha);
+        const diferencia = (lunes.getDay() + 6) % 7;
+        lunes.setDate(lunes.getDate() - diferencia);
+
+        const domingo = new Date(lunes);
+        domingo.setDate(domingo.getDate() + 6);
+
+        return {
+            inicio: crFechaISOReporte(lunes),
+            fin: crFechaISOReporte(domingo)
+        };
+    }
+
+    if (tipo === "mes") {
+        const inicio = new Date(
+            fecha.getFullYear(),
+            fecha.getMonth(),
+            1,
+            12
+        );
+
+        const fin = new Date(
+            fecha.getFullYear(),
+            fecha.getMonth() + 1,
+            0,
+            12
+        );
+
+        return {
+            inicio: crFechaISOReporte(inicio),
+            fin: crFechaISOReporte(fin)
+        };
+    }
+
+    if (tipo === "anio") {
+        return {
+            inicio: `${fecha.getFullYear()}-01-01`,
+            fin: `${fecha.getFullYear()}-12-31`
+        };
+    }
+
+    if (tipo === "rango") {
+        const inicio =
+            document.getElementById("crReporteInicio")?.value;
+
+        const fin =
+            document.getElementById("crReporteFin")?.value;
+
+        if (!inicio || !fin || inicio > fin) {
+            throw new Error(
+                "Selecciona un rango válido: inicio y fin."
+            );
+        }
+
+        return { inicio, fin };
+    }
+
+    throw new Error("Selecciona un periodo válido.");
+}
+
+function crActualizarCamposReporte() {
+    const tipo =
+        document.getElementById("crReporteTipo")?.value;
+
+    const fechaReferencia =
+        document.getElementById("crReporteFechaReferencia");
+
+    const rangoPersonalizado =
+        document.getElementById("crReporteRangoPersonalizado");
+
+    if (fechaReferencia) {
+        fechaReferencia.style.display =
+            tipo === "rango" ? "none" : "";
+    }
+
+    if (rangoPersonalizado) {
+        rangoPersonalizado.style.display =
+            tipo === "rango" ? "grid" : "none";
+    }
+}
+
+async function crObtenerPaginasReporte(funcion, parametros) {
+    const acumulado = [];
+    const limite = 500;
+
+    for (let desde = 0; ; desde += limite) {
+        const { data, error } = await supabaseClient.rpc(
+            funcion,
+            {
+                ...parametros,
+                p_limite: limite,
+                p_desde: desde
+            }
+        );
+
+        if (error) {
+            throw error;
+        }
+
+        const pagina = Array.isArray(data) ? data : [];
+        acumulado.push(...pagina);
+
+        if (pagina.length < limite) {
+            break;
+        }
+    }
+
+    return acumulado;
+}
+
+function crAgregarEstilosImpresionReporte() {
+    if (document.getElementById("crEstilosImpresionReporte")) {
+        return;
+    }
+
+    const estilos = document.createElement("style");
+    estilos.id = "crEstilosImpresionReporte";
+    estilos.textContent = `
+        @media print {
+            body.cr-imprimiendo-reporte #app * {
+                visibility: hidden !important;
+            }
+
+            body.cr-imprimiendo-reporte #crReporteImprimible,
+            body.cr-imprimiendo-reporte #crReporteImprimible * {
+                visibility: visible !important;
+            }
+
+            body.cr-imprimiendo-reporte #crReporteImprimible {
+                position: absolute !important;
+                inset: 0 !important;
+                width: 100% !important;
+                padding: 0 !important;
+                background: #ffffff !important;
+                color: #111111 !important;
+            }
+
+            body.cr-imprimiendo-reporte #crReporteImprimible * {
+                color: #111111 !important;
+                box-shadow: none !important;
+            }
+
+            body.cr-imprimiendo-reporte #crReporteControles,
+            body.cr-imprimiendo-reporte .cr-no-imprimir {
+                display: none !important;
+            }
+
+            body.cr-imprimiendo-reporte table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                font-size: 9pt !important;
+            }
+
+            body.cr-imprimiendo-reporte th,
+            body.cr-imprimiendo-reporte td {
+                border: 1px solid #999999 !important;
+                padding: 5px !important;
+                text-align: left !important;
+            }
+
+            body.cr-imprimiendo-reporte thead {
+                display: table-header-group;
+            }
+
+            body.cr-imprimiendo-reporte tr {
+                break-inside: avoid;
+            }
+
+            @page {
+                size: auto;
+                margin: 12mm;
+            }
+        }
+    `;
+
+    document.head.appendChild(estilos);
+}
+
+function crImprimirReporteFinanciero() {
+    if (!window.crReporteFinancieroActual) {
+        alert("Primero consulta el periodo que quieres imprimir.");
+        return;
+    }
+
+    crAgregarEstilosImpresionReporte();
+
+    const limpiar = () => {
+        document.body.classList.remove(
+            "cr-imprimiendo-reporte"
+        );
+    };
+
+    document.body.classList.add("cr-imprimiendo-reporte");
+
+    window.addEventListener("afterprint", limpiar, {
+        once: true
+    });
+
+    window.print();
+    window.setTimeout(limpiar, 3000);
+}
+
+function crExportarReporteFinancieroCSV() {
+    if (!crTienePermiso("reportes_exportar")) {
+        alert("No tienes permiso para exportar reportes.");
+        return;
+    }
+
+    const reporte = window.crReporteFinancieroActual;
+
+    if (!reporte) {
+        alert("Primero consulta el periodo que quieres exportar.");
+        return;
+    }
+
+    const celda = valor => {
+        let texto = String(valor ?? "");
+
+        if (/^[=+\-@]/.test(texto)) {
+            texto = "'" + texto;
+        }
+
+        return `"${texto.replace(/"/g, '""')}"`;
+    };
+
+    const filas = [
+        ["REPORTE FINANCIERO — CONTROL RESTAURANTE"],
+        ["Periodo", reporte.periodo.inicio, reporte.periodo.fin],
+        [],
+        ["RESUMEN", "IMPORTE"],
+        ["Ventas registradas", reporte.resumen.ventas.cantidad],
+        ["Ventas totales", reporte.resumen.ventas.total],
+        ["Ventas en efectivo", reporte.resumen.ventas.efectivo],
+        ["Ventas con tarjeta", reporte.resumen.ventas.tarjeta],
+        ["Ventas por transferencia", reporte.resumen.ventas.transferencia],
+        ["Descuentos", reporte.resumen.ventas.descuentos],
+        ["Costo de ingredientes", reporte.resumen.costo_ingredientes],
+        ["Utilidad bruta", reporte.resumen.utilidad_bruta],
+        ["Egresos operativos", reporte.resumen.egresos_operativos.total],
+        ["Compras pagadas", reporte.resumen.compras_pagadas.total],
+        ["Egresos totales", reporte.resumen.egresos_totales.total],
+        ["Utilidad operativa", reporte.resumen.utilidad_operativa],
+        [],
+        [
+            "VENTAS",
+            "Fecha operativa",
+            "Folio",
+            "Productos",
+            "Método de pago",
+            "Subtotal",
+            "Descuento",
+            "Total",
+            "Costo ingredientes",
+            "Utilidad bruta"
+        ]
+    ];
+
+    for (const venta of reporte.ventas) {
+        const productos = Array.isArray(venta.items)
+            ? venta.items.map(item =>
+                `${Number(item.cantidad) || 0} × ${item.nombre || "Producto"}`
+            ).join(", ")
+            : "";
+
+        filas.push([
+            "Venta",
+            venta.fecha_operativa,
+            venta.folio,
+            productos,
+            venta.metodo_pago,
+            venta.subtotal,
+            venta.descuento,
+            venta.total,
+            venta.costo_ingredientes,
+            venta.utilidad_bruta
+        ]);
+    }
+
+    filas.push([]);
+    filas.push([
+        "MOVIMIENTOS",
+        "Fecha operativa",
+        "Fecha y hora",
+        "Origen",
+        "Tipo",
+        "Referencia",
+        "Concepto / proveedor",
+        "Método",
+        "Importe",
+        "Usuario",
+        "Observaciones"
+    ]);
+
+    for (const movimiento of reporte.movimientos) {
+        filas.push([
+            "Movimiento",
+            movimiento.fecha_operativa,
+            movimiento.fecha,
+            movimiento.origen,
+            movimiento.tipo,
+            movimiento.referencia,
+            movimiento.concepto,
+            movimiento.metodo,
+            movimiento.monto,
+            movimiento.usuario,
+            movimiento.observaciones
+        ]);
+    }
+
+    const contenido =
+        "\uFEFF" +
+        filas.map(fila => fila.map(celda).join(";")).join("\r\n");
+
+    const archivo = new Blob(
+        [contenido],
+        { type: "text/csv;charset=utf-8" }
+    );
+
+    const url = URL.createObjectURL(archivo);
+    const enlace = document.createElement("a");
+
+    enlace.href = url;
+    enlace.download =
+        `reporte-${reporte.periodo.inicio}-a-${reporte.periodo.fin}.csv`;
+
+    document.body.appendChild(enlace);
+    enlace.click();
+    enlace.remove();
+
+    URL.revokeObjectURL(url);
+}
+
+async function crEjecutarReporteFinanciero() {
+    if (!crTienePermiso("reportes_ver")) {
+        alert("No tienes permiso para consultar reportes.");
+        return;
+    }
+
+    const estado =
+        document.getElementById("crReporteEstado");
+
+    const resumenElemento =
+        document.getElementById("crReporteResumen");
+
+    const ventasElemento =
+        document.getElementById("crReporteVentas");
+
+    const movimientosElemento =
+        document.getElementById("crReporteMovimientos");
+
+    if (
+        !estado ||
+        !resumenElemento ||
+        !ventasElemento ||
+        !movimientosElemento
+    ) {
+        return;
+    }
+
+    try {
+        const tipo =
+            document.getElementById("crReporteTipo").value;
+
+        const fechaReferencia =
+            document.getElementById(
+                "crReporteFechaReferencia"
+            ).value;
+
+        const periodo = crCalcularRangoReporte(
+            tipo,
+            fechaReferencia
+        );
+
+        estado.textContent = "Consultando el periodo...";
+        resumenElemento.innerHTML = "";
+        ventasElemento.innerHTML = "";
+        movimientosElemento.innerHTML = "";
+
+        const parametros = {
+            p_inicio: periodo.inicio,
+            p_fin: periodo.fin
+        };
+
+        const [resumenResultado, ventas, movimientos] =
+            await Promise.all([
+                supabaseClient.rpc(
+                    "cr_resumen_financiero_periodo",
+                    parametros
+                ),
+                crObtenerPaginasReporte(
+                    "cr_listar_ventas_periodo",
+                    parametros
+                ),
+                crObtenerPaginasReporte(
+                    "cr_listar_movimientos_financieros_periodo",
+                    parametros
+                )
+            ]);
+
+        if (resumenResultado.error) {
+            throw resumenResultado.error;
+        }
+
+        if (
+            !document.getElementById("crReporteResumen") ||
+            !document.getElementById("crReporteVentas")
+        ) {
+            return;
+        }
+
+        const resumen = resumenResultado.data;
+
+        window.crReporteFinancieroActual = {
+            periodo,
+            resumen,
+            ventas,
+            movimientos
+        };
+
+        const importe = valor =>
+            valor === null || valor === undefined
+                ? "Pendiente"
+                : crDinero(valor);
+
+        const tarjetas = [
+            ["VENTAS", crDinero(resumen.ventas.total)],
+            ["EFECTIVO", crDinero(resumen.ventas.efectivo)],
+            ["TARJETA", crDinero(resumen.ventas.tarjeta)],
+            [
+                "TRANSFERENCIAS",
+                crDinero(resumen.ventas.transferencia)
+            ],
+            [
+                "COSTO DE INGREDIENTES",
+                importe(resumen.costo_ingredientes)
+            ],
+            [
+                "UTILIDAD BRUTA",
+                importe(resumen.utilidad_bruta)
+            ],
+            [
+                "EGRESOS OPERATIVOS",
+                crDinero(resumen.egresos_operativos.total)
+            ],
+            [
+                "COMPRAS PAGADAS",
+                crDinero(resumen.compras_pagadas.total)
+            ],
+            [
+                "EGRESOS TOTALES",
+                crDinero(resumen.egresos_totales.total)
+            ],
+            [
+                "UTILIDAD OPERATIVA",
+                importe(resumen.utilidad_operativa)
+            ]
+        ];
+
+        resumenElemento.innerHTML = `
+            <p>
+                Periodo: <strong>${crEscVenta(periodo.inicio)}</strong>
+                al <strong>${crEscVenta(periodo.fin)}</strong>
+                · Ventas registradas:
+                <strong>${Number(resumen.ventas.cantidad) || 0}</strong>
+                · Ventas sin costo:
+                <strong>${Number(resumen.ventas_sin_costo) || 0}</strong>
+            </p>
+
+            <div class="indicadores">
+                ${tarjetas.map(([titulo, valor]) => `
+                    <article class="indicador">
+                        <div>
+                            <span>${crEscVenta(titulo)}</span>
+                            <strong>${crEscVenta(valor)}</strong>
+                        </div>
+                    </article>
+                `).join("")}
+            </div>
+
+            <p>
+                ${crEscVenta(resumen.formula_utilidad_bruta)}
+            </p>
+
+            <p>
+                ${crEscVenta(resumen.formula_utilidad_operativa)}
+            </p>
+
+            <p>
+                ${crEscVenta(resumen.nota_compras)}
+            </p>
+        `;
+
+        ventasElemento.innerHTML = ventas.length
+            ? `
+                <div style="overflow-x:auto">
+                    <table style="min-width:900px;width:100%;border-collapse:collapse">
+                        <thead>
+                            <tr>
+                                <th>Fecha de caja</th>
+                                <th>Hora</th>
+                                <th>Folio</th>
+                                <th>Productos</th>
+                                <th>Pago</th>
+                                <th>Subtotal</th>
+                                <th>Descuento</th>
+                                <th>Total</th>
+                                <th>Costo</th>
+                                <th>Utilidad bruta</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${ventas.map(venta => {
+                                const productos =
+                                    Array.isArray(venta.items)
+                                        ? venta.items.map(item =>
+                                            `${Number(item.cantidad) || 0} × ${crEscVenta(item.nombre || "Producto")}`
+                                        ).join(", ")
+                                        : "";
+
+                                const hora = venta.fecha
+                                    ? new Date(venta.fecha)
+                                        .toLocaleTimeString(
+                                            "es-MX",
+                                            {
+                                                hour: "2-digit",
+                                                minute: "2-digit"
+                                            }
+                                        )
+                                    : "—";
+
+                                return `
+                                    <tr>
+                                        <td>${crEscVenta(venta.fecha_operativa)}</td>
+                                        <td>${crEscVenta(hora)}</td>
+                                        <td>${crEscVenta(venta.folio)}</td>
+                                        <td>${productos}</td>
+                                        <td>${crEscVenta(venta.metodo_pago)}</td>
+                                        <td>${crDinero(venta.subtotal)}</td>
+                                        <td>${crDinero(venta.descuento)}</td>
+                                        <td>${crDinero(venta.total)}</td>
+                                        <td>${importe(venta.costo_ingredientes)}</td>
+                                        <td>${importe(venta.utilidad_bruta)}</td>
+                                    </tr>
+                                `;
+                            }).join("")}
+                        </tbody>
+                    </table>
+                </div>
+            `
+            : "<p>No hay ventas en el periodo seleccionado.</p>";
+
+        movimientosElemento.innerHTML = movimientos.length
+            ? `
+                <div style="overflow-x:auto">
+                    <table style="min-width:800px;width:100%;border-collapse:collapse">
+                        <thead>
+                            <tr>
+                                <th>Fecha de caja</th>
+                                <th>Hora</th>
+                                <th>Origen</th>
+                                <th>Tipo</th>
+                                <th>Referencia</th>
+                                <th>Concepto / proveedor</th>
+                                <th>Método</th>
+                                <th>Importe</th>
+                                <th>Usuario</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${movimientos.map(movimiento => `
+                                <tr>
+                                    <td>${crEscVenta(movimiento.fecha_operativa)}</td>
+                                    <td>${
+                                        movimiento.fecha
+                                            ? crEscVenta(
+                                                new Date(movimiento.fecha)
+                                                    .toLocaleTimeString(
+                                                        "es-MX",
+                                                        {
+                                                            hour: "2-digit",
+                                                            minute: "2-digit"
+                                                        }
+                                                    )
+                                            )
+                                            : "—"
+                                    }</td>
+                                    <td>${crEscVenta(movimiento.origen)}</td>
+                                    <td>${crEscVenta(movimiento.tipo)}</td>
+                                    <td>${crEscVenta(movimiento.referencia)}</td>
+                                    <td>${crEscVenta(movimiento.concepto)}</td>
+                                    <td>${crEscVenta(movimiento.metodo)}</td>
+                                    <td>${crDinero(movimiento.monto)}</td>
+                                    <td>${crEscVenta(movimiento.usuario)}</td>
+                                </tr>
+                            `).join("")}
+                        </tbody>
+                    </table>
+                </div>
+            `
+            : "<p>No hay entradas, egresos ni pagos de compras en el periodo.</p>";
+
+        estado.textContent =
+            `Reporte listo: ${ventas.length} ventas y ` +
+            `${movimientos.length} movimientos.`;
+
+    } catch (error) {
+        console.error("Error al generar el reporte:", error);
+
+        estado.textContent =
+            error.message ||
+            "No se pudo generar el reporte.";
+    }
+}
+
+function mostrarReportes() {
+    if (!crTienePermiso("reportes_ver")) {
+        alert("No tienes permiso para consultar reportes.");
+        return;
+    }
+
+    crAgregarEstilosImpresionReporte();
+
+    const app = document.getElementById("app");
+
+    app.innerHTML = `
+        <div class="pantalla cr-reporte-financiero">
+            <header class="topbar">
+                <div>
+                    <h1>Reportes financieros</h1>
+                    <p>Ventas, costos, utilidad y movimientos</p>
+                </div>
+
+                <button
+                    type="button"
+                    onclick="mostrarDashboard(obtenerJornadaActual())"
+                >
+                    ← Regresar
+                </button>
+            </header>
+
+            <main class="contenido">
+                <section
+                    class="panel cr-no-imprimir"
+                    id="crReporteControles"
+                >
+                    <h2>Selecciona el periodo</h2>
+
+                    <div class="formulario-grid">
+                        <div class="campo">
+                            <label for="crReporteTipo">Periodo</label>
+                            <select
+                                id="crReporteTipo"
+                                onchange="crActualizarCamposReporte()"
+                            >
+                                <option value="dia">Día</option>
+                                <option value="semana">Semana</option>
+                                <option value="mes" selected>Mes</option>
+                                <option value="anio">Año</option>
+                                <option value="rango">Rango personalizado</option>
+                            </select>
+                        </div>
+
+                        <div
+                            class="campo"
+                            id="crReporteFechaReferencia"
+                        >
+                            <label for="crReporteFecha">Fecha de referencia</label>
+                            <input
+                                id="crReporteFecha"
+                                type="date"
+                                value="${obtenerFechaActual()}"
+                            >
+                        </div>
+
+                        <div
+                            class="formulario-grid"
+                            id="crReporteRangoPersonalizado"
+                            style="display:none"
+                        >
+                            <div class="campo">
+                                <label for="crReporteInicio">Desde</label>
+                                <input
+                                    id="crReporteInicio"
+                                    type="date"
+                                    value="${obtenerFechaActual()}"
+                                >
+                            </div>
+
+                            <div class="campo">
+                                <label for="crReporteFin">Hasta</label>
+                                <input
+                                    id="crReporteFin"
+                                    type="date"
+                                    value="${obtenerFechaActual()}"
+                                >
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
+                        <button
+                            class="btn-principal"
+                            type="button"
+                            onclick="crEjecutarReporteFinanciero()"
+                        >
+                            CONSULTAR PERIODO
+                        </button>
+
+                        <button
+                            class="btn-secundario"
+                            type="button"
+                            onclick="crImprimirReporteFinanciero()"
+                        >
+                            IMPRIMIR / GUARDAR PDF
+                        </button>
+
+                        ${
+                            crTienePermiso("reportes_exportar")
+                                ? `
+                                    <button
+                                        class="btn-secundario"
+                                        type="button"
+                                        onclick="crExportarReporteFinancieroCSV()"
+                                    >
+                                        EXPORTAR PARA EXCEL
+                                    </button>
+                                `
+                                : ""
+                        }
+                    </div>
+
+                    <p id="crReporteEstado" role="status">
+                        Preparando reporte...
+                    </p>
+                </section>
+
+                <section
+                    class="panel"
+                    id="crReporteImprimible"
+                >
+                    <h1>CONTROL RESTAURANTE</h1>
+                    <h2>Reporte financiero</h2>
+
+                    <div id="crReporteResumen"></div>
+
+                    <h2>Detalle de ventas</h2>
+                    <div id="crReporteVentas"></div>
+
+                    <h2>Entradas, egresos y compras pagadas</h2>
+                    <div id="crReporteMovimientos"></div>
+                </section>
+            </main>
+        </div>
+    `;
+
+    crEjecutarReporteFinanciero();
+}
+
 /* =========================================================
    AJUSTES DE PRUEBA: HISTORIAL, CONTRASTE Y ATRÁS EN MÓVIL
    No altera la estructura ni el diseño general.
@@ -10273,7 +11078,7 @@ function crEscVenta(valor) {
         'mostrarInventario', 'mostrarTablaExistencias', 'mostrarFormularioProducto',
         'mostrarProductosVenta', 'mostrarFormularioProductoVenta',
         'mostrarRecetas', 'mostrarFormularioReceta', 'mostrarVentas',
-        'mostrarCorteCaja', 'mostrarTickets', 'mostrarPantallaJornada'
+        'mostrarCorteCaja', 'mostrarTickets', "mostrarReportes", 'mostrarPantallaJornada'
     ];
     const originales = {};
     let restaurando = false;
