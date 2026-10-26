@@ -5469,44 +5469,15 @@ async function cargarProductosVentaSupabase() {
    OBTENER VENTAS LOCALES Y DE SUPABASE
 ========================================================= */
 
-function obtenerVentas(){
+function obtenerVentas() {
 
-    let ventasLocales = [];
-
-    try {
-
-        ventasLocales = JSON.parse(
-            localStorage.getItem(CLAVE_VENTAS) || "[]"
-        );
-
-        if(!Array.isArray(ventasLocales)){
-            ventasLocales = [];
-        }
-
-    } catch(error) {
-
-        console.error("Error leyendo ventas locales:", error);
-
+    if (!Array.isArray(window.ventasSupabase)) {
+        return [];
     }
 
-    if(!Array.isArray(window.ventasSupabase)){
-        return ventasLocales;
-    }
-
-    const ventasUnificadas = new Map();
-
-    for(const venta of ventasLocales){
-        ventasUnificadas.set(String(venta.id), venta);
-    }
-
-    for(const venta of window.ventasSupabase){
-        ventasUnificadas.set(String(venta.id), venta);
-    }
-
-    return [...ventasUnificadas.values()].sort(
+    return [...window.ventasSupabase].sort(
         (a, b) => new Date(b.fecha) - new Date(a.fecha)
     );
-
 }
 
 /* =========================================================
