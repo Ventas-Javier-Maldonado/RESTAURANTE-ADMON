@@ -12547,6 +12547,10 @@ async function crCargarCajaCentral() {
                 margin-top: 14px;
             }
 
+            #crResumenCajaCentral .cr-resumen-caja-contenido[hidden] {
+                display: none !important;
+                }
+
             #crResumenCajaCentral .cr-resumen-caja-grupo h3 {
                 margin: 0 0 8px;
                 font-size: 14px;
