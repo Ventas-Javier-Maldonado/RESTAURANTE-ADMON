@@ -1,0 +1,95 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="theme-color"
+        content="#111827"
+    >
+
+    <meta
+        name="description"
+        content="Sistema inteligente de administración y operación para restaurantes"
+    >
+
+    <title>Control Restaurante</title>
+
+    <!-- CSS PRINCIPAL -->
+    <link rel="stylesheet" href="css/styles.css">
+
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.webmanifest">
+
+</head>
+
+<body>
+
+    <!-- CONTENEDOR PRINCIPAL DE LA APLICACIÓN -->
+    <div id="app">
+
+        <!--
+            La aplicación se construirá
+            dinámicamente desde JavaScript.
+        -->
+
+    </div>
+
+    <!-- SUPABASE -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- JAVASCRIPT PRINCIPAL -->
+    <script src="js/app.js?v=20261026-pedidos-abiertos-1"></script>
+
+</body>
+
+ <script>
+if ("serviceWorker" in navigator) {
+
+    let recargandoPorActualizacion = false;
+
+    navigator.serviceWorker.addEventListener(
+        "controllerchange",
+        () => {
+            if (recargandoPorActualizacion) return;
+
+            recargandoPorActualizacion = true;
+            window.location.reload();
+        }
+    );
+
+    window.addEventListener("load", async () => {
+        try {
+            const registro =
+                await navigator.serviceWorker.register(
+                    "./service-worker.js",
+                    {
+                        updateViaCache: "none"
+                    }
+                );
+
+            if (registro.waiting) {
+                registro.waiting.postMessage({
+                    type: "SKIP_WAITING"
+                });
+            }
+
+            await registro.update();
+
+        } catch (error) {
+            console.error(
+                "No se pudo registrar el service worker:",
+                error
+            );
+        }
+    });
+}
+</script>   
+</html>
